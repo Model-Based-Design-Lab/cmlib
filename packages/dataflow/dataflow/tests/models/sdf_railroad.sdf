@@ -1,0 +1,36 @@
+dataflow graph RailRoad {
+        
+        inputs l
+        outputs s
+
+        // I/O
+        l      ----> MST
+        TAS[1] ----> s
+
+        // tracks
+        AMS[0]  --- 1 ---> TAH
+        THG[0]  --- 1 ---> THA
+        EHV[0]  --- 1 ---> TEA
+        EHV     --- 1 ---> TEM
+        MST[0]  ---------> TME
+        THG     ---------> THE
+        AMS     ---------> TAS
+        TME[2]  ---------> EHV
+        TEM[2]  ---------> MST
+        TEA[3]  ---------> AMS
+        TAH[1]  ---------> THG
+        THA[1]  ---------> AMS
+        THE[3]  ---------> EHV
+}
+
+
+input signals
+
+l = [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44]
+
+lDouble = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+lNormal = [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44]
+lDelayed = [0, 7, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44 ]
+lImpulse = [0, -inf, -inf, -inf, -inf, -inf, -inf, -inf, -inf]
+lPeriodic = [0, 5, 10, 15, 20, 25, 30]
+lPeriodicSix = [0, 6, 12, 18, 24, 30, 36]

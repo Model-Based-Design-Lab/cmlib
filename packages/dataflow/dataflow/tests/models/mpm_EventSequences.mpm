@@ -1,0 +1,18 @@
+
+max-plus model MPModel:
+
+matrices
+
+A (x0 x1) = [[0 1 ] [ 1 0]]
+
+vector sequences
+
+v (i1 i2)= [
+    [0 0]
+    [2 3]
+    [5 4]
+]
+
+event sequences
+h = [0 2 4 8 12 ]
+x = [-inf 10 -inf -inf -inf -inf ]

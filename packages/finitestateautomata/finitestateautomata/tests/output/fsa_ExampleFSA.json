@@ -1,0 +1,296 @@
+{
+    "alphabet": "[\"a\", \"b\"]",
+    "states": "[S_0, S_1, S_2]",
+    "deterministic": "False",
+    "reachableStates": "[S_0, S_1]",
+    "languageEmpty": "[False, [a], [S_0, S_1]]",
+    "accepts": "False",
+    "accepts_empty": "False",
+    "product": {
+        "_states": "[(S_0,S_0), (S_0,S_1), (S_0,S_2), (S_1,S_0), (S_1,S_1), (S_1,S_2), (S_2,S_0), (S_2,S_1), (S_2,S_2)]",
+        "_transitions": {
+            "(S_0,S_0)": {
+                "a": "[(S_1,S_1)]"
+            },
+            "(S_0,S_1)": {
+                "a": "[(S_1,S_0), (S_1,S_1)]"
+            },
+            "(S_0,S_2)": {
+                "a": "[(S_1,S_2)]"
+            },
+            "(S_1,S_0)": {
+                "a": "[(S_0,S_1), (S_1,S_1)]"
+            },
+            "(S_1,S_1)": {
+                "a": "[(S_0,S_0), (S_0,S_1), (S_1,S_0), (S_1,S_1)]",
+                "b": "[(S_0,S_0)]"
+            },
+            "(S_1,S_2)": {
+                "a": "[(S_0,S_2), (S_1,S_2)]",
+                "b": "[(S_0,S_2)]"
+            },
+            "(S_2,S_0)": {
+                "a": "[(S_2,S_1)]"
+            },
+            "(S_2,S_1)": {
+                "a": "[(S_2,S_0), (S_2,S_1)]",
+                "b": "[(S_2,S_0)]"
+            },
+            "(S_2,S_2)": {
+                "a": "[(S_2,S_2)]",
+                "b": "[(S_2,S_2)]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[(S_0,S_0)]",
+        "_finalStates": "[(S_1,S_1), (S_1,S_2), (S_2,S_1), (S_2,S_2)]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "eliminateEpsilon": {
+        "_states": "[S_0, S_1, S_2]",
+        "_transitions": {
+            "S_0": {
+                "a": "[S_1]"
+            },
+            "S_1": {
+                "a": "[S_0, S_1]",
+                "b": "[S_0]"
+            },
+            "S_2": {
+                "a": "[S_2]",
+                "b": "[S_2]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[S_0]",
+        "_finalStates": "[S_1, S_2]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "minimize": {
+        "_states": "[{S_0}, {S_1}]",
+        "_transitions": {
+            "{S_1}": {
+                "a": "[{S_0}, {S_1}]",
+                "b": "[{S_0}]"
+            },
+            "{S_0}": {
+                "a": "[{S_1}]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[{S_0}]",
+        "_finalStates": "[{S_1}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "convert_to_DFA": {
+        "_states": "[{S_0,S_1}, {S_0}, {S_1}]",
+        "_transitions": {
+            "{S_0}": {
+                "a": "[{S_1}]"
+            },
+            "{S_1}": {
+                "a": "[{S_0,S_1}]",
+                "b": "[{S_0}]"
+            },
+            "{S_0,S_1}": {
+                "a": "[{S_0,S_1}]",
+                "b": "[{S_0}]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[{S_0}]",
+        "_finalStates": "[{S_0,S_1}, {S_1}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "relabel": {
+        "_states": "[S1, S2, S3]",
+        "_transitions": {
+            "S1": {
+                "a": "[S2]"
+            },
+            "S2": {
+                "a": "[S1, S2]",
+                "b": "[S1]"
+            },
+            "S3": {
+                "a": "[S3]",
+                "b": "[S3]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[S1]",
+        "_finalStates": "[S2, S3]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "languageIncluded_refModel": "[False, [a, a]]",
+    "product_refModel": {
+        "_states": "[(S_0,S0), (S_0,S1), (S_1,S0), (S_1,S1), (S_2,S0), (S_2,S1)]",
+        "_transitions": {
+            "(S_0,S0)": {
+                "a": "[(S_1,S1)]"
+            },
+            "(S_0,S1)": {
+                "a": "[(S_1,S0)]"
+            },
+            "(S_1,S0)": {
+                "a": "[(S_0,S1), (S_1,S1)]",
+                "b": "[(S_0,S0)]"
+            },
+            "(S_1,S1)": {
+                "a": "[(S_0,S0), (S_1,S0)]",
+                "b": "[(S_0,S1)]"
+            },
+            "(S_2,S0)": {
+                "a": "[(S_2,S1)]",
+                "b": "[(S_2,S0)]"
+            },
+            "(S_2,S1)": {
+                "a": "[(S_2,S0)]",
+                "b": "[(S_2,S1)]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[(S_0,S0)]",
+        "_finalStates": "[(S_1,S1), (S_2,S1)]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "languageEmptyBuchi": "[False, [a], [a], [S_0, S_1], [S_1]]",
+    "productBuchi": {
+        "_states": "[((S_0,S_0),F0), ((S_0,S_0),F1), ((S_0,S_1),F0), ((S_0,S_1),F1), ((S_0,S_2),F0), ((S_0,S_2),F1), ((S_1,S_0),F0), ((S_1,S_0),F1), ((S_1,S_1),F0), ((S_1,S_1),F1), ((S_1,S_2),F0), ((S_1,S_2),F1), ((S_2,S_0),F0), ((S_2,S_0),F1), ((S_2,S_1),F0), ((S_2,S_1),F1), ((S_2,S_2),F0), ((S_2,S_2),F1)]",
+        "_transitions": {
+            "((S_0,S_0),F0)": {
+                "a": "[((S_1,S_1),F0)]"
+            },
+            "((S_0,S_1),F0)": {
+                "a": "[((S_1,S_0),F0), ((S_1,S_1),F0)]"
+            },
+            "((S_0,S_2),F0)": {
+                "a": "[((S_1,S_2),F0)]"
+            },
+            "((S_1,S_0),F0)": {
+                "a": "[((S_0,S_1),F1), ((S_1,S_1),F1)]"
+            },
+            "((S_1,S_1),F0)": {
+                "a": "[((S_0,S_0),F1), ((S_0,S_1),F1), ((S_1,S_0),F1), ((S_1,S_1),F1)]",
+                "b": "[((S_0,S_0),F1)]"
+            },
+            "((S_1,S_2),F0)": {
+                "a": "[((S_0,S_2),F1), ((S_1,S_2),F1)]",
+                "b": "[((S_0,S_2),F1)]"
+            },
+            "((S_2,S_0),F0)": {
+                "a": "[((S_2,S_1),F1)]"
+            },
+            "((S_2,S_1),F0)": {
+                "a": "[((S_2,S_0),F1), ((S_2,S_1),F1)]",
+                "b": "[((S_2,S_0),F1)]"
+            },
+            "((S_2,S_2),F0)": {
+                "a": "[((S_2,S_2),F1)]",
+                "b": "[((S_2,S_2),F1)]"
+            },
+            "((S_0,S_0),F1)": {
+                "a": "[((S_1,S_1),F1)]"
+            },
+            "((S_0,S_1),F1)": {
+                "a": "[((S_1,S_0),F0), ((S_1,S_1),F0)]"
+            },
+            "((S_0,S_2),F1)": {
+                "a": "[((S_1,S_2),F0)]"
+            },
+            "((S_1,S_0),F1)": {
+                "a": "[((S_0,S_1),F1), ((S_1,S_1),F1)]"
+            },
+            "((S_1,S_1),F1)": {
+                "a": "[((S_0,S_0),F0), ((S_0,S_1),F0), ((S_1,S_0),F0), ((S_1,S_1),F0)]",
+                "b": "[((S_0,S_0),F0)]"
+            },
+            "((S_1,S_2),F1)": {
+                "a": "[((S_0,S_2),F0), ((S_1,S_2),F0)]",
+                "b": "[((S_0,S_2),F0)]"
+            },
+            "((S_2,S_0),F1)": {
+                "a": "[((S_2,S_1),F1)]"
+            },
+            "((S_2,S_1),F1)": {
+                "a": "[((S_2,S_0),F0), ((S_2,S_1),F0)]",
+                "b": "[((S_2,S_0),F0)]"
+            },
+            "((S_2,S_2),F1)": {
+                "a": "[((S_2,S_2),F0)]",
+                "b": "[((S_2,S_2),F0)]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[((S_0,S_0),F0)]",
+        "_finalStates": "[((S_0,S_1),F1), ((S_0,S_2),F1), ((S_1,S_0),F0), ((S_1,S_1),F0), ((S_1,S_1),F1), ((S_1,S_2),F0), ((S_1,S_2),F1), ((S_2,S_0),F0), ((S_2,S_1),F0), ((S_2,S_1),F1), ((S_2,S_2),F0), ((S_2,S_2),F1)]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "minimizeBuchi": {
+        "_states": "[{S_0}, {S_1}]",
+        "_transitions": {
+            "{S_1}": {
+                "a": "[{S_0}, {S_1}]",
+                "b": "[{S_0}]"
+            },
+            "{S_0}": {
+                "a": "[{S_1}]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[{S_0}]",
+        "_finalStates": "[{S_1}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "languageIncluded": "[True, None]",
+    "complete": {
+        "_states": "[S, S_0, S_1, S_2]",
+        "_transitions": {
+            "S_0": {
+                "a": "[S_1]",
+                "b": "[S]"
+            },
+            "S_1": {
+                "a": "[S_0, S_1]",
+                "b": "[S_0]"
+            },
+            "S_2": {
+                "a": "[S_2]",
+                "b": "[S_2]"
+            },
+            "S": {
+                "a": "[S]",
+                "b": "[S]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[S_0]",
+        "_finalStates": "[S_1, S_2]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "complement": {
+        "_states": "[S, {S_0,S_1}, {S_0}, {S_1}]",
+        "_transitions": {
+            "{S_0,S_1}": {
+                "a": "[{S_0,S_1}]",
+                "b": "[{S_0}]"
+            },
+            "{S_0}": {
+                "a": "[{S_1}]",
+                "b": "[S]"
+            },
+            "{S_1}": {
+                "a": "[{S_0,S_1}]",
+                "b": "[{S_0}]"
+            },
+            "S": {
+                "a": "[S]",
+                "b": "[S]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[{S_0}]",
+        "_finalStates": "[S, {S_0}]",
+        "_generalizedAcceptanceSets": {}
+    }
+}

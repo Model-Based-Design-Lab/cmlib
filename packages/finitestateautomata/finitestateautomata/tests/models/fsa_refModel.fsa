@@ -1,0 +1,6 @@
+finite state automaton Model {
+        S0 i -- a --> S1
+        S0 -- b --> S0
+        S1 f -- a --> S0
+        S1 -- b --> S1
+}

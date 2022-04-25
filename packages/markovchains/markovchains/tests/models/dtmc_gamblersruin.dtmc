@@ -1,0 +1,8 @@
+markov chain GamblersRuin {
+        S1[p: 0; reward:   0] -- 1 ----> S1 
+        S2[p: 0.5; reward: 100] -- 0.5 --> S1
+        S2              -- 0.5 --> S3
+        S3[p: 0.5; reward: 200] -- 0.5 --> S2
+        S3              -- 0.5 --> S4
+        S4[p: 0; reward: 300] -- 1 ----> S4        
+}

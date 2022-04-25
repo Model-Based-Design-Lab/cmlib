@@ -1,0 +1,18 @@
+finite state automaton Model {
+        A final [S1] -- p1;r2 --> A
+        A -- np1 --> B
+        A -- r2;p1 --> D
+        A -- np1 --> E
+        B initial -- r1 --> A
+        B -- r2 --> C
+        B -- r2 --> F
+        C final [S2] -- p2;r1 --> C
+        C -- np2 --> B
+        C -- np2 --> E
+        C -- p2 --> F
+        D final [SB] -- r2;p1 --> D
+        D -- np1 --> E
+        E final [SB] -- r2 --> F
+        F final [SB] -- np2 --> E
+        F -- p2 --> F
+}

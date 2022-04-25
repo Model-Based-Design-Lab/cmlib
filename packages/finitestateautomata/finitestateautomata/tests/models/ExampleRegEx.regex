@@ -1,0 +1,3 @@
+regular expression MyRegex = 
+    (d* + f*)* + \o + \e + @AB
+where AB = a + b

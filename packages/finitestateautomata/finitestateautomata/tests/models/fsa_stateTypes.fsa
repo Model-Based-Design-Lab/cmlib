@@ -1,0 +1,5 @@
+finite state automaton Model {
+        A i -- a --> C
+        B i;f -- b --> C
+        C -- c --> D f
+}

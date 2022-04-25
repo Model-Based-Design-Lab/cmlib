@@ -1,0 +1,17 @@
+dataflow graph C20_WCD {
+        inputs i, ce
+        outputs o
+        i       -------> Sh
+        Sh[4]   -- 1 --> Sh
+        Sh      -------> DM
+        ce      -------> DM
+        DM[3]   -------> CE
+        DM      -- 1 --> DM
+        CE[3]   -- 2 --> DM
+        DM      -------> DC
+        DC[1]   -------> o
+}
+
+input signals 
+i=[0, 4, 8, 12, 16, 20]
+ce=[0, 4, 8, 12, 16, 20]

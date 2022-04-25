@@ -1,0 +1,8 @@
+finite state automaton Model {
+        A initial -- S_a0 --> B
+        B -- S_a0;S_a1 --> A
+        B -- # --> C final
+        A -- # --> D
+        D -- # --> B
+        B -- # --> A
+}

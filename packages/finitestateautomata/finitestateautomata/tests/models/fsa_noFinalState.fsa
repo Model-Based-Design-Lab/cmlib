@@ -1,0 +1,5 @@
+finite state automaton Model {
+        S0 initial -- "+,\"*@" ----> S1
+        S1 -- "+*@";b --> S0
+        S1 -- "+*@" --> S1
+}

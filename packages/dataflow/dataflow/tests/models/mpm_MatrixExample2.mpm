@@ -1,0 +1,25 @@
+max-plus model A:
+
+matrices
+
+M =
+[
+[   -inf 0.0000   -inf   -inf   -inf ]
+[ 2.0000   -inf   -inf   -inf   -inf ]
+[ 7.0000   -inf 5.0000   -inf   -inf ]
+[   -inf   -inf   -inf   -inf 0.0000 ]
+[ 13.0000   -inf 11.0000 6.0000   -inf ]
+]
+
+vector sequences
+
+x = 
+[
+[0 0 0 0 0]
+[1 1 1 1 1]
+[2 2 2 2 2]
+]
+
+event sequences
+
+delta = [0 -inf -inf -inf -inf -inf]

@@ -1,0 +1,48 @@
+markov chain Model {
+        S1[p: 1.0; reward:1]  -- 1   -> S2
+        S2[p: 0.0; reward:1]  -- 1   -> S3
+        S3[p: 0.0; reward:1]  -- 1/2 -> S4
+        S3                    -- 1/2 -> S22
+        S4[p: 0.0; reward:1]  -- 1/3 -> S5
+        S4                    -- 1/3 -> S10
+        S4                    -- 1/3 -> S27
+        S5[p: 0.0; reward:1]  -- 1   -> S7
+        S6[p: 0.0; reward:1]  -- 1/3 -> S10
+        S6                    -- 1/3 -> S21
+        S6                    -- 1/3 -> S27
+        S7[p: 0.0; reward:1]  -- 1/2 -> S8
+        S7                    -- 1/2 -> S32
+        S8[p: 0.0; reward:1]  -- 1   -> S9
+        S9[p: 0.0; reward:1]  -- 1   -> S1
+        S10[p: 0.0; reward:1] -- 1   -> S11
+        S11[p: 0.0; reward:1] -- 1   -> S12
+        S12[p: 0.0; reward:1] -- 1   -> S13
+        S13[p: 0.0; reward:1] -- 1   -> S14
+        S14[p: 0.0; reward:1] -- 1/2 -> S4
+        S14                   -- 1/2 -> S15
+        S15[p: 0.0; reward:1] -- 1   -> S16
+        S16[p: 0.0; reward:1] -- 1   -> S17
+        S17[p: 0.0; reward:1] -- 1   -> S18
+        S18[p: 0.0; reward:1] -- 1   -> S19
+        S19[p: 0.0; reward:1] -- 1/2 -> S20
+        S19                   -- 1/2 -> S32
+        S20[p: 0.0; reward:1] -- 1   -> S6
+        S21[p: 0.0; reward:1] -- 1/2 -> S15
+        S21                   -- 1/2 -> S22
+        S22[p: 0.0; reward:1] -- 1   -> S23
+        S23[p: 0.0; reward:1] -- 1   -> S24
+        S24[p: 0.0; reward:1] -- 1   -> S25
+        S25[p: 0.0; reward:1] -- 1   -> S26
+        S26[p: 0.0; reward:1] -- 1/3 -> S5
+        S26                   -- 1/3 -> S21
+        S26                   -- 1/3 -> S27
+        S27[p: 0.0; reward:1] -- 1/2 -> S28
+        S27                   -- 1/2 -> S30
+        S28[p: 0.0; reward:1] -- 1   -> S29
+        S29[p: 0.0; reward:1] -- 1   -> S29
+        S30[p: 0.0; reward:1] -- 1   -> S31
+        S31[p: 0.0; reward:1] -- 1   -> S31
+        S32[p: 0.0; reward:1] -- 1   -> S33
+        S33[p: 0.0; reward:1] -- 1   -> S33
+
+}

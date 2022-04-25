@@ -1,0 +1,10 @@
+dataflow graph deadlock {
+        inputs i
+        outputs o1, o2
+        i       -------> A
+        A       -------> B
+        B       -- 2 --> C
+        C       -------> A
+        B       -------> o1
+        C       -------> o2
+}

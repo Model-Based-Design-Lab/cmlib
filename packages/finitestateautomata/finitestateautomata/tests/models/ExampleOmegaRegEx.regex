@@ -1,0 +1,2 @@
+
+regular expression Test = (c+d)* . (a+b)**

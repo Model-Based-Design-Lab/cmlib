@@ -1,0 +1,4 @@
+finite state automaton Model {
+        S0 i;f [A] -- a --> S1
+        S1 i;f [B] -- b --> S0
+}

@@ -1,0 +1,22 @@
+finite state automaton CoffeeMachine {
+        A -- s --> B 
+        B -- a --> C
+        B -- b;t --> A initial;final
+        C -- b --> B
+        C -- t --> A
+        A -- h --> D
+        D -- t --> A
+        D -- s --> E
+        E -- b --> D
+        E -- t --> A
+        B -- h --> E
+        E -- a --> F
+        E -- m --> G
+        F -- b --> E
+        F -- t --> A
+        C -- h --> F
+        G -- p --> I
+        G -- d --> H
+        H -- p --> J final
+        I -- d --> J
+}

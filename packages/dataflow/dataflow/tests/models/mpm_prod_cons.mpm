@@ -1,0 +1,24 @@
+max-plus model C14_PCP_MPM : 
+
+matrices
+A (P_P F_P_0 F_P_1 C_F_0 C_F_1 C_C) = [
+	[ 2.0000 2.0000   -inf   -inf   -inf   -inf ]
+	[   -inf   -inf 0.0000   -inf   -inf   -inf ]
+	[ 5.0000 5.0000   -inf 3.0000   -inf   -inf ]
+	[   -inf   -inf   -inf   -inf 0.0000   -inf ]
+	[ 6.0000 6.0000   -inf 4.0000   -inf 1.0000 ]
+	[ 6.0000 6.0000   -inf 4.0000   -inf 1.0000 ]
+]
+B (P_P F_P_0 F_P_1 C_F_0 C_F_1 C_C) = [
+	[  ]
+	[  ]
+	[  ]
+	[  ]
+	[  ]
+	[  ]
+]
+C (P_P F_P_0 F_P_1 C_F_0 C_F_1 C_C) = [
+]
+D  = [
+]
+

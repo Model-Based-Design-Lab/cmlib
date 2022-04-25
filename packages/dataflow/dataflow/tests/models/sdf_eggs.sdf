@@ -1,0 +1,9 @@
+dataflow graph Eggs {
+    inputs i
+    outputs o
+    
+    i        -- consumption rate: 4 -----------------------> Clean
+    Clean[1] -- production rate: 4; consumption rate: 10 --> Box
+    Box      -- initial tokens: 1 ------------------------> Box
+    Box[1]   -- production rate: 10 -----------------------> o
+}
