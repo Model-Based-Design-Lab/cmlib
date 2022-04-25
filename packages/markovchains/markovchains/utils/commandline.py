@@ -101,7 +101,7 @@ def main():
         exit(1)
 
     parser = argparse.ArgumentParser(
-        description='Perform operations on discrete-time Markov chains.')
+        description='Perform operations on discrete-time Markov chains.\nhttps://computationalmodeling.info')
     parser.add_argument('markovchain', help="the Markov chain to analyze")
     parser.add_argument('-op', '--operation', dest='operation',
                         help="the operation or analysis to perform, use 'markovchains -oh OPERATION' for information about the specific operation ")

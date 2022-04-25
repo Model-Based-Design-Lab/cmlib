@@ -8,13 +8,7 @@ from finitestateautomata.libltl import LTLFormula
 import sys
 from finitestateautomata.utils.utils import printStates, printSetOfStates
 
-AutomataOperations = ['accepts', 'isDeterministic', 'asDFA', 'eliminateEpsilon', 'alphabet', 'complete', 'complement', 'product', 'strictProduct', 'productBuchi', 'reachableStates', 'strictProductBuchi', 'languageEmpty', 'languageEmptyBuchi', 'languageIncluded', 'minimize', 'minimizeBuchi', 'relabel', 'asRegEx']
-RegExOperations = ['convertRegEx', 'convertOmegaRegEx']
-LTLOperations = ['convertLTL', 'testLTLParser']
 
-OtherOperations = []
-
-operations = AutomataOperations + RegExOperations + LTLOperations + OtherOperations
 
 def main():
 
@@ -43,7 +37,7 @@ def main():
         "asRegEx"
     ]
     parser = argparse.ArgumentParser(
-        description='Perform operations on finite state automata.')
+        description='Perform operations on finite state automata.\nhttps://computationalmodeling.info')
     parser.add_argument('automaton_or_regularexpression', help="the automaton or regular expression to analyze")
     parser.add_argument('-sa', '--secondaryautomaton', dest='secondaryAutomaton',
                         help="a secondary automaton for the operation")

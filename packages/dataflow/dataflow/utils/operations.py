@@ -51,7 +51,7 @@ OperationDescriptions = [
     OP_SDF_STATE_LABELS + ' (determine the labels of the elements of the state vector)',
     OP_SDF_THROUGHPUT + ' (computes throughput)' ,
     OP_SDF_LATENCY + ' (requires period and optional initial state)',
-    OP_SDF_REP_VECTOR + '(computes repetition vector)',
+    OP_SDF_REP_VECTOR + ' (computes repetition vector)',
     OP_SDF_DEADLOCK + ' (checks graph for deadlock)',
     OP_SDF_GENERALIZED_LATENCY + ' (compute generalized latency, requires period)',
     OP_SDF_STATE_MATRIX + ' (compute the state matrix of the graph',
