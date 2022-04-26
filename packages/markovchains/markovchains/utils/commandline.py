@@ -3,15 +3,13 @@
 
 import argparse
 
-from numpy import require
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, printMatrix
 from markovchains.utils.utils import sortNames, printList, printDList, print4F, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector
-from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT
-import sys
+from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 
-from packages.markovchains.markovchains.utils.operations import OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
+import sys
 
 
 def main():
@@ -77,7 +75,7 @@ def requireNumberOfSteps(args):
     if args.numberOfSteps is None:
         raise Exception("numberOfSteps must be specified.")
     try:
-        return int(args.numberOfSteps)
+        return nrOfSteps(int(args.numberOfSteps))
     except Exception as e:
         sys.stderr.write("Failed to determine number of steps.\n")
 
@@ -90,6 +88,22 @@ def requireTargetStateSet(args):
     if args.targetStateSet is None:
         raise Exception("A target state set must be specified.")
     return [s.strip() for s in args.targetStateSet.split(',')]
+
+def requireStopCriteria(args):
+    if args.Conditions is None:
+        raise Exception("Stop conditions must be specified.")
+    return stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+
+def setSeed(args, M):
+    if args.Seed is not None:
+        M.setSeed(int(args.Seed))
+
+def setStartingStateSet(args, M):
+    if args.stateStartingSet is not None:
+        S = [s.strip() for s in args.stateStartingSet.split(',')]
+    else:
+        S = M.states()
+    return S
 
 
 def process(args, dsl):
@@ -252,19 +266,16 @@ def process(args, dsl):
             print("From state {}: {:.4f}".format(t, res[t]))
     
     if operation == OP_DTMC_MARKOV_TRACE:
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
+        setSeed(args, M)
         N = requireNumberOfSteps(args)
         trace = M.markovTrace(N)
         print("{}".format(trace))
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
+        setSeed(args, M)
         s = requireTargetState(args)
         M.setRecurrentState(s)
-        C = requireStoppingCriteria(args)
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+        C = requireStopCriteria(args)
         interval, abError, reError, esMean, n, stop = M.longRunExpectedAverageReward(C)
         if any(i==None for i in interval):
             print("Recurrent state has not been reached, no realizations found")
@@ -277,11 +288,11 @@ def process(args, dsl):
             print("\tRelative error bound: {}".format(print4F(reError)))
             print("\tNumber of cycles: {}".format(n))
 
-    if args.operation == "cezarolimitdistribution":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        M.setRecurrentState(args.targetState)
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
+        setSeed(args, M)
+        targetState = requireTargetState(args)
+        M.setRecurrentState(targetState)
+        C = requireStopCriteria(args)
         limit, interval, abError, reError, n, stop = M.cezaroLimitDistribution(C)
         if limit is None:
             print("Recurrent state has not been reached, no realisations found")
@@ -296,11 +307,10 @@ def process(args, dsl):
                 print("\tRelative error bound: {}".format(print4F(reError[i])))
                 print("\n")
 
-    if args.operation == "estimationexpectedreward":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        N = int(nrOfSteps(args.numberOfSteps))
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_ESTIMATION_EXPECTED_REWARD:
+        setSeed(args, M)
+        N = requireNumberOfSteps(args)
+        C = requireStopCriteria(args)
         u, interval, abError, reError, nr_of_paths, stop = M.estimationExpectedReward(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("\tExpected reward: {:.4f}".format(u))
@@ -309,12 +319,11 @@ def process(args, dsl):
         print("\tRelative error bound: {}".format(print4F(reError)))
         print("\tNumber of paths: ", nr_of_paths)
 
-    if args.operation == "estimationdistribution":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
+    if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
+        setSeed(args, M)
         states = M.states()
-        N = int(nrOfSteps(args.numberOfSteps))
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+        N = requireNumberOfSteps(args)
+        C = requireStopCriteria(args)
         distribution, intervals, abError, reError, nr_of_paths, stop = M.estimationDistribution(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
@@ -324,15 +333,11 @@ def process(args, dsl):
         print("\tRelative error bound: {}".format(print4F(reError)))
         print("\tNumber of paths: ", nr_of_paths)
 
-    if args.operation == "estimationhittingstate":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        if args.stateStartingSet is not None:
-            S = [s.strip() for s in args.stateStartingSet.split(',')]
-        else:
-            S = M.states()
-        s = args.targetState
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
+        setSeed(args, M)
+        S = setStartingStateSet(args, M)
+        s = requireTargetState(args)
+        C = requireStopCriteria(args)
         hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, True, S)
         print("Estimated hitting probabilities for {} are:".format(s))
         for i in range(len(hitting_probability)):
@@ -341,15 +346,11 @@ def process(args, dsl):
                 print4F(abErrors[i]), print4F(reErrors[i]), nr_of_paths[i], stop[i]
             ))
                 
-    if args.operation == "estimationhittingreward":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        if args.stateStartingSet is not None:
-            S = [s.strip() for s in args.stateStartingSet.split(',')]
-        else:
-            S = M.states()
-        s = args.targetState
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
+        setSeed(args, M)
+        S = setStartingStateSet(args, M)
+        s = requireTargetState(args)
+        C = requireStopCriteria(args)
         cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, False, S)
         print("Estimated cumulative reward until hitting {} are:".format(s))
         for i in range(len(cumulative_reward)):
@@ -361,15 +362,11 @@ def process(args, dsl):
                     print4F(abErrors[i]), print4F(reErrors[i]), nr_of_paths[i], stop[i]
                 ))
     
-    if args.operation == "estimationhittingstateset":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        if args.stateStartingSet is not None:
-            S = [s.strip() for s in args.stateStartingSet.split(',')]
-        else:
-            S = M.states()
-        s = [s.strip() for s in args.targetStateSet.split(',')]
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
+        setSeed(args, M)
+        S = setStartingStateSet(args, M)
+        s = requireTargetStateSet(args)
+        C = requireStopCriteria(args)
         hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, True, S)
         print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
         for i in range(len(hitting_probability)):
@@ -378,15 +375,11 @@ def process(args, dsl):
                 printList(intervals[i]), print4F(abErrors[i]), print4F(reErrors[i]), nr_of_paths[i], stop[i]
             ))
 
-    if args.operation == "estimationhittingrewardset":
-        if args.Seed is not None:
-            M.setSeed(int(args.Seed))
-        if args.stateStartingSet is not None:
-            S = [s.strip() for s in args.stateStartingSet.split(',')]
-        else:
-            S = M.states()
-        s = [s.strip() for s in args.targetStateSet.split(',')]
-        C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
+        setSeed(args, M)
+        S = setStartingStateSet(args, M)
+        s = requireTargetStateSet(args)
+        C = requireStopCriteria(args)
         cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, False, S)
         print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
         for i in range(len(cumulative_reward)):
