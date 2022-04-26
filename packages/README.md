@@ -1,5 +1,6 @@
 # Analysis Tool Packages
 
+TODO: what to do with modeltest package?
 ## Prerequisites
 
 Make sure that you have python 3.x.x installed, including pip.

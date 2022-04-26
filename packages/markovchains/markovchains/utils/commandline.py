@@ -2,6 +2,8 @@
 '''Operations on Markov chains '''
 
 import argparse
+
+from numpy import require
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, printMatrix
@@ -9,7 +11,7 @@ from markovchains.utils.utils import sortNames, printList, printDList, print4F, 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT
 import sys
 
-from packages.markovchains.markovchains.utils.operations import OP_DTMC_TRANSIENT_REWARDS
+from packages.markovchains.markovchains.utils.operations import OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 
 
 def main():
@@ -79,31 +81,43 @@ def requireNumberOfSteps(args):
     except Exception as e:
         sys.stderr.write("Failed to determine number of steps.\n")
 
+def requireTargetState(args):
+    if args.targetState is None:
+        raise Exception("A target state must be specified.")
+    return args.targetState
+
+def requireTargetStateSet(args):
+    if args.targetStateSet is None:
+        raise Exception("A target state set must be specified.")
+    return [s.strip() for s in args.targetStateSet.split(',')]
+
 
 def process(args, dsl):
 
-    if args.operation in MarkovChainOperations:
+    operation = args.operation
+
+    if operation in MarkovChainOperations:
         name, M = MarkovChain.fromDSL(dsl)
         if M is None:
             exit(1)
 
     # just list all states
-    if args.operation == OP_DTMC_LIST_STATES:
+    if operation == OP_DTMC_LIST_STATES:
         res = M.states()
         printSortedList(res)
 
     # list the recurrent states
-    if args.operation == OP_DTMC_LIST_RECURRENT_STATES:
+    if operation == OP_DTMC_LIST_RECURRENT_STATES:
         _, recurr = M.classifyTransientRecurrent()
         printSortedList(recurr)
 
     # list the transient states
-    if args.operation == OP_DTMC_LIST_TRANSIENT_STATES:
+    if operation == OP_DTMC_LIST_TRANSIENT_STATES:
         trans, _ = M.classifyTransientRecurrent()
         printSortedList(trans)
 
     # create graph for a number of steps
-    if args.operation == OP_DTMC_EXECUTION_GRAPH:
+    if operation == OP_DTMC_EXECUTION_GRAPH:
         N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
         states = M.states()
@@ -116,13 +130,13 @@ def process(args, dsl):
         print(plotSvg(data, states))
 
     # determine classes of communicating states
-    if args.operation == OP_DTMC_COMMUNICATINGSTATES:
+    if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
         for s in M.communicatingClasses():
             printSortedSet(s)
 
     # classify transient and recurrent states
-    if args.operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
+    if operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
         trans, recurr = M.classifyTransientRecurrent()
         print("Transient states:")
         printSortedSet(trans)
@@ -130,7 +144,7 @@ def process(args, dsl):
         printSortedSet(recurr)
 
     # classify transient and recurrent states
-    if args.operation == OP_DTMC_PERIODICITY:
+    if operation == OP_DTMC_PERIODICITY:
         per = M.classifyPeriodicity()
         print("The set of aperiodic recurrent states is:")
         aperStates =  [s for s in per.keys() if per[s] == 1]
@@ -146,12 +160,12 @@ def process(args, dsl):
                 printSortedSet(pperStates)
 
     # classify transient and recurrent states
-    if args.operation == OP_DTMC_MC_TYPE:
+    if operation == OP_DTMC_MC_TYPE:
         mcType = M.determineMCType()
         print("The type of the MC is: {}".format(mcType))
 
     # determine transient behavior for a number of steps
-    if args.operation == OP_DTMC_TRANSIENT:
+    if operation == OP_DTMC_TRANSIENT:
         N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
         states = M.states()
@@ -165,7 +179,7 @@ def process(args, dsl):
             print("Distribution: " +  printList(trace[k,:]) + "\n")
 
     # determine transient behavior for a number of steps
-    if args.operation == OP_DTMC_TRANSIENT_REWARDS:
+    if operation == OP_DTMC_TRANSIENT_REWARDS:
         N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
 
@@ -175,32 +189,32 @@ def process(args, dsl):
             print("Expected Reward: {:.4f}\n".format(M.rewardForDistribution(trace[k,:])))
 
     # determine transient behavior for a number of steps
-    if args.operation == "transientMatrix":
-        N = int(args.numberOfSteps)
+    if operation == OP_DTMC_TRANSIENT_MATRIX:
+        N = requireNumberOfSteps(args)
         mat = M.transitionMatrix()
 
         print ("State vector:")
-        print ("[{}]\n".format(", ".join(M.states())))
+        printVector(M.states())
         print("Transient analysis:\n")
         print ("Matrix for {} steps:\n".format(N))
         printMatrix(matPower(mat, N))
 
-    if args.operation == "limitingMatrix":
+    if operation == OP_DTMC_LIMITING_MATRIX:
         mat = M.limitingMatrix()
         print ("State vector:")
-        print ("[{}]\n".format(", ".join(M.states())))
+        printVector(M.states())
         print ("Limiting Matrix:\n")
         printMatrix(mat)
 
-    if args.operation == "limitingDistribution":
+    if operation == OP_DTMC_LIMITING_DISTRIBUTION:
         dist = M.limitingDistribution()
 
         print ("State vector:")
-        print ("[{}]\n".format(", ".join(M.states())))
+        printVector(M.states())
         print ("Limiting Distribution:")
         print("{}\n".format(printList(dist)))
 
-    if args.operation == "longRunReward":
+    if operation == OP_DTMC_LONG_RUN_REWARD:
         mcType = M.determineMCType()
         r = M.longRunReward()
         if 'non-ergodic' in mcType:
@@ -208,51 +222,52 @@ def process(args, dsl):
         else:
             print("The long-run expected reward is: {:.4f}\n".format(r))
 
-
-    if args.operation == "hittingprobability":
-        s = args.targetState
+    if operation == OP_DTMC_HITTING_PROBABILITY:
+        s = requireTargetState(args)
         prob = M.hittingProbabilities(s)
         print("The hitting probabilities for {} are:".format(s))
         for t in sortNames(M.states()):
             print("f({}, {}) = {:.4f}".format(t, s, prob[t]))
 
-    if args.operation == "rewardtillhit":
-        s = args.targetState
+    if operation == OP_DTMC_REWARD_TILL_HIT:
+        s = requireTargetState(args)
         res = M.rewardTillHit(s)
         print("The expected rewards until hitting {} are:".format(s))
         for s in sortNames(res.keys()):
             print("From state {}: {:.4f}".format(s, res[s]))
 
-    if args.operation == "hittingprobabilityset":
-        s = [s.strip() for s in args.targetStateSet.split(',')]
-        prob = M.hittingProbabilitiesSet(s)
+    if operation == OP_DTMC_HITTING_PROBABILITY_SET:
+        targetStateSet = requireTargetStateSet(args)
+        prob = M.hittingProbabilitiesSet(targetStateSet)
         print("The hitting probabilities for {{{}}} are:".format(', '.join(s)))
-        ss = ', '.join(s)
+        ss = ', '.join(targetStateSet)
         for t in sortNames(M.states()):
             print("f({}, {{{}}}) = {:.4f}".format(t, ss, prob[t]))
 
-    if args.operation == "rewardtillhitset":
-        s = [s.strip() for s in args.targetStateSet.split(',')]
+    if operation == OP_DTMC_REWARD_TILL_HIT_SET:
+        s = requireTargetStateSet(args)
         res = M.rewardTillHitSet(s)
         print("The expected rewards until hitting {{{}}} are:".format(', '.join(s)))
         for t in sortNames(res.keys()):
             print("From state {}: {:.4f}".format(t, res[t]))
     
-    if args.operation == "markovtrace":
+    if operation == OP_DTMC_MARKOV_TRACE:
         if args.Seed is not None:
             M.setSeed(int(args.Seed))
-        N = int(args.numberOfSteps)
+        N = requireNumberOfSteps(args)
         trace = M.markovTrace(N)
         print("{}".format(trace))
 
-    if args.operation == "longrunexpectedaveragereward":
+    if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
         if args.Seed is not None:
             M.setSeed(int(args.Seed))
-        M.setRecurrentState(args.targetState)
+        s = requireTargetState(args)
+        M.setRecurrentState(s)
+        C = requireStoppingCriteria(args)
         C = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
         interval, abError, reError, esMean, n, stop = M.longRunExpectedAverageReward(C)
         if any(i==None for i in interval):
-            print("Recurrent state has not been reached, no realisations found")
+            print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
