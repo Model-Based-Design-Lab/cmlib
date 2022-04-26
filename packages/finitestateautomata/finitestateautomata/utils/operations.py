@@ -20,14 +20,31 @@ OP_FSA_MINIMIZE_BUCHI = 'minimizeBuchi',
 OP_FSA_RELABEL = 'relabel', 
 OP_FSA_AS_REGEX = 'asRegEx'
 
-OP_REGEX_CONVERT_REGEX = 'convertRegEx'
+OP_REGEX_CONVERT_FSA = 'convertRegEx'
 OP_REGEX_CONVERT_OMEGA_REGEX = 'convertOmegaRegEx'
 
 OP_LTL_CONVERT_LTL = 'convertLTL'
 
 AutomataOperations = [OP_FSA_ACCEPTS, OP_FSA_IS_DETERMINISTIC, OP_FSA_AS_DFA, OP_FSA_ELIMINATE_EPSILON, OP_FSA_ALPHABET, OP_FSA_COMPLETE, OP_FSA_COMPLEMENT, OP_FSA_PRODUCT, OP_FSA_STRICT_PRODUCT, OP_FSA_PRODUCT_BUCHI, OP_FSA_STRICT_PRODUCT_BUCHI, OP_FSA_REACHABLE_STATES, OP_FSA_LANGUAGE_EMPTY, OP_FSA_LANGUAGE_EMPTY_BUCHI, OP_FSA_LANGUAGE_INCLUDED, OP_FSA_MINIMIZE, OP_FSA_MINIMIZE_BUCHI, OP_FSA_RELABEL, OP_FSA_AS_REGEX ]
 
-RegExOperations = [OP_REGEX_CONVERT_REGEX, OP_REGEX_CONVERT_OMEGA_REGEX]
+# FSA Transformations
+
+OP_FSA_AS_DFA_NAME = lambda name: name + "_DFA"
+OP_FSA_ELIMINATE_EPSILON_NAME = lambda name: name + "_no_eps"
+OP_FSA_COMPLETE_NAME = lambda name: name + "_complete"
+OP_FSA_COMPLEMENT_NAME = lambda name: name + "_complement"
+OP_FSA_PRODUCT_NAME = lambda name, nameB: name + "_" + nameB + "_prod"
+OP_FSA_STRICT_PRODUCT_NAME = lambda name, nameB: name + "_" + nameB + "_sprod"
+OP_FSA_PRODUCT_BUCHI_NAME = lambda name, nameB: name + "_" + nameB + "_prodnba"
+OP_FSA_PRODUCT_STRICT_BUCHI_NAME = lambda name, nameB: name + "_" + nameB + "_prodgnba"
+OP_FSA_MINIMIZE_NAME = lambda name: name + "_min"
+OP_FSA_MINIMIZE_BUCHI_NAME = lambda name: name + "_minB"
+OP_FSA_RELABEL_NAME = lambda name: name + "_relabeled"
+OP_FSA_AS_REGEX_NAME = lambda name: name + "_RegEx"
+OP_LTL_CONVERT_LTL_NAME = lambda name: name + "_ltl"
+
+
+RegExOperations = [OP_REGEX_CONVERT_FSA, OP_REGEX_CONVERT_OMEGA_REGEX]
 
 LTLOperations = ['convertLTL']
 
@@ -48,40 +65,15 @@ OperationDescriptions = [
     OP_FSA_PRODUCT_BUCHI + ' (determine product of a Buchi automaton with secondary Buchi automaton)', 
     OP_FSA_STRICT_PRODUCT_BUCHI + '(determine the strict product of a Buchi automaton with secondary Buchi automaton)', 
     OP_FSA_REACHABLE_STATES + ' (determine the reachable states of the automaton)', 
-    OP_FSA_LANGUAGE_EMPTY + 'languageEmpty', 
-    OP_FSA_LANGUAGE_EMPTY_BUCHI + 'languageEmptyBuchi', 
-    OP_FSA_LANGUAGE_INCLUDED + 'languageIncluded', 
-    OP_FSA_MINIMIZE + 'minimize', 
-    OP_FSA_MINIMIZE_BUCHI + 'minimizeBuchi', 
-    OP_FSA_RELABEL + 'relabel', 
-    OP_FSA_AS_REGEX + 'asRegEx'
-    OP_REGEX_CONVERT_REGEX + 'convertRegEx'
-    OP_REGEX_CONVERT_OMEGA_REGEX + 'convertOmegaRegEx'
-    OP_LTL_CONVERT_LTL + 'convertLTL'
+    OP_FSA_LANGUAGE_EMPTY + ' (check if the language of the automaton is empty)', 
+    OP_FSA_LANGUAGE_EMPTY_BUCHI + ' (check if the language of the Buchi automaton is empty)', 
+    OP_FSA_LANGUAGE_INCLUDED + ' (check if the language is included in the language of the secondary automaton)', 
+    OP_FSA_MINIMIZE + ' (minimize the automaton)', 
+    OP_FSA_MINIMIZE_BUCHI + ' (minimize the Buchi automaton)', 
+    OP_FSA_RELABEL + ' (relabel the states of the automaton)', 
+    OP_FSA_AS_REGEX + ' (convert the automaton to a regular expression)',
+    OP_REGEX_CONVERT_FSA + ' (convert the regular expresson to an FSA)',
+    OP_REGEX_CONVERT_OMEGA_REGEX + ' (convert the omega-regular expression to a Buchi automaton)',
+    OP_LTL_CONVERT_LTL + ' (convert the LTL formula to an automaton)'
 ]
-
-    operationDescriptions = [
-        "accepts (requires input word)",
-        "isDeterministic",
-        "asDFA",
-        "eliminateEpsilon",
-        "alphabet",
-        "complete",
-        "complement",
-        "product (requires secondary automaton)",
-        "strictProduct (requires secondary automaton)",
-        "productBuchi (requires secondary automaton)",
-        "strictProductBuchi (requires secondary automaton)",
-        "languageEmpty",
-        "languageEmptyBuchi",
-        "languageIncluded (requires secondary automaton)",
-        "minimize",
-        "minimizeBuchi",
-        "reachableStates"
-        "relabel"
-        "convertRegEx (requires regular expression)",
-        "convertOmegaRegEx (requires omega-regular expression)",
-        "convertLTL (requires ltl formula)",
-        "asRegEx"
-    ]
 

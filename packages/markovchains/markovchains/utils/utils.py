@@ -70,6 +70,16 @@ def print4F(nr):
     except:
         return "{}".format(nr)
 
+def printSortedSet(s):
+    print("{{{}}}".format(", ".join(sortNames(s))))
+
+def printSortedList(s):
+    print("{}".format(", ".join(sortNames(s))))
+
+def printVector(s):
+    print ("[{}]\n".format(", ".join(s)))
+
+
 def stopCriteria(c):
     # Format stop criteria: 
     stop = '''

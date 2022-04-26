@@ -5,88 +5,14 @@ import argparse
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, printMatrix
-from markovchains.utils.utils import sortNames, printList, printDList, print4F, stringToFloat, stopCriteria, nrOfSteps
+from markovchains.utils.utils import sortNames, printList, printDList, print4F, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector
+from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT
 import sys
-import nose
 
-MarkovChainOperations = [
-    "liststates",
-    "listrecurrentstates",
-    "listtransientstates",
-    "communicatingstates",
-    "classifytransientrecurrent",
-    "hittingprobability",
-    "hittingprobabilityset",
-    "rewardtillhit",
-    "rewardtillhitset",
-    "periodicity",
-    "mctype",
-    "transient",
-    "transientRewards",
-    "transientMatrix",
-    "limitingMatrix",
-    "limitingDistribution",
-    "longRunReward",
-    "executiongraph",
-    "markovtrace",
-    "longrunexpectedaveragereward",
-    "cezarolimitdistribution",
-    "estimationexpectedreward",
-    "estimationdistribution",
-    "estimationhittingstate",
-    "estimationhittingreward",
-    "estimationhittingstateset",
-    "estimationhittingrewardset"
-]
+from packages.markovchains.markovchains.utils.operations import OP_DTMC_TRANSIENT_REWARDS
+
 
 def main():
-
-    operationDescriptions = [
-        "List all states of the markov chain\n\tNo flags",
-        "List all recurrent states of the markov chain\n\tNo flags",
-        "List all transient states of the markov chain\n\tNo flags",
-        "Provides list of communicating state sets\n\tNo flags",
-        "Lists the transient and recurrent states\n\tNo flags",
-        "Provides the hitting probability for a specified state\n\trequired flag:\n\t\t[-s, --state]: Target state",
-        "Provides the hitting probability for a specified state set\n\trequired flag:\n\t\t[-ss, --stateset]: Set of target states (comma seperated)",
-        "Expected reward untill hitting specified state\n\trequired flag:\n\t\t[-s, --state]: Target state",
-        "Expected reward untill hitting specified state set\n\trequired flag:\n\t\t[-ss, --stateset]: Set of target states (comma seperated)",
-        "Lists aperiodic and periodic state states\n\tNo flags",
-        "Provides type of markov chain: (non-)ergodic (non-)unichain\n\tNo flags",
-        "Transient analysis for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        "Transient analysis of reward afeter specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        "Transient matrix for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        "Provides limiting Matrix\n\tNo flags",
-        "Provides limiting Distribution\n\tNo flags",
-        "Long-run expected average reward\n\tNo flags",
-        "Prints execution graphs xml file for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        '''Provides simulation trace through markov chain
-        required flag:\n\t\t[-ns, --numberofsteps]: Number of steps
-        Optional flag:\n\t\t[-sd, --seed]: SEED''',
-        '''Long run expected average reward through simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions
-        Optional flags:\n\t\t[-sd, --seed]: Seed\n\t\t[-s, --state]: Recurrent state''',
-        '''Cezarolimit distribution through simulation\n\trequired flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions
-        Optional flags:\n\t\t[-sd, --seed]: Seed\n\t\t[-s, --state]: Recurrent state''',
-        '''Estimation of exected reward by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ns, --numberofsteps]: Number of steps
-        Optional flag:\n\t\t[-sd, --seed]: Seed''',
-        '''Estimation of distribution by simulation after specified number of steps
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ns, --numberofsteps]: Number of steps
-        Optional flag:\n\t\t[-sd, --seed]: Seed''',
-        '''Estimation of hitting state probabilites by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-s, --state]: Target state
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
-        '''Estimation of cumulative reward hitting state by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-s, --state]: Target state
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
-        '''Estimation of hitting state set probabilites by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ss, --stateset]: Set of target states (comma seperated)
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
-        '''Estimation of cumulative reward hitting state set probabilites by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ss, --stateset]: Set of target states (comma seperated)
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate'''
-    ]
 
     # optional help flag explaining usage of each individual operation
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
@@ -97,7 +23,7 @@ def main():
         if options.opHelp not in MarkovChainOperations:
             print("Operation '{}' does not exist. List of operations:\n\t- {}".format(options.opHelp, "\n\t- ".join(MarkovChainOperations)))
         else:
-            print("{}: {}".format(options.opHelp, operationDescriptions[MarkovChainOperations.index(options.opHelp)]))        
+            print("{}: {}".format(options.opHelp, OperationDescriptions[MarkovChainOperations.index(options.opHelp)]))        
         exit(1)
 
     parser = argparse.ArgumentParser(
@@ -145,6 +71,15 @@ def main():
 
 
 
+def requireNumberOfSteps(args):
+    if args.numberOfSteps is None:
+        raise Exception("numberOfSteps must be specified.")
+    try:
+        return int(args.numberOfSteps)
+    except Exception as e:
+        sys.stderr.write("Failed to determine number of steps.\n")
+
+
 def process(args, dsl):
 
     if args.operation in MarkovChainOperations:
@@ -153,29 +88,23 @@ def process(args, dsl):
             exit(1)
 
     # just list all states
-    if args.operation == "liststates":
+    if args.operation == OP_DTMC_LIST_STATES:
         res = M.states()
-        print("{}".format(", ".join(sortNames(res))))
+        printSortedList(res)
 
     # list the recurrent states
-    if args.operation == "listrecurrentstates":
+    if args.operation == OP_DTMC_LIST_RECURRENT_STATES:
         _, recurr = M.classifyTransientRecurrent()
-        print("{}".format(", ".join(sortNames(recurr))))
+        printSortedList(recurr)
 
     # list the transient states
-    if args.operation == "listtransientstates":
+    if args.operation == OP_DTMC_LIST_TRANSIENT_STATES:
         trans, _ = M.classifyTransientRecurrent()
-        print("{}".format(", ".join(sortNames(trans))))
-
-    # function does not exist inside class MarkovChain
-    # compute equilibrium distribution
-    # if args.operation == "equilibrium":
-    #     res = M.equilibrium()
-    #     print(res)
+        printSortedList(trans)
 
     # create graph for a number of steps
-    if args.operation == "executiongraph":
-        N = int(args.numberOfSteps)
+    if args.operation == OP_DTMC_EXECUTION_GRAPH:
+        N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
         states = M.states()
         data = dict()
@@ -187,25 +116,25 @@ def process(args, dsl):
         print(plotSvg(data, states))
 
     # determine classes of communicating states
-    if args.operation == "communicatingstates":
+    if args.operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
         for s in M.communicatingClasses():
-            print("{{{}}}".format(", ".join(sortNames(s))))
+            printSortedSet(s)
 
     # classify transient and recurrent states
-    if args.operation == "classifytransientrecurrent":
+    if args.operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
         trans, recurr = M.classifyTransientRecurrent()
         print("Transient states:")
-        print("{{{}}}".format(", ".join(sortNames(trans))))
+        printSortedSet(trans)
         print("Recurrent states:")
-        print("{{{}}}".format(", ".join(sortNames(recurr))))
+        printSortedSet(recurr)
 
     # classify transient and recurrent states
-    if args.operation == "periodicity":
+    if args.operation == OP_DTMC_PERIODICITY:
         per = M.classifyPeriodicity()
         print("The set of aperiodic recurrent states is:")
         aperStates =  [s for s in per.keys() if per[s] == 1]
-        print("{{{}}}".format(", ".join(sortNames(aperStates))))
+        printSortedSet(aperStates)
 
         if len(aperStates) < len(per):
             periodicities = set(per.values())
@@ -214,30 +143,30 @@ def process(args, dsl):
             for p in periodicities:
                 print("The set of periodic recurrent states with periodicity {} is.".format(p))
                 pperStates =  [s for s in per.keys() if per[s] == p]
-                print("{{{}}}".format(", ".join(sortNames(pperStates))))
+                printSortedSet(pperStates)
 
     # classify transient and recurrent states
-    if args.operation == "mctype":
+    if args.operation == OP_DTMC_MC_TYPE:
         mcType = M.determineMCType()
         print("The type of the MC is: {}".format(mcType))
 
     # determine transient behavior for a number of steps
-    if args.operation == "transient":
-        N = int(args.numberOfSteps)
+    if args.operation == OP_DTMC_TRANSIENT:
+        N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
         states = M.states()
 
         print("Transient analysis:\n")
         print ("State vector:")
-        print ("[{}]\n".format(", ".join(states)))
+        printVector(states)
 
         for k in range(N+1):
             print("Step {}:".format(k))
             print("Distribution: " +  printList(trace[k,:]) + "\n")
 
     # determine transient behavior for a number of steps
-    if args.operation == "transientRewards":
-        N = int(args.numberOfSteps)
+    if args.operation == OP_DTMC_TRANSIENT_REWARDS:
+        N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
 
         print("Transient reward analysis:\n")
