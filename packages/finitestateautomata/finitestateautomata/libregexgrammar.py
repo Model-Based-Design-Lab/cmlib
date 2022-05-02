@@ -1,6 +1,12 @@
 from textx import metamodel_from_str, TextXSyntaxError
 import sys
 
+# This is TextX version of the XText grammar in the clang repository
+# Xtext file:
+# src\info.computationalmodeling.lang.parent\info.computationalmodeling.lang\src\main\java\info\computationalmodeling\lang\RegularExpressions.xtext
+# repository:
+# https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
+
 
 RegExGrammar = """
 RegExModel:
