@@ -1,4 +1,5 @@
 import os
+import pytest
 from modeltest.modeltest import Model_pytest # Import Model_pytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.utils import sortNames
@@ -106,13 +107,11 @@ class Markov_pytest(Model_pytest):
         self.incorrect_test(lambda: self.model.estimationHittingState([-1.00,0,1000,0,-1], self.state, True, True, self.model.states()), "list index out of range")
 
 
-# Function called when pytest is called in console
-def test_model():
-    for model in MODEL_FILES:
-        m = Markov_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
+@pytest.mark.parametrize("test_model", MODEL_FILES)
+def test_model(test_model: str):
+    m = Markov_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
 
-
-   
+ 
