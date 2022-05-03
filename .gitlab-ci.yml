@@ -22,7 +22,7 @@ test:
     tags:
         - Ubuntu2004-64bit
     script:
-        - cd python/packages/modeltest
+        - cd packages/modeltest
         - python3.8 -m pip install .
         - cd ../markovchains
         - python3.8 -m pytest . -v -l
