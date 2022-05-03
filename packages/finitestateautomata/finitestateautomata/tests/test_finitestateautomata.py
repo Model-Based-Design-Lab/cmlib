@@ -1,4 +1,5 @@
 import os
+import pytest
 from modeltest.modeltest import Model_pytest
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libregex import RegEx
@@ -65,14 +66,15 @@ class Automaton_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         pass
 
-def test_automaton():
-    for model in MODEL_FSA_FILES:
-        m = Automaton_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
+@pytest.mark.parametrize("test_file", MODEL_FSA_FILES)
+def test_automaton(model):
+    m = Automaton_pytest(model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
 
-
+def test_eval(test_input, expected):
+    assert eval(test_input) == expected
 
 
 
