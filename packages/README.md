@@ -1,6 +1,5 @@
 # Analysis Tool Packages
 
-TODO: what to do with modeltest package?
 ## Prerequisites
 
 Make sure that you have python 3.x.x installed, including pip.
@@ -14,9 +13,7 @@ In a console (shell, command prompt or powershell), in this folder, type:
 
 ``` shell
 python -m pip install "git+https://github.com/Shoobx/python-graph#egg=pkg&subdirectory=core"
-cd modeltest
-python -m pip install .
-cd ../markovchains
+cd markovchains
 python -m pip install .
 cd ../finitestateautomata
 python -m pip install .

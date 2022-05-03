@@ -1,14 +1,10 @@
-import copy
 from functools import reduce
 from io import StringIO
-import re
 from dataflow.libsdfgrammar import parseSDFDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
-from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpNumberOfColumns, mpSplitSequence
+from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpNumberOfColumns, mpSplitSequence
 from dataflow.libmpm import MaxPlusMatrixModel
 from fractions import Fraction
-
-
 
 def _splitMatrix(M, n):
     A = []
@@ -54,6 +50,13 @@ class DataflowGraph(object):
         self._inputSignals = dict()
 
         self._repetitionVector = None
+
+    def copy(self):
+        ''' Return a new DataflowGraph as a copy of thw one the method of which
+        is called/ '''
+
+        res = DataflowGraph()
+        res.actors = self.
 
     def actors(self):
         return self._actors
@@ -269,29 +272,11 @@ class DataflowGraph(object):
         res[self._symbolicVector.index(t)] = 0
         return res
 
-    def _symbolicTimeStampAdd(self, ts1, ts2):
-        # TODO: move to max-plus library
-        res = [None] * max(len(ts1), len(ts2))
-        for k in range(len(ts1)):
-            if ts1[k] is None:
-                res[k] = ts2[k]
-            else:
-                if ts2[k] is None:
-                    res[k] = ts1[k]
-                else:
-                    res[k] = max(ts1[k], ts2[k])
-        return res
+    def _symbolicTimeStampMax(self, ts1, ts2):
+        return mpMaxVectors(ts1, ts2)
 
-    def _symbolicTimeStampMul(self, c, ts):
-        # TODO: move to max-plus library
-        res = [None] * len(ts)
-        for k in range(len(ts)):
-            if ts[k] is None:
-                res[k] = None
-            else:
-                res[k] = ts[k] + c
-        return res
-
+    def _symbolicTimeStampScale(self, c, ts):
+        return mpScaleVector(c, ts)
 
     def _symbolicFiring(self, a, n, timestamps):
         el = self._actorFiringLabel(a, n)
@@ -309,7 +294,7 @@ class DataflowGraph(object):
                 it = self.numberOfInitialTokensOfChannel(ch)
 
             for k in range(it):
-                ts = self._symbolicTimeStampAdd(ts, timestamps[self._initialTokenLabel(ch, k)])
+                ts = self._symbolicTimeStampMax(ts, timestamps[self._initialTokenLabel(ch, k)])
 
             rem = cons - it
             b = self._chanProducer[ch]
@@ -320,14 +305,14 @@ class DataflowGraph(object):
                 elm = self._actorFiringLabel(b, m)
                 if not elm in timestamps:
                     return False
-                ts = self._symbolicTimeStampAdd(ts, self._symbolicTimeStampMul(self.executionTimeOfActor(b), timestamps[elm]))
+                ts = self._symbolicTimeStampMax(ts, self._symbolicTimeStampScale(self.executionTimeOfActor(b), timestamps[elm]))
         timestamps[el] = ts
         return True
 
 
     def _symbolicCompletionTime(self, timestamps, a, n):
         el = self._actorFiringLabel(a, n)
-        return self._symbolicTimeStampMul(self.executionTimeOfActor(a), timestamps[el])
+        return self._symbolicTimeStampScale(self.executionTimeOfActor(a), timestamps[el])
 
     def stateSpaceMatrices(self):
         '''

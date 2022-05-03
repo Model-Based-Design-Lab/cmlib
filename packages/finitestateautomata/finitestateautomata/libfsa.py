@@ -559,20 +559,6 @@ class Automaton(object):
     def languageEmptyBuchi(self):
         ''' Checks if the Buchi language is empty. Returns an accepted word if the language is not empty.'''
 
-        # alternative, perhaps less efficient, implementation below (languageEmptyBuchiAlternative)
-
-        # TODO: algorithm fails on the following graph, it reports (a) (b)** as accepted word
-        # finite state automaton Model {
-        # A initial -- a --> B
-        # B final   -- a;b --> A
-        # }
-
-        # TODO: this algorithm may not be correct if the FSA has cycles of epsilon transitions, if the 2nd stage cycle is epsilon it does not correspond to an infinite word. Is that allowed?
-        # explore if a final state is reachable from an initial state, and that there is a cycle back to the final state
-        # DFS building stack 1
-        # whenever a final state is encountered, start nested DFS on stack 2
-        # is a state from stack 1 is reach -> done
-
         def _split(stack1, symbolStack1, s):
             i = stack1.index(s) 
             return symbolStack1[:i+1], symbolStack1[i+1:]

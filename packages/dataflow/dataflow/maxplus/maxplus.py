@@ -46,6 +46,17 @@ def mpMaxVectors(x, y):
         x = x + [None] * (len(y) - len(x))
     return [MP_MAX(x[k], y[k]) for k in range(len(x))]
 
+def mpAddVectors(x, y):
+    if len(x) > len(y):
+        y = y + [None] * (len(x) - len(y))
+    if len(y) > len(x):
+        x = x + [None] * (len(y) - len(x))
+    return [MP_PLUS(x[k], y[k]) for k in range(len(x))]
+
+def mpScaleVector(c, x):
+    return [MP_PLUS(c, x[k]) for k in range(len(x))]
+
+
 def mpStackVectors(x, y):
     return x + y
 
@@ -379,3 +390,4 @@ def mpDelay(seq, n):
 
 def mpScale(seq, c):
     return [MP_PLUS(v, c) for v in seq]
+
