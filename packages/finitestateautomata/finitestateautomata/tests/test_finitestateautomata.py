@@ -66,15 +66,13 @@ class Automaton_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         pass
 
-@pytest.mark.parametrize("test_automaton", MODEL_FSA_FILES)
-def test_automaton(model):
-    m = Automaton_pytest(model)
+@pytest.mark.parametrize("test_model", MODEL_FSA_FILES)
+def test_automaton(test_model):
+    m = Automaton_pytest(test_model)
     m.Correct_behaviour_tests()
     m.Incorrect_behaviour_tests()
     m.write_output_file()
 
-def test_eval(test_input, expected):
-    assert eval(test_input) == expected
 
 
 
