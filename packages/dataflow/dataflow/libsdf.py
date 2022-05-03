@@ -1,3 +1,4 @@
+import copy
 from functools import reduce
 from io import StringIO
 from dataflow.libsdfgrammar import parseSDFDSL
@@ -54,9 +55,8 @@ class DataflowGraph(object):
     def copy(self):
         ''' Return a new DataflowGraph as a copy of thw one the method of which
         is called/ '''
-
-        res = DataflowGraph()
-        res.actors = self.
+        return copy.deepcopy(self)
+        
 
     def actors(self):
         return self._actors
@@ -113,10 +113,13 @@ class DataflowGraph(object):
             raise Exception('Invalid model. The following outputs are not written: {}.'.format('. '.join(unwrittenOutputs)))
 
     def addActor(self, a, specs):
+        # invalidate cached repetition vector
         self._repetitionVector = None
+        # add actor if it doesn't exist
         if not a in self._actors:
             self._actors.append(a)
             self._actorSpecs[a] = dict()
+        # add specs
         for s in specs:
             self._actorSpecs[a][s] = specs[s]
 
@@ -608,8 +611,7 @@ class DataflowGraph(object):
     def determineTraceZeroBased(self, ni, x0=None):
         # determine trace assuming actors do not start before time 0
 
-        # TODO: add a proper copy operation.
-        _,G = DataflowGraph.fromDSL(self.asDSL("G"))
+        G = self.copy()
 
         for a in G.actorsWithoutInputsOutputs():
             inpName = '_zb_{}'.format(a)
