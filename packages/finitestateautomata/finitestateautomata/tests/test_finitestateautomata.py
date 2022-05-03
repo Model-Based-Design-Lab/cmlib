@@ -66,7 +66,7 @@ class Automaton_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         pass
 
-@pytest.mark.parametrize("test_file", MODEL_FSA_FILES)
+@pytest.mark.parametrize("test_automaton", MODEL_FSA_FILES)
 def test_automaton(model):
     m = Automaton_pytest(model)
     m.Correct_behaviour_tests()
