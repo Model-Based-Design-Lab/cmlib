@@ -12,6 +12,7 @@ before_script:
     - python3.8 -m pip install .
     - cd ../finitestateautomata
     - python3.8 -m pip install .
+    - cd ../..
 
 
 stages:
@@ -22,6 +23,7 @@ test:
     tags:
         - Ubuntu2004-64bit
     script:
+        - ls -al
         - cd packages/modeltest
         - python3.8 -m pip install .
         - cd ../markovchains
