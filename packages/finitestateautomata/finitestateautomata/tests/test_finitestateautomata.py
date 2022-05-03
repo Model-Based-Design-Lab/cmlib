@@ -1,4 +1,5 @@
 import os
+import pytest
 from modeltest.modeltest import Model_pytest
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libregex import RegEx
@@ -10,7 +11,7 @@ MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
 OUTPUT_FOLDER = os.path.join(TEST_FILE_FOLDER, "output")
 MODEL_FSA_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".fsa")]
 MODEL_LTL_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".ltl")]
-MODEL_REG_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".regex")]
+MODEL_REGEX_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".regex")]
 
 
 ###############################################
@@ -65,13 +66,12 @@ class Automaton_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         pass
 
-def test_automaton():
-    for model in MODEL_FSA_FILES:
-        m = Automaton_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
-
+@pytest.mark.parametrize("test_model", MODEL_FSA_FILES)
+def test_automaton(test_model: str):
+    m = Automaton_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
 
 
 
@@ -101,16 +101,12 @@ class LTL_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         pass
 
-
-def test_LTL():
-    for model in MODEL_LTL_FILES:
-        m = LTL_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
-
-
-
+@pytest.mark.parametrize("test_model", MODEL_LTL_FILES)
+def test_LTL(test_model: str):
+    m = LTL_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
 
 
 ###############################################
@@ -143,9 +139,9 @@ class Regular_expression_pytest(Model_pytest):
         pass
 
 
-def test_regular_expression():
-    for model in MODEL_REG_FILES:
-        m = Regular_expression_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
+@pytest.mark.parametrize("test_model", MODEL_REGEX_FILES)
+def test_regular_expression(test_model: str):
+    m = Regular_expression_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()

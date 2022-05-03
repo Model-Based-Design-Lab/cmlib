@@ -14,10 +14,8 @@ setup(
     install_requires=[
         'python-graph-core',
         'numpy',
-        'textx',
-        'nose',
+        'textx'
     ],
     entry_points={"console_scripts": ['dataflow = dataflow.utils.commandline:main']},
-    test_suite='nose.collector',
-    tests_require=['nose'],
+    tests_require=['pytest'],
 )

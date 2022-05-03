@@ -1,4 +1,5 @@
 import os
+import pytest
 import copy
 from modeltest.modeltest import Model_pytest
 from dataflow.libsdf import DataflowGraph
@@ -76,13 +77,13 @@ class SDF_pytest(Model_pytest):
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
-def test_SDF():
-    for model in MODEL_SDF_FILES:
-        m = SDF_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
 
+@pytest.mark.parametrize("test_model", MODEL_SDF_FILES)
+def test_SDF(test_model: str):
+    m = SDF_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
 
 
 ###############################################
@@ -156,10 +157,9 @@ class MPM_pytest(Model_pytest):
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
-
-def test_MPM():
-    for model in MODEL_MPM_FILES:
-        m = MPM_pytest(model)
-        m.Correct_behaviour_tests()
-        m.Incorrect_behaviour_tests()
-        m.write_output_file()
+@pytest.mark.parametrize("test_model", MODEL_MPM_FILES)
+def test_MPM(test_model: str):
+    m = MPM_pytest(test_model)
+    m.Correct_behaviour_tests()
+    m.Incorrect_behaviour_tests()
+    m.write_output_file()
