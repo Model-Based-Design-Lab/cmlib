@@ -96,41 +96,6 @@
         "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     },
-    "eliminateEpsilon": {
-        "_states": "[A, B, C, D, E, F]",
-        "_transitions": {
-            "A": {
-                "p1": "[A, D]",
-                "r2": "[A, D]",
-                "np1": "[B, E]"
-            },
-            "B": {
-                "r1": "[A]",
-                "r2": "[C, F]"
-            },
-            "C": {
-                "p2": "[C, F]",
-                "r1": "[C]",
-                "np2": "[B, E]"
-            },
-            "D": {
-                "r2": "[D]",
-                "p1": "[D]",
-                "np1": "[E]"
-            },
-            "E": {
-                "r2": "[F]"
-            },
-            "F": {
-                "np2": "[E]",
-                "p2": "[F]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[B]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
     "minimize": {
         "_states": "",
         "_transitions": {},
@@ -1883,6 +1848,41 @@
         "_epsilonTransitions": {},
         "_initialStates": "[{B}]",
         "_finalStates": "[S, {A,D}, {A}, {B,E}, {B}, {C,F}, {C}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "eliminateEpsilon": {
+        "_states": "[A, B, C, D, E, F]",
+        "_transitions": {
+            "A": {
+                "p1": "[A, D]",
+                "r2": "[A, D]",
+                "np1": "[B, E]"
+            },
+            "B": {
+                "r1": "[A]",
+                "r2": "[C, F]"
+            },
+            "C": {
+                "p2": "[C, F]",
+                "r1": "[C]",
+                "np2": "[B, E]"
+            },
+            "D": {
+                "r2": "[D]",
+                "p1": "[D]",
+                "np1": "[E]"
+            },
+            "E": {
+                "r2": "[F]"
+            },
+            "F": {
+                "np2": "[E]",
+                "p2": "[F]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[B]",
+        "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     }
 }

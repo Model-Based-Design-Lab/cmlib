@@ -23,22 +23,6 @@
         "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     },
-    "eliminateEpsilon": {
-        "_states": "[S0, S1]",
-        "_transitions": {
-            "S0": {
-                "+,\"*@": "[S1]"
-            },
-            "S1": {
-                "+*@": "[S0, S1]",
-                "b": "[S0]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[S0]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
     "minimize": {
         "_states": "",
         "_transitions": {},
@@ -188,6 +172,22 @@
         "_epsilonTransitions": {},
         "_initialStates": "[{S0}]",
         "_finalStates": "[S, {S0,S1}, {S0}, {S1}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "eliminateEpsilon": {
+        "_states": "[S0, S1]",
+        "_transitions": {
+            "S0": {
+                "+,\"*@": "[S1]"
+            },
+            "S1": {
+                "+*@": "[S0, S1]",
+                "b": "[S0]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[S0]",
+        "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     }
 }

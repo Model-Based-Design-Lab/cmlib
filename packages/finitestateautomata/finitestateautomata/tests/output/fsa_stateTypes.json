@@ -24,24 +24,6 @@
         "_finalStates": "[(B,B), (B,D), (D,B), (D,D)]",
         "_generalizedAcceptanceSets": {}
     },
-    "eliminateEpsilon": {
-        "_states": "[A, B, C, D]",
-        "_transitions": {
-            "A": {
-                "a": "[C]"
-            },
-            "B": {
-                "b": "[C]"
-            },
-            "C": {
-                "c": "[D]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[A, B]",
-        "_finalStates": "[B, D]",
-        "_generalizedAcceptanceSets": {}
-    },
     "minimize": {
         "_states": "[{A}, {B}, {C}, {D}]",
         "_transitions": {
@@ -220,6 +202,24 @@
         "_epsilonTransitions": {},
         "_initialStates": "[{A,B}]",
         "_finalStates": "[S, {C}]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "eliminateEpsilon": {
+        "_states": "[A, B, C, D]",
+        "_transitions": {
+            "A": {
+                "a": "[C]"
+            },
+            "B": {
+                "b": "[C]"
+            },
+            "C": {
+                "c": "[D]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[A, B]",
+        "_finalStates": "[B, D]",
         "_generalizedAcceptanceSets": {}
     }
 }
