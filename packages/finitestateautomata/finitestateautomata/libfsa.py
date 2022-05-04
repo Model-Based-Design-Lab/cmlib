@@ -937,12 +937,14 @@ class Automaton(object):
 
         for s in self._states:
             if s in self._initialStates:
-                for t in self.epsilonClosure(set([s])):
-                    result.makeInitialState(t)
+                result.makeInitialState(s)
+                # for t in self.epsilonClosure(set([s])):
+                #     result.makeInitialState(t)
             if s in self._finalStates:
                 for t in self._backwardEpsilonClosure(set([s])):
                     result.makeFinalState(t)
         return result
+
 
     def _asDSLSymbol(self, symb):
         if re.match(r"[a-zA-Z][a-zA-Z0-9]*", symb):
