@@ -7,6 +7,9 @@ from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarCl
 from dataflow.libmpm import MaxPlusMatrixModel
 from fractions import Fraction
 
+# constants
+DEFAULT_ACTOR_EXECUTION_TIME = 1.0
+
 def _splitMatrix(M, n):
     A = []
     B = []
@@ -168,7 +171,7 @@ class DataflowGraph(object):
 
     def executionTimeOfActor(self, a):
         if not 'executionTime' in self._actorSpecs[a]:
-            return 0
+            return DEFAULT_ACTOR_EXECUTION_TIME
         return self._actorSpecs[a]['executionTime']
 
 
