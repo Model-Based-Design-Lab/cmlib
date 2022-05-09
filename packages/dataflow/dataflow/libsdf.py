@@ -9,6 +9,10 @@ from fractions import Fraction
 
 # constants
 DEFAULT_ACTOR_EXECUTION_TIME = 1.0
+EXECUTION_TIME_SPEC_KEY = 'executionTime'
+CONS_RATE_SPEC_KEY = 'consRate'
+PROD_RATE_SPEC_KEY = 'prodRate'
+INITIAL_TOKENS_SPEC_KEY = 'initialTokens'
 
 def _splitMatrix(M, n):
     A = []
@@ -78,14 +82,14 @@ class DataflowGraph(object):
 
     def consumptionRate(self, ch):
         if ch in self._channelSpecs:
-            if 'consRate' in self._channelSpecs[ch]:
-                return self._channelSpecs[ch]['consRate']
+            if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                return self._channelSpecs[ch][CONS_RATE_SPEC_KEY]
         return 1
 
     def productionRate(self, ch):
         if ch in self._channelSpecs:
-            if 'prodRate' in self._channelSpecs[ch]:
-                return self._channelSpecs[ch]['prodRate']
+            if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                return self._channelSpecs[ch][PROD_RATE_SPEC_KEY]
         return 1
 
     def repetitions(self, actor):
@@ -149,17 +153,18 @@ class DataflowGraph(object):
         self._repetitionVector = None
         # input ports should be in actors
         if not i in self._actors:
-            self.addActor(i, dict())
+            self.addActor(i, {EXECUTION_TIME_SPEC_KEY: 0.0})
         self._inputs.append(i)
 
     def addOutputPort(self, o):
         self._repetitionVector = None
         # output ports should be in actors
         if not o in self._actors:
-            self.addActor(o, dict())
+            self.addActor(o, {EXECUTION_TIME_SPEC_KEY: 0.0})
         self._outputs.append(o)
 
     def addInputSignal(self, n, s):
+        self._repetitionVector = None
         self._inputSignals[n] = s
 
     def _newChannelName(self):
@@ -170,15 +175,15 @@ class DataflowGraph(object):
         return fname(k)
 
     def executionTimeOfActor(self, a):
-        if not 'executionTime' in self._actorSpecs[a]:
+        if not EXECUTION_TIME_SPEC_KEY in self._actorSpecs[a]:
             return DEFAULT_ACTOR_EXECUTION_TIME
-        return self._actorSpecs[a]['executionTime']
+        return self._actorSpecs[a][EXECUTION_TIME_SPEC_KEY]
 
 
     def numberOfInitialTokensOfChannel(self, ch):
-        if not 'initialTokens' in self._channelSpecs[ch]:
+        if not INITIAL_TOKENS_SPEC_KEY in self._channelSpecs[ch]:
             return 0
-        return self._channelSpecs[ch]['initialTokens']
+        return self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY]
 
     def numberOfInitialTokens(self):
         return reduce(lambda sum, ch: sum + self.numberOfInitialTokensOfChannel(ch), self._channels, 0)
@@ -508,11 +513,11 @@ class DataflowGraph(object):
     def isSingleRate(self):
         for ch in self._channels:
             if ch in self._channelSpecs:
-                if 'prodRate' in self._channelSpecs[ch]:
-                    if self._channelSpecs[ch]['prodRate'] > 1:
+                if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                    if self._channelSpecs[ch][PROD_RATE_SPEC_KEY] > 1:
                         return False
-                if 'consRate' in self._channelSpecs[ch]:
-                    if self._channelSpecs[ch]['consRate'] > 1:
+                if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                    if self._channelSpecs[ch][CONS_RATE_SPEC_KEY] > 1:
                         return False
         return True
     
@@ -530,7 +535,7 @@ class DataflowGraph(object):
                     return
             specs = dict()
             if it > 0:
-                specs['initialTokens'] = it
+                specs[INITIAL_TOKENS_SPEC_KEY] = it
             res.addChannel(pa, ca, specs)
 
 
@@ -640,19 +645,19 @@ class DataflowGraph(object):
             actorsWithSpec.add(a)
             if not a in self._actorSpecs:
                 return ''
-            if not 'executionTime' in self._actorSpecs[a]:
+            if not EXECUTION_TIME_SPEC_KEY in self._actorSpecs[a]:
                 return ''
-            return '[{}]'.format(self._actorSpecs[a]['executionTime'])
+            return '[{}]'.format(self._actorSpecs[a][EXECUTION_TIME_SPEC_KEY])
 
         def _channelSpecs(ch):
             specs = list()
             if ch in self._channelSpecs:
-                if 'consRate' in self._channelSpecs[ch]:
-                    specs.append(' consumption rate: {} '.format(self._channelSpecs[ch]['consRate']))
-                if 'prodRate' in self._channelSpecs[ch]:
-                    specs.append(' production rate: {} '.format(self._channelSpecs[ch]['prodRate']))
-                if 'initialTokens' in self._channelSpecs[ch]:
-                    specs.append(' initial tokens: {} '.format(self._channelSpecs[ch]['initialTokens']))                
+                if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                    specs.append(' consumption rate: {} '.format(self._channelSpecs[ch][CONS_RATE_SPEC_KEY]))
+                if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
+                    specs.append(' production rate: {} '.format(self._channelSpecs[ch][PROD_RATE_SPEC_KEY]))
+                if INITIAL_TOKENS_SPEC_KEY in self._channelSpecs[ch]:
+                    specs.append(' initial tokens: {} '.format(self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY]))                
             return ';'.join(specs)
 
 
