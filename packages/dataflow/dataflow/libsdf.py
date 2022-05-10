@@ -634,8 +634,7 @@ class DataflowGraph(object):
         reduceRealInputs = lambda l: l[:-num]
         realInputTraces = list(map(reduceRealInputs, inputTraces))
 
-        return realInputTraces, outputTraces, firingStarts, firingDurations
-
+        return G.actorsWithoutInputsOutputs(), (G.inputs())[:-num], realInputTraces, G.outputs(), outputTraces, firingStarts, firingDurations
 
     def asDSL(self, name):
 
