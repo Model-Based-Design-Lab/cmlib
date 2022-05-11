@@ -154,6 +154,8 @@ class DataflowGraph(object):
         # input ports should be in actors
         if not i in self._actors:
             self.addActor(i, {EXECUTION_TIME_SPEC_KEY: 0.0})
+        else:
+            self._actorSpecs[i][EXECUTION_TIME_SPEC_KEY] = 0.0
         self._inputs.append(i)
 
     def addOutputPort(self, o):
@@ -161,6 +163,8 @@ class DataflowGraph(object):
         # output ports should be in actors
         if not o in self._actors:
             self.addActor(o, {EXECUTION_TIME_SPEC_KEY: 0.0})
+        else:
+            self._actorSpecs[o][EXECUTION_TIME_SPEC_KEY] = 0.0
         self._outputs.append(o)
 
     def addInputSignal(self, n, s):
