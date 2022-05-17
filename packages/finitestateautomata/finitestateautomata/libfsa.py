@@ -439,8 +439,8 @@ class Automaton(object):
                     if s in self._generalizedAcceptanceSets[accSet]:
                         acceptanceSets.add("A_" + accSet)
                 for accSet in B._generalizedAcceptanceSets.keys():
-                    if s in self._generalizedAcceptanceSets[accSet]:
-                        acceptanceSets.add("BA_" + accSet)
+                    if s in B._generalizedAcceptanceSets[accSet]:
+                        acceptanceSets.add("B_" + accSet)
                 result.makeFinalState(newState, acceptanceSets)
 
         # create the transitions
