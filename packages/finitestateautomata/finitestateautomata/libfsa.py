@@ -1147,8 +1147,12 @@ class Automaton(object):
 
         return res, stateMap
 
+    def hasGeneralizedAcceptanceSets(self):
+        return len(self._generalizedAcceptanceSets) > 0
+
+
     def asRegularBuchiAutomaton(self):
-        res, _ = self.asRegularAutomatonWithStateMap()
+        res, _ = self.asRegularBuchiAutomatonWithStateMap()
         return res
 
 

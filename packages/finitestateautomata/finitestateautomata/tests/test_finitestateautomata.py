@@ -38,7 +38,8 @@ class Automaton_pytest(Model_pytest):
         self.function_test(lambda: self.model.states(), "states", sort = True)
         self.function_test(lambda: self.model.isDeterministic(), "deterministic")
         self.function_test(lambda: self.model.reachableStates(), "reachableStates", sort = True)
-        self.function_test(lambda: self.model.languageEmpty(), "languageEmpty")
+        if not self.model.hasGeneralizedAcceptanceSets():
+            self.function_test(lambda: self.model.languageEmpty(), "languageEmpty")
         self.function_test(lambda: self.model.accepts('h,s,m,d,p'), "accepts") # Arbitrary word
         self.function_test(lambda: self.model.accepts(''), "accepts_empty") # Arbitrary word
         self.function_test(lambda: self.model.languageIncluded(self.model), "languageIncluded")

@@ -3,7 +3,6 @@
     "states": "[A, B, C, D, E, F]",
     "deterministic": "False",
     "reachableStates": "[A, B, C, D, E, F]",
-    "languageEmpty": "[True, None, None]",
     "accepts": "False",
     "accepts_empty": "False",
     "languageIncluded": "[True, None]",
