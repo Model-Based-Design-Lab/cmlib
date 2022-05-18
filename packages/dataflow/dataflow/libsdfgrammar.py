@@ -133,11 +133,10 @@ def parseSDFDSL(content, factory):
 def parseActorSpecs(specs):
 	res = dict()
 	for a in specs.annotations:
-		if a.executiontime != 0:
-			if isinstance(a.executiontime, str):
-				res['executionTime'] = float(a.executiontime)
-			else:
-				res['executionTime'] = a.executiontime
+		if isinstance(a.executiontime, str):
+			res['executionTime'] = float(a.executiontime)
+		else:
+			res['executionTime'] = a.executiontime
 	return res
 
 
