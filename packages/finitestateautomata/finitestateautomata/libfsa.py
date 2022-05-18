@@ -470,7 +470,7 @@ class Automaton(object):
         Returns a non-generalized automaton
         '''
         
-        if len(self._generalizedAcceptanceSets) > 0 or len(self._generalizedAcceptanceSets) > 0:
+        if len(self._generalizedAcceptanceSets) > 0 or len(A._generalizedAcceptanceSets) > 0:
             raise Exception("strictProductNonGeneralizedBuchi cannot be used on generalized Büchi automata")
 
         result = Automaton()
@@ -521,6 +521,11 @@ class Automaton(object):
 
     def languageEmpty(self):
         ''' Checks if the language is empty. Returns an accepted word and path if the language is not empty.'''
+
+        #  say they are ignored  (should only occur for Buchi)
+        if len(self._generalizedAcceptanceSets) > 0:
+            raise Exception("languageEmpty cannot be used on generalized Büchi automata")
+
         # explore if a final state is reachable from an initial state
 
         # check if one of the initial states is final
