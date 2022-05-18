@@ -152,15 +152,16 @@ def process(args, dsl):
 
     # languageEmptyBuchi
     if args.operation == OP_FSA_LANGUAGE_EMPTY_BUCHI:
-        empty, wordprefix, wordrepeat, pathprefix, pathrepeat = A.asRegularBuchiAutomaton().languageEmptyBuchiAlternative()
+        RA, stateMap = A.asRegularBuchiAutomatonWithStateMap()
+        empty, wordprefix, wordrepeat, pathprefix, pathrepeat = RA.languageEmptyBuchiAlternative()
         print(empty)
         if not empty:
             print(wordprefix)
             print(wordrepeat)
-            printStates(pathprefix)
-            printStates(pathrepeat)
+            printStates(list(map(lambda s: stateMap[s], pathprefix)))
+            printStates(list(map(lambda s: stateMap[s], pathrepeat)))
 
-    # languageEmptyBuchi
+    # reachable states
     if args.operation == OP_FSA_REACHABLE_STATES:
         res = A.reachableStates()
         printSetOfStates(res)

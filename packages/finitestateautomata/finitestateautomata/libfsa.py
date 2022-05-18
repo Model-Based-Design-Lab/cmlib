@@ -1082,11 +1082,20 @@ class Automaton(object):
         '''
         return a new on-generalized Büchi automaton with the added generalized acceptance sets incorporated
         '''
+        res, _ = self.addGeneralizedBuchiAcceptanceSetsWithStateMap(A)
+        return res
+
+    def addGeneralizedBuchiAcceptanceSetsWithStateMap(self, A):
+        '''
+        return a new on-generalized Büchi automaton with the added generalized acceptance sets incorporated and a map linking the new states to the original states
+        '''
 
         def _newState(s, n):
             return "({},F{})".format(s,str(n))
+       
+        stateMap = dict()
 
-        # create a copy of every state for every acceptance sets.
+        # create a copy of every state for every acceptance set.
         # label final state accordingly
         # add transitions to state in same layer for non-accepting source states 
         # or state in next layer if it is accepting
@@ -1101,7 +1110,9 @@ class Automaton(object):
         # create states
         for n in range(N):
             for s in self._states:
-                res.addState(_newState(s,n))
+                ns = _newState(s,n)
+                stateMap[ns] = s
+                res.addState(ns)
 
         # set initial states
         for s in self._initialStates:
@@ -1129,12 +1140,20 @@ class Automaton(object):
                     else:
                         res.addEpsilonTransition(_newState(s,n), _newState(t,n))
 
-        return res
+        return res, stateMap
 
     def asRegularBuchiAutomaton(self):
+        res, _ = self.asRegularAutomatonWithStateMap()
+        return res
+
+
+    def asRegularBuchiAutomatonWithStateMap(self):
         if len(self._generalizedAcceptanceSets) == 0:
-            return self
-        return self.addGeneralizedBuchiAcceptanceSets(list(self._generalizedAcceptanceSets.values()))
+            stateMap = dict()
+            for s in self._states:
+                stateMap[s] = s
+            return self, stateMap
+        return self.addGeneralizedBuchiAcceptanceSetsWithStateMap(list(self._generalizedAcceptanceSets.values()))
 
 	# collect common transitions into multi-labels
     def _dslMultiSymbolTransitions(self):
