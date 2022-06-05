@@ -1252,7 +1252,7 @@ class MarkovChain(object):
         for initial_state in states:
             
             # manipulate the initial probabilities to start the markov chain in the required state i
-            for state in self._initialProbabilities:
+            for state in self.states():
                 if state == initial_state:
                     self._initialProbabilities[state] = 1.0
                 else:
