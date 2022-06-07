@@ -40,6 +40,8 @@ class MarkovChain(object):
         self._transitionMatrix = None
         # initialProbabilityVector holds the initial probabilities in the form of a vector
         self._initialProbabilityVector = None
+        # Recurrent state for simulation run calibration
+        self.recurrent_state = None
         # Set pseudo random seed based on os current time
         random_data = os.urandom(8)
         seed = int.from_bytes(random_data, byteorder="big")
@@ -703,9 +705,9 @@ class MarkovChain(object):
 
     def setRecurrentState(self, state):
         if self._isRecurrentState(state):
-            self.first_recurrent_state = state
+            self.recurrent_state = state
         else:
-            self.first_recurrent_state = None
+            self.recurrent_state = None
 
     def _markovSimulation(self, actions):
         # Set current state to None to indicate that the first state is not defined
@@ -779,13 +781,13 @@ class MarkovChain(object):
 
     def _cycleUpdate(self, state):
         # Find first recurrent state
-        if self.first_recurrent_state == None:
+        if self.recurrent_state == None:
             if self._isRecurrentState(state):
-                self.first_recurrent_state = state
+                self.recurrent_state = state
             else:
                 return -1 # To prevent the simulation from exiting
 
-        if self.first_recurrent_state == state:
+        if self.recurrent_state == state:
             self.Em += 1
             self.El += self.l
             self.Er += self.r
@@ -802,13 +804,13 @@ class MarkovChain(object):
 
     def _cycleUpdateCezaro(self, state):
         # Find first recurrent state
-        if self.first_recurrent_state == None:
+        if self.recurrent_state == None:
             if self._isRecurrentState(state):
-                self.first_recurrent_state = state
+                self.recurrent_state = state
             else:
                 return -1 # To prevent the simulation from exiting
 
-        if self.first_recurrent_state == state:
+        if self.recurrent_state == state:
             self.Em += 1
             self.El += self.l
             self.El2 += pow(self.l, 2)
