@@ -273,6 +273,7 @@ def process(args, dsl):
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
         setSeed(args, M)
+        M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
         interval, abError, reError, esMean, n, stop = M.longRunExpectedAverageReward(C)
         if any(i==None for i in interval):
@@ -288,6 +289,7 @@ def process(args, dsl):
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         setSeed(args, M)
+        M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
         limit, interval, abError, reError, n, stop = M.cezaroLimitDistribution(C)
         if limit is None:
