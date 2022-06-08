@@ -1054,6 +1054,10 @@ class MarkovChain(object):
                 abError[i] = None
                 interval[i] = [None, None]
 
+        # Check if sum of distribution equals 1 with .4 float accuracy
+        if not 0.9999 < sum(self.u) < 1.0001:
+            self.u = None
+
         return self.u, interval, abError, reError, self.Em, stop
 
     def estimationExpectedReward(self, stop_conditions, nr_of_steps):
