@@ -599,7 +599,8 @@ class DataflowGraph(object):
         # use zero vector initial state
         stateSize = mpNumberOfColumns(SSM[0])
         inputSize = mpNumberOfColumns(SSM[1])
-        if x0 is not None:
+        if x0 is None:
+        # if x0 is not None:
             x0 = mpZeroVector(Matrices['A'].numberOfColumns())
 
         inpSig = self.inputSignals()
