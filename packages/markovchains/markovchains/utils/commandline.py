@@ -253,7 +253,7 @@ def process(args, dsl):
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
         targetStateSet = requireTargetStateSet(args)
         prob = M.hittingProbabilitiesSet(targetStateSet)
-        print("The hitting probabilities for {{{}}} are:".format(', '.join(s)))
+        print("The hitting probabilities for {{{}}} are:".format(', '.join(prob)))
         ss = ', '.join(targetStateSet)
         for t in sortNames(M.states()):
             print("f({}, {{{}}}) = {:.4f}".format(t, ss, prob[t]))
