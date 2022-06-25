@@ -68,6 +68,9 @@ class DataflowGraph(object):
     def actors(self):
         return self._actors
 
+    def channels(self):
+        return self._channels
+
     def actorsWithoutInputsOutputs(self):
         return [a for a in self._actors if not (a in self._inputs or a in self._outputs)]
 
@@ -171,6 +174,12 @@ class DataflowGraph(object):
         self._repetitionVector = None
         self._inputSignals[n] = s
 
+    def producerOfChannel(self, ch):
+        return self._chanProducer[ch]
+
+    def consumerOfChannel(self, ch):
+        return self._chanConsumer[ch]
+
     def _newChannelName(self):
         fname = lambda m: 'ch'+str(m)
         k = 1
@@ -183,11 +192,16 @@ class DataflowGraph(object):
             return DEFAULT_ACTOR_EXECUTION_TIME
         return self._actorSpecs[a][EXECUTION_TIME_SPEC_KEY]
 
+    def specsOfActor(self, a):
+        return self._actorSpecs[a]
 
     def numberOfInitialTokensOfChannel(self, ch):
         if not INITIAL_TOKENS_SPEC_KEY in self._channelSpecs[ch]:
             return 0
         return self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY]
+
+    def setNumberOfInitialTokensOfChannel(self, ch, it):
+        self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY] = it
 
     def numberOfInitialTokens(self):
         return reduce(lambda sum, ch: sum + self.numberOfInitialTokensOfChannel(ch), self._channels, 0)
