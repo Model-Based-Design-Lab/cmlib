@@ -604,27 +604,33 @@ class DataflowGraph(object):
 
         return res
 
-    def determineTrace(self, ni, x0=None):
+    def determineTrace(self, ni, x0=None, inputOverride=None):
         H, SSM = self.stateSpaceMatrices()
 
         # compute vector trace from state-space matrices
         Matrices = {'A': MaxPlusMatrixModel.fromMatrix(SSM[0]), 'B': MaxPlusMatrixModel.fromMatrix(SSM[1]), 'C': MaxPlusMatrixModel.fromMatrix(SSM[2]), 'D': MaxPlusMatrixModel.fromMatrix(SSM[3]) }
 
-        # use zero vector initial state
-        stateSize = mpNumberOfColumns(SSM[0])
-        inputSize = mpNumberOfColumns(SSM[1])
+        stateSize = self.numberOfInitialTokens()
+        inputSize = self.numberOfInputs()
+
         if x0 is None:
-        # if x0 is not None:
             x0 = mpZeroVector(Matrices['A'].numberOfColumns())
 
         inpSig = self.inputSignals()
-
         inputs = list()
         for s in self.inputs():
-            if s in inpSig:
-                inputs.extend(mpSplitSequence(inpSig[s], self.repetitions(s)))
+            if inputOverride and s in inputOverride:
+                if isinstance(inputOverride[s], list):
+                    inputs.extend(mpSplitSequence(inputOverride[s], self.repetitions(s)))
+                else:
+                    if inputOverride[s] not in inpSig:
+                        raise Exception("Unknown event sequence: {}.".format(inputOverride[s]))
+                    inputs.extend(mpSplitSequence(inpSig[inputOverride[s]], self.repetitions(s)))
             else:
-                inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
+                if s in inpSig:
+                    inputs.extend(mpSplitSequence(inpSig[s], self.repetitions(s)))
+                else:
+                    inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
 
         vt = MaxPlusMatrixModel.vectortrace(Matrices, x0, ni, inputs)
         ssvt = [v[inputSize:stateSize+inputSize]+v[0:inputSize] for v in vt]

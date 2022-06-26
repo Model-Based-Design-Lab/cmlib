@@ -498,48 +498,16 @@ def _maximum(eventsequences, args):
     return sequences, res
 
 def _determineTrace(G: DataflowGraph, args, ni):
-    H, SSM = G.stateSpaceMatrices()
-
-    # compute vector trace from state-space matrices
-    Matrices = {'A': MaxPlusMatrixModel.fromMatrix(SSM[0]), 'B': MaxPlusMatrixModel.fromMatrix(SSM[1]), 'C': MaxPlusMatrixModel.fromMatrix(SSM[2]), 'D': MaxPlusMatrixModel.fromMatrix(SSM[3]) }
-
-    # use zero vector initial state
-    stateSize = mpNumberOfColumns(SSM[0])
-    inputSize = mpNumberOfColumns(SSM[1])
+    stateSize = G.numberOfInitialTokens()
     x0 = parseInitialState(args, stateSize)
 
     # get input sequences.
     nt, _ = parseInputTraces(G.inputSignals(), {}, args)
-    inpSig = G.inputSignals()
 
-    inputs = list()
-    for s in G.inputs():
-        # check input spec, else check model, else use unnamed input, else assume -inf
-        if nt and s in nt:
-            if isinstance(nt[s], list):
-                inputs.extend(mpSplitSequence(nt[s], G.repetitions(s)))
-            else:
-                if nt[s] not in inpSig:
-                    raise Exception("Unknown event sequence: {}.".format(nt[s]))
-                inputs.extend(mpSplitSequence(inpSig[nt[s]], G.repetitions(s)))
-        else:
-            if s in inpSig:
-                inputs.extend(mpSplitSequence(inpSig[s], G.repetitions(s)))
-            else:
-                inputs.extend([mpMinusInfVector(ni)] * G.repetitions(s))
-
-    if Matrices['A'].numberOfColumns() != len(x0):
+    if stateSize != len(x0):
         raise Exception('Initial state vector is of incorrect size.')
-    vt = MaxPlusMatrixModel.vectortrace(Matrices, x0, ni, inputs)
-    ssvt = [v[inputSize:stateSize+inputSize]+v[0:inputSize] for v in vt]
-    inputTraces = [v[0:inputSize] for v in vt]
 
-    outputTraces = [v[inputSize+stateSize:] for v in vt]
-
-    firingStarts = [mpMultiplyMatrixVector(H, s)  for s in ssvt]
-    firingDurations= [G.executionTimeOfActor(a) for a in G.actorsWithoutInputsOutputs()]
-
-    return inputTraces, outputTraces, firingStarts, firingDurations
+    return G.determineTrace(ni, x0, nt)
 
 
 if __name__ == "__main__":
