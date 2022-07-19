@@ -150,7 +150,7 @@ def maximumCycleMean(gr):
                     stree.addNode(nn, leaf, gr.edge_weight((leaf, nn)) - lmbd)
                     leaves.append(nn)
 
-    # - if we have completed the tree return the last labmda, last cycle and the spanning tree with asap times.
+    # - if we have completed the tree return the last lambda, last cycle and the spanning tree with asap times.
 
     # print(lmbd)
     return lmbd, stree, criticalNode
