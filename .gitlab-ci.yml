@@ -2,7 +2,7 @@ before_script:
     - apt-get update
     - apt-get install -y python3.8 python3.8-dev python3-pip
     - python3.8 -m pip install pytest setuptools textx matplotlib statistics numpy
-    - python3.8 -m pip install pandas
+    - python3.8 -m pip install pandas sympy
     - git clone https://github.com/Shoobx/python-graph.git
     - cd "python-graph/core/" && python3.8 ./setup.py install
     - cd ../..
