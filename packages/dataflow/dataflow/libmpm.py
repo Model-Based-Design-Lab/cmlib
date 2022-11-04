@@ -3,7 +3,6 @@ from io import StringIO
 from dataflow.libmpmgrammar import parseMPMDSL
 import dataflow.maxplus.maxplus as mp
 from dataflow.maxplus.starclosure import starClosure, PositiveCycleException
-from sympy import fraction, Matrix
 
 class EventSequenceModel(object):
 

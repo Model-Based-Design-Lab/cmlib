@@ -8,7 +8,7 @@ from dataflow.libmpm import MaxPlusMatrixModel
 from fractions import Fraction
 
 # constants
-DEFAULT_ACTOR_EXECUTION_TIME = 1.0
+DEFAULT_ACTOR_EXECUTION_TIME = Fraction(1.0)
 EXECUTION_TIME_SPEC_KEY = 'executionTime'
 CONS_RATE_SPEC_KEY = 'consRate'
 PROD_RATE_SPEC_KEY = 'prodRate'
@@ -156,18 +156,18 @@ class DataflowGraph(object):
         self._repetitionVector = None
         # input ports should be in actors
         if not i in self._actors:
-            self.addActor(i, {EXECUTION_TIME_SPEC_KEY: 0.0})
+            self.addActor(i, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
         else:
-            self._actorSpecs[i][EXECUTION_TIME_SPEC_KEY] = 0.0
+            self._actorSpecs[i][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
         self._inputs.append(i)
 
     def addOutputPort(self, o):
         self._repetitionVector = None
         # output ports should be in actors
         if not o in self._actors:
-            self.addActor(o, {EXECUTION_TIME_SPEC_KEY: 0.0})
+            self.addActor(o, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
         else:
-            self._actorSpecs[o][EXECUTION_TIME_SPEC_KEY] = 0.0
+            self._actorSpecs[o][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
         self._outputs.append(o)
 
     def addInputSignal(self, n, s):
@@ -298,7 +298,7 @@ class DataflowGraph(object):
 
     def symbolicTimeStamp(self, t):
         res = self._symbolicTimeStampMinusInfinity()
-        res[self._symbolicVector.index(t)] = 0
+        res[self._symbolicVector.index(t)] = Fraction(0)
         return res
 
     def _symbolicTimeStampMax(self, ts1, ts2):
@@ -711,7 +711,8 @@ class DataflowGraph(object):
         if len(self._inputSignals) > 0:
             output.write('\ninput signals\n\n')
             for inpsig in self._inputSignals:
-                output.write('{} = {}\n'.format(inpsig, self._inputSignals[inpsig]))
+                inputsignalratiolist = "["+", ".join(["{}".format(i) for i in self._inputSignals[inpsig]])+"]"
+                output.write('{} = {}\n'.format(inpsig, inputsignalratiolist))
 
         result = output.getvalue()
         output.close()

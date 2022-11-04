@@ -5,7 +5,7 @@ import re
 from functools import reduce
 from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
-
+from fractions import Fraction
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller
 
 
@@ -18,7 +18,7 @@ def mpTransposeMatrix(A):
     return list(map(list, zip(*A)))
 
 def mpZeroVector(n):
-    return [0] * n
+    return [Fraction(0)] * n
 
 def mpMinusInfVector(n):
     return [MP_MINUSINFINITY] * n
@@ -77,7 +77,7 @@ def mpMaxMatrices(A, B):
 def mpElement(x):
     if x is None:
         return '  -inf'
-    return '{:6.4f}'.format(x)
+    return '{}'.format(x)
 
 def mpVector(v):
     return '[ {} ]'.format(' '.join([mpElement(x) for x in v]))
@@ -85,7 +85,7 @@ def mpVector(v):
 def mpParseNumber(e):
     if e.strip() == '-inf':
         return MP_MINUSINFINITY
-    return float(e)
+    return Fraction(e).limit_denominator()
 
 def mpParseVector(v):
     lst = re.sub(r"[\[\]]", "", v)
@@ -144,7 +144,7 @@ def mpEigenValue(M):
     sccs = pyga.mutual_accessibility(gr)
     cycleMeans = []
     subgraphs = []
-    mu = 0.0
+    mu = Fraction(0.0)
     for sn in ({frozenset(v) for v in sccs.values()}):
         grs = _subgraph(gr, sn)
         if len(grs.edges()) > 0:
@@ -153,15 +153,15 @@ def mpEigenValue(M):
         cycleMeans.append(mu)
 
     if len(cycleMeans) == 0:
-        return 0.0
+        return Fraction(0.0)
     return max(cycleMeans)
 
 def mpThroughput(M):
 
     lmbda = mpEigenValue(M)
-    if lmbda == 0.0:
+    if lmbda == Fraction(0.0):
         return "infinite"
-    return 1.0 / lmbda
+    return Fraction(1.0) / lmbda
 
 def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
 
@@ -223,7 +223,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
     length = dict()
     for n in gr.nodes():
         length[n] = None
-    length[rootnode] = 0.0
+    length[rootnode] = Fraction(0.0)
 
     # compute the normalized longest paths, i.e., the path lengths normalized by the local transitive cycle means of the sending node
     change = True

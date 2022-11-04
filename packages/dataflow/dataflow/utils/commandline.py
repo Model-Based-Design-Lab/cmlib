@@ -128,7 +128,7 @@ def processDataflowOperation(args, dsl):
         print(G.listOfInputsStr())
         print('Outputs:')
         print(G.listOfOutputsStr())
-        print(G.latency(x0, mu))
+        printMPMatrix(G.latency(x0, mu))
 
     # generalized latency
     if args.operation == OP_SDF_GENERALIZED_LATENCY:
@@ -266,7 +266,7 @@ def processMaxPlusOperation(args, dsl):
             print('None')
         else:
             for v in ev:
-                print('{}, with eigenvalue: {:.2f}'.format(mpVector(v[0]), v[1]))
+                print('{}, with eigenvalue: {}'.format(mpVector(v[0]), v[1]))
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:

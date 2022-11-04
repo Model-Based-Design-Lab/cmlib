@@ -1,4 +1,5 @@
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_LARGER, MP_MINUSINFINITY, NumericalEpsilon
+from fractions import Fraction
 
 class PositiveCycleException(Exception):
     pass
@@ -17,7 +18,7 @@ def starClosure(M):
             for v in range(N):
 
                 if u == v:
-                    extra = 0.0
+                    extra = Fraction(0.0)
                 else:
                     extra = MP_MINUSINFINITY
                 path_u2v = MP_MAX(res[v][u], extra)

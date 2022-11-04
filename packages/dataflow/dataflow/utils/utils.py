@@ -1,6 +1,7 @@
 """ miscellaneous utility functions """
 
 import re
+from fractions import Fraction
 from dataflow.maxplus.maxplus import mpParseVector, MP_MINUSINFINITY
 from dataflow.maxplus.maxplus import mpZeroVector
 
@@ -184,7 +185,7 @@ def parsePeriod(args):
     if not args.period:
         return None
     try:
-        return float(args.period)
+        return Fraction(args.period)
     except Exception:
         raise Exception("Failed to parse period argument; period must be a floating point number.")
 
