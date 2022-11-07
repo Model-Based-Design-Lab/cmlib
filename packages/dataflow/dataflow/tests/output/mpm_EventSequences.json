@@ -1,0 +1,15 @@
+{
+    "Eigenvalues": "1",
+    "starClosure": "[False, None]",
+    "convolution_sequences": "[h, x, h, x]",
+    "convolution_res": "[None, None, 20, 22, 24]",
+    "delay_sequence": "[None, None, None, None, None, None, None, None, None, None, 0, 2, 4, 8, 12]",
+    "scale_sequence": "[10, 12, 14, 18, 22]",
+    "maximum_analysis_sequences": "[h, x, h, x]",
+    "maximum_analysis_res": "[0, 10, 4, 8, 12, None]",
+    "star_closure": "None",
+    "multiply": "[[0, 1], [1, 0]]",
+    "Eigenvectors": [
+        "[[[[0, 0], 1]], ]"
+    ]
+}

@@ -1,0 +1,91 @@
+{
+    "deadlock": "False",
+    "repetitionVector": {
+        "Pass": "1.0000",
+        "Input": "1.0000",
+        "Output": "1.0000",
+        "i": "1.0000",
+        "o": "1.0000"
+    },
+    "listOfInputsStr": "i",
+    "listOfOutputsStr": "o",
+    "listOfStateElementsStr": "Pass_Input",
+    "convertToSingleRate": {
+        "_actors": "[Input, Output, Pass, i, o]",
+        "_channels": "[ch1, ch2, ch3, ch4, ch5]",
+        "_actorSpecs": {
+            "i": {
+                "executionTime": "0"
+            },
+            "Input": {
+                "executionTime": "0"
+            },
+            "Output": {
+                "executionTime": "5"
+            },
+            "o": {
+                "executionTime": "0"
+            },
+            "Pass": {
+                "executionTime": "1"
+            }
+        },
+        "_outchannels": {
+            "i": "[ch1]",
+            "Input": "[ch2, ch4]",
+            "Output": "[ch3]",
+            "Pass": "[ch5]"
+        },
+        "_inchannels": {
+            "Input": "[ch1, ch5]",
+            "Output": "[ch2]",
+            "o": "[ch3]",
+            "Pass": "[ch4]"
+        },
+        "_chanProducer": {
+            "ch1": "i",
+            "ch2": "Input",
+            "ch3": "Output",
+            "ch4": "Input",
+            "ch5": "Pass"
+        },
+        "_chanConsumer": {
+            "ch1": "Input",
+            "ch2": "Output",
+            "ch3": "o",
+            "ch4": "Pass",
+            "ch5": "Input"
+        },
+        "_channelSpecs": {
+            "ch1": {},
+            "ch2": {},
+            "ch3": {},
+            "ch4": {},
+            "ch5": {
+                "initialTokens": "1.0000"
+            }
+        },
+        "_inputs": "[i]",
+        "_outputs": "[o]",
+        "_inputSignals": {
+            "i": "[0, 2/5, 4/5, 5, 6, 13/2, 8, 14]",
+            "i2": "[3, 7/2, 4, 9/2, 5, 11/2, 6, 13/2]",
+            "i12": "[3, 7/2, 4, 5, 6, 13/2, 8, 14]",
+            "is": "[4, 22/5, 24/5, 9, 10, 21/2, 12, 18]",
+            "iir": "[1, 4, 4]"
+        },
+        "_repetitionVector": {
+            "Pass": "1.0000",
+            "Input": "1.0000",
+            "Output": "1.0000",
+            "i": "1.0000",
+            "o": "1.0000"
+        },
+        "_symbolicTimeStampSize": "2.0000",
+        "_symbolicVector": "[ch5, i]"
+    },
+    "throughput": "1",
+    "stateSpaceMatrices": "[[[0, 0], [0, 0], [0, 0]], [[[1]], [[1]], [[5]], [[5]]]]",
+    "latency": "[[5]]",
+    "generalizedLatency": "[[[5]], [[5]]]"
+}

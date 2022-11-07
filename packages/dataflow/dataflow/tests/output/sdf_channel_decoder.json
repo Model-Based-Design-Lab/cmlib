@@ -1,0 +1,117 @@
+{
+    "deadlock": "False",
+    "repetitionVector": {
+        "o": "1.0000",
+        "DC": "1.0000",
+        "DM": "1.0000",
+        "CE": "1.0000",
+        "ce": "1.0000",
+        "Sh": "1.0000",
+        "i": "1.0000"
+    },
+    "listOfInputsStr": "i, ce",
+    "listOfOutputsStr": "o",
+    "listOfStateElementsStr": "Sh_Sh, DM_DM, CE_DM_0, CE_DM_1",
+    "convertToSingleRate": {
+        "_actors": "[CE, DC, DM, Sh, ce, i, o]",
+        "_channels": "[ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9]",
+        "_actorSpecs": {
+            "i": {
+                "executionTime": "0"
+            },
+            "Sh": {
+                "executionTime": "1/2"
+            },
+            "DM": {
+                "executionTime": "3"
+            },
+            "ce": {
+                "executionTime": "0"
+            },
+            "CE": {
+                "executionTime": "3"
+            },
+            "DC": {
+                "executionTime": "1"
+            },
+            "o": {
+                "executionTime": "0"
+            }
+        },
+        "_outchannels": {
+            "i": "[ch1]",
+            "Sh": "[ch2, ch3]",
+            "ce": "[ch4]",
+            "DM": "[ch5, ch6, ch8]",
+            "CE": "[ch7]",
+            "DC": "[ch9]"
+        },
+        "_inchannels": {
+            "Sh": "[ch1, ch2]",
+            "DM": "[ch3, ch4, ch6, ch7]",
+            "CE": "[ch5]",
+            "DC": "[ch8]",
+            "o": "[ch9]"
+        },
+        "_chanProducer": {
+            "ch1": "i",
+            "ch2": "Sh",
+            "ch3": "Sh",
+            "ch4": "ce",
+            "ch5": "DM",
+            "ch6": "DM",
+            "ch7": "CE",
+            "ch8": "DM",
+            "ch9": "DC"
+        },
+        "_chanConsumer": {
+            "ch1": "Sh",
+            "ch2": "Sh",
+            "ch3": "DM",
+            "ch4": "DM",
+            "ch5": "CE",
+            "ch6": "DM",
+            "ch7": "DM",
+            "ch8": "DC",
+            "ch9": "o"
+        },
+        "_channelSpecs": {
+            "ch1": {},
+            "ch2": {
+                "initialTokens": "1.0000"
+            },
+            "ch3": {},
+            "ch4": {},
+            "ch5": {},
+            "ch6": {
+                "initialTokens": "1.0000"
+            },
+            "ch7": {
+                "initialTokens": "2.0000"
+            },
+            "ch8": {},
+            "ch9": {}
+        },
+        "_inputs": "[ce, i]",
+        "_outputs": "[o]",
+        "_inputSignals": {
+            "i": "[0, 1/2, 1, 3/2, 2, 5/2, 3]",
+            "ce": "[0, 1/2, 1, 3/2, 2, 5/2, 3]"
+        },
+        "_repetitionVector": {
+            "o": "1.0000",
+            "DC": "1.0000",
+            "DM": "1.0000",
+            "CE": "1.0000",
+            "ce": "1.0000",
+            "Sh": "1.0000",
+            "i": "1.0000"
+        },
+        "_symbolicTimeStampSize": "6.0000",
+        "_symbolicVector": "[ce, ch2, ch6, ch7_0, ch7_1, i]"
+    },
+    "throughput": "1/3",
+    "stateSpaceMatrices": "[[[0, None, None, None, 0, None], [1/2, 0, 0, None, 1/2, 0], [7/2, 3, 3, None, 7/2, 3], [7/2, 3, 3, None, 7/2, 3]], [[[1/2, None, None, None], [7/2, 3, 3, None], [None, None, None, 0], [13/2, 6, 6, None]], [[1/2, None], [7/2, 3], [None, None], [13/2, 6]], [[9/2, 4, 4, None]], [[9/2, 4]]]]",
+    "latency": "[[9/2, 9/2]]",
+    "generalizedLatency": "[[[9/2, 4, 4, 1]], [[9/2, 4]]]"
+}

@@ -1,0 +1,9 @@
+{
+    "Eigenvalues": "3/2",
+    "starClosure": "[False, None]",
+    "star_closure": "None",
+    "multiply": "[[None, 2], [1, None]]",
+    "Eigenvectors": [
+        "[[[[0, -1/2], 3/2]], ]"
+    ]
+}

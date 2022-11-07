@@ -1,0 +1,16 @@
+{
+    "Eigenvalues": "5",
+    "starClosure": "[False, None]",
+    "convolution_sequences": "[delta, delta]",
+    "convolution_res": "[0, None, None, None, None, None]",
+    "delay_sequence": "[None, None, None, None, None, None, None, None, None, None, 0, None, None, None, None, None]",
+    "scale_sequence": "[10, None, None, None, None, None]",
+    "maximum_analysis_sequences": "[delta, delta]",
+    "maximum_analysis_res": "[0, None, None, None, None, None]",
+    "star_closure": "None",
+    "multiply": "[[None, 0, None, None, None], [2, None, None, None, None], [7, None, 5, None, None], [None, None, None, None, 0], [13, None, 11, 6, None]]",
+    "Eigenvectors": [
+        "[[[[None, None, -6, -5, 0], 5], [[None, None, None, -3, 0], 3]], [[[-12, -11, -6, -5, 0], [1, 1, 5, 5, 5]]]]",
+        "[[[[None, None, None, -3, 0], 3], [[None, None, -6, -5, 0], 5]], [[[-12, -11, -6, -5, 0], [1, 1, 5, 5, 5]]]]"
+    ]
+}

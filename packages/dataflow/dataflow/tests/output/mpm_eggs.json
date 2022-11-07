@@ -1,0 +1,9 @@
+{
+    "Eigenvalues": "2",
+    "starClosure": "[False, None]",
+    "star_closure": "None",
+    "multiply": "[[2]]",
+    "Eigenvectors": [
+        "[[[[0], 2]], ]"
+    ]
+}
