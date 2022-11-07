@@ -35,26 +35,26 @@ runMPMs()
 # runSDFs "ganttchart-zero-based -ni 4"
 # runSDFs converttosinglerate
 
-runMPMs eigenvalue
-runMPMs eventsequences
-runMPMs vectorsequences
-runMPMs inputlabelsmpm
-runMPMs matrices
-runMPMs eigenvectors
-runMPMs precedencegraph
-runMPMs precedencegraphgraphviz
-runMPMs starclosure
-runMPMs "multiply -ma A,A"
-runMPMs "multiplytransform -ma A,A"
-runMPMs "vectortrace -it [[0,8,16,32],[1,9,17,33]]"
-runMPMs "vectortracetransform -it [[0,8,16,32],[1,9,17,33]]"
-runMPMs "vectortracexml -it [[0,8,16,32],[1,9,17,33]]"
-dataflow mpm_EventSequences.mpm -op convolution -sq h,x
-dataflow mpm_MatrixExample2.mpm -op convolution -sq delta,delta
-dataflow mpm_EventSequences.mpm -op convolutiontransform -sq h,x
-dataflow mpm_MatrixExample2.mpm -op convolutiontransform -sq delta,delta
-dataflow mpm_EventSequences.mpm -op maxsequences -sq h,x
-dataflow mpm_EventSequences.mpm -op maxsequencestransform -sq h,x
-dataflow mpm_EventSequences.mpm -op delaysequence -sq h -pa 2
-dataflow mpm_MatrixExample2.mpm -op delaysequence -sq delta -pa 6
-dataflow mpm_EventSequences.mpm -op scalesequence -sq h -pa 2
+# runMPMs eigenvalue
+# runMPMs eventsequences
+# runMPMs vectorsequences
+# runMPMs inputlabelsmpm
+# runMPMs matrices
+# runMPMs eigenvectors
+# runMPMs precedencegraph
+# runMPMs precedencegraphgraphviz
+# runMPMs starclosure
+# runMPMs "multiply -ma A,A"
+# runMPMs "multiplytransform -ma A,A"
+# runMPMs "vectortrace -it [[0,8,16,32],[1,9,17,33]]"
+# runMPMs "vectortracetransform -it [[0,8,16,32],[1,9,17,33]]"
+# runMPMs "vectortracexml -it [[0,8,16,32],[1,9,17,33]]"
+# dataflow mpm_EventSequences.mpm -op convolution -sq h,x
+# dataflow mpm_MatrixExample2.mpm -op convolution -sq delta,delta
+# dataflow mpm_EventSequences.mpm -op convolutiontransform -sq h,x
+# dataflow mpm_MatrixExample2.mpm -op convolutiontransform -sq delta,delta
+# dataflow mpm_EventSequences.mpm -op maxsequences -sq h,x
+# dataflow mpm_EventSequences.mpm -op maxsequencestransform -sq h,x
+# dataflow mpm_EventSequences.mpm -op delaysequence -sq h -pa 2
+# dataflow mpm_MatrixExample2.mpm -op delaysequence -sq delta -pa 6
+# dataflow mpm_EventSequences.mpm -op scalesequence -sq h -pa 2
