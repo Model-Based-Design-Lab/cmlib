@@ -1,5 +1,7 @@
 # numerical comparisons
 
+from fractions import Fraction
+
 NumericalEpsilon = 1e-8
 
 class MPAlgebraException(Exception):
@@ -23,14 +25,14 @@ def MP_PLUS(x, y):
         return None
     if y is None:
         return None
-    return x+y
+    return Fraction(x+y).limit_denominator()
 
 def MP_MINUS(x, y):
     if y == None:
         raise MPAlgebraException('Cannot subtract minus infinity')
     if x is None:
         return None
-    return x-y
+    return Fraction(x-y).limit_denominator()
 
 def MP_LARGER(x, y):
     if x is None:
