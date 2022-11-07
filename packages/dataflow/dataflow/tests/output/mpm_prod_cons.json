@@ -1,9 +1,0 @@
-{
-    "Eigenvalues": "2.5000",
-    "starClosure": "[False, None]",
-    "star_closure": "None",
-    "multiply": "[[2.0000, 2.0000, None, None, None, None], [None, None, 0.0000, None, None, None], [5.0000, 5.0000, None, 3.0000, None, None], [None, None, None, None, 0.0000, None], [6.0000, 6.0000, None, 4.0000, None, 1.0000], [6.0000, 6.0000, None, 4.0000, None, 1.0000]]",
-    "Eigenvectors": [
-        "[[[[-4.0000, -3.5000, -1.0000, -2.5000, 0.0000, 0.0000], 2.5000]], ]"
-    ]
-}
