@@ -1,6 +1,10 @@
 """ miscellaneous utility functions """
 
 from string import digits
+from fractions import Fraction
+import numpy as np
+
+Frac = lambda n : Fraction(n).limit_denominator(max_denominator=1000000) if not np.isnan(n) else n
 
 def warn(s):
     print("Warning: " + s)
@@ -51,6 +55,27 @@ def printList(l):
         return string[:-2] + "]"
     except:
         return l
+
+def printListFrac(l):
+    try:
+        string = "[ "
+        for item in l:
+            string += "{} ".format(Frac(item))
+        return string + "]"
+    except:
+        return l
+
+def printDListFrac(dl):
+    try:
+        string = "[\n"
+        for l in dl:
+            string += "[ "
+            for item in l:
+                string += "{} ".format(Frac(item))
+            string = string + "] \n"
+        return string[:-2] + "\n]"
+    except:
+        return dl
 
 def printDList(dl):
     try:

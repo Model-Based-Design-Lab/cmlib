@@ -1,6 +1,7 @@
 """ miscellaneous utility functions """
 
 from string import digits
+from fractions import Fraction
 
 def onlyDigits(s):
     return ''.join(c for c in s if c in digits)
@@ -44,7 +45,7 @@ def print4F(data):
             return ""
             
     else:
-        if type(data) == bool or type(data) == str or data == None:
+        if type(data) == bool or type(data) == str or data == None or type(data) == Fraction:
             return "{}".format(data)
         else:
             return "{:.4f}".format(data)

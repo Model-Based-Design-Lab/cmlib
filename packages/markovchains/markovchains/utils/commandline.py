@@ -6,11 +6,9 @@ import argparse
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, printMatrix
-from markovchains.utils.utils import sortNames, printList, printDList, print4F, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector
+from markovchains.utils.utils import sortNames, printList, printDList, print4F, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector, printListFrac, printDListFrac, Frac
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
-
 import sys
-
 
 def main():
 
@@ -190,7 +188,7 @@ def process(args, dsl):
 
         for k in range(N+1):
             print("Step {}:".format(k))
-            print("Distribution: " +  printList(trace[k,:]) + "\n")
+            print("Distribution: " +  printListFrac(trace[k,:]) + "\n")
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_REWARDS:
@@ -200,7 +198,7 @@ def process(args, dsl):
         print("Transient reward analysis:\n")
         for k in range(N+1):
             print("Step {}:".format(k))
-            print("Expected Reward: {:.4f}\n".format(M.rewardForDistribution(trace[k,:])))
+            print("Expected Reward: {}\n".format(Frac(M.rewardForDistribution(trace[k,:]))))
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_MATRIX:
@@ -210,15 +208,15 @@ def process(args, dsl):
         print ("State vector:")
         printVector(M.states())
         print("Transient analysis:\n")
-        print ("Matrix for {} steps:\n".format(N))
-        printMatrix(matPower(mat, N))
+        print("Matrix for {} steps:\n".format(N))
+        print(printDListFrac(matPower(mat, N)))
 
     if operation == OP_DTMC_LIMITING_MATRIX:
         mat = M.limitingMatrix()
         print ("State vector:")
         printVector(M.states())
         print ("Limiting Matrix:\n")
-        printMatrix(mat)
+        print(printDListFrac(mat))
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
         dist = M.limitingDistribution()
@@ -226,29 +224,29 @@ def process(args, dsl):
         print ("State vector:")
         printVector(M.states())
         print ("Limiting Distribution:")
-        print("{}\n".format(printList(dist)))
+        print("{}\n".format(printListFrac(dist)))
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
         mcType = M.determineMCType()
         r = M.longRunReward()
         if 'non-ergodic' in mcType:
-            print("The long-run expected average reward is: {:.4f}\n".format(r))
+            print("The long-run expected average reward is: {}\n".format(Frac(r)))
         else:
-            print("The long-run expected reward is: {:.4f}\n".format(r))
+            print("The long-run expected reward is: {}\n".format(Frac(r)))
 
     if operation == OP_DTMC_HITTING_PROBABILITY:
         s = requireTargetState(args)
         prob = M.hittingProbabilities(s)
         print("The hitting probabilities for {} are:".format(s))
         for t in sortNames(M.states()):
-            print("f({}, {}) = {:.4f}".format(t, s, prob[t]))
+            print("f({}, {}) = {}".format(t, s, Frac(prob[t])))
 
     if operation == OP_DTMC_REWARD_TILL_HIT:
         s = requireTargetState(args)
         res = M.rewardTillHit(s)
         print("The expected rewards until hitting {} are:".format(s))
         for s in sortNames(res.keys()):
-            print("From state {}: {:.4f}".format(s, res[s]))
+            print("From state {}: {}".format(s, Frac(res[s])))
 
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
         targetStateSet = requireTargetStateSet(args)
@@ -256,14 +254,14 @@ def process(args, dsl):
         print("The hitting probabilities for {{{}}} are:".format(', '.join(prob)))
         ss = ', '.join(targetStateSet)
         for t in sortNames(M.states()):
-            print("f({}, {{{}}}) = {:.4f}".format(t, ss, prob[t]))
+            print("f({}, {{{}}}) = {}".format(t, ss, Frac(prob[t])))
 
     if operation == OP_DTMC_REWARD_TILL_HIT_SET:
         s = requireTargetStateSet(args)
         res = M.rewardTillHitSet(s)
         print("The expected rewards until hitting {{{}}} are:".format(', '.join(s)))
         for t in sortNames(res.keys()):
-            print("From state {}: {:.4f}".format(t, res[t]))
+            print("From state {}: {}".format(t, Frac(res[t])))
     
     if operation == OP_DTMC_MARKOV_TRACE:
         setSeed(args, M)
