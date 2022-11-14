@@ -5,6 +5,7 @@ import warnings
 from modeltest.utils.utils import sortNames, print4F
 
 class Model_pytest(object):
+
     def __init__(self, output_loc):
         self.output_loc = output_loc
 
@@ -49,7 +50,6 @@ class Model_pytest(object):
             except:
                 pass
 
-        # data = sortNames(data)
         for n in range(len(data)):
             data[n] = self._change_type_of_data(data[n], sort, quotes)
 
@@ -78,7 +78,7 @@ class Model_pytest(object):
             self.output = {}
 
     def _single_cfunction_warning(self, func, name, sort, quotes):
-        # Function to generate wanring when expected result is not inside json file
+        # Function to generate warning when expected result is not inside json file
         result = self._translate_to_str(func(), sort, quotes)
 
         if name in self.output:

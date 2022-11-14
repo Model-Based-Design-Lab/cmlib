@@ -5,7 +5,7 @@ setup(
     version='1.0',
     description=
     'Package to support operations on finite state automata',
-    url='https://computationalmodeling.info',
+    url='https://github.com/Model-Based-Design-Lab/cmlib/tree/main/packages/finitestateautomata',
     author='Marc Geilen',
     author_email='m.c.w.geilen@tue.nl',
     license='MIT',
