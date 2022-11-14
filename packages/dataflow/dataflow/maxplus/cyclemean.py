@@ -144,12 +144,13 @@ def maximumCycleMean(gr):
                             # it is not a predecessor, but on a side branch, make it a descendant of the current node 
                             # and adapt all path lengths
                             stree.modifyParent(nn, leaf, gr.edge_weight((leaf, nn)) - lmbd)       
+                            leaves.append(nn)
                 else:
                     # nn is new to the tree
                     stree.addNode(nn, leaf, gr.edge_weight((leaf, nn)) - lmbd)
                     leaves.append(nn)
 
-    # - if we have completed the tree return the last labmda, last cycle and the spanning tree with asap times.
+    # - if we have completed the tree return the last lambda, last cycle and the spanning tree with asap times.
 
     # print(lmbd)
     return lmbd, stree, criticalNode

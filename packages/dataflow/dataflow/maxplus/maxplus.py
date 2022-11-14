@@ -307,6 +307,8 @@ def mpEigenVectors(M):
             cycleMeans.append(mu)
         else:
             # if the SCC has no edges, its cycle mean is None = '-inf'
+            # add arbitrary "critical" node
+            criticalNodes.append(grs.nodes()[0])
             cycleMeans.append(None)
         
         # do the administration for each of the nodes
@@ -321,7 +323,8 @@ def mpEigenVectors(M):
     while change:
         change = False
         for e in gr.edges():
-            if trCycleMeans[sccMap[e[0]]] > trCycleMeans[sccMap[e[1]]]:
+            # check cycle means or None if scc has no cycle
+            if trCycleMeans[sccMap[e[1]]] is None or trCycleMeans[sccMap[e[0]]] > trCycleMeans[sccMap[e[1]]]:
                 change = True
                 trCycleMeans[sccMap[e[1]]] = trCycleMeans[sccMap[e[0]]]
 
