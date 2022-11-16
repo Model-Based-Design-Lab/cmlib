@@ -1,9 +1,9 @@
 {
     "deadlock": "True",
     "repetitionVector": {
+        "i": "1.0000",
         "A": "1.0000",
         "B": "1.0000",
-        "i": "1.0000",
         "C": "1.0000",
         "o": "1.0000"
     },
@@ -24,13 +24,13 @@
                 "executionTime": "0.0000"
             }
         },
-        "_outchannels": {
+        "_outChannels": {
             "i": "[ch1]",
             "A": "[ch2]",
             "B": "[ch3, ch5]",
             "C": "[ch4]"
         },
-        "_inchannels": {
+        "_inChannels": {
             "A": "[ch1, ch4]",
             "B": "[ch2]",
             "C": "[ch3]",
@@ -61,9 +61,9 @@
         "_outputs": "[o]",
         "_inputSignals": {},
         "_repetitionVector": {
+            "i": "1.0000",
             "A": "1.0000",
             "B": "1.0000",
-            "i": "1.0000",
             "C": "1.0000",
             "o": "1.0000"
         },

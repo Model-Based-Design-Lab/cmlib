@@ -1,27 +1,23 @@
 {
     "deadlock": "False",
     "repetitionVector": {
-        "TAH": "1.0000",
-        "THG": "1.0000",
+        "MST": "1.0000",
+        "TME": "1.0000",
+        "l": "1.0000",
+        "TEM": "1.0000",
+        "EHV": "1.0000",
+        "TEA": "1.0000",
+        "THE": "1.0000",
         "AMS": "1.0000",
+        "THG": "1.0000",
+        "TAH": "1.0000",
         "TAS": "1.0000",
         "THA": "1.0000",
-        "TEA": "1.0000",
-        "EHV": "1.0000",
-        "s": "1.0000",
-        "TEM": "1.0000",
-        "THE": "1.0000",
-        "TME": "1.0000",
-        "MST": "1.0000",
-        "l": "1.0000"
+        "s": "1.0000"
     },
     "listOfInputsStr": "l",
     "listOfOutputsStr": "s",
     "listOfStateElementsStr": "AMS_TAH, THG_THA, EHV_TEA, EHV_TEM",
-    "throughput": "0.2500",
-    "latency": "[[4.0000]]",
-    "generalizedLatency": "[[[4.0000, 2.0000, 4.0000, 4.0000]], [[2.0000]]]",
-    "stateSpaceMatrices": "[[[None, None, None, 2.0000, 0.0000], [None, 1.0000, 3.0000, None, None], [None, 1.0000, 3.0000, None, None], [0.0000, None, None, None, None], [1.0000, None, None, None, None], [None, 0.0000, None, None, None], [4.0000, None, None, 4.0000, 2.0000], [None, None, 0.0000, None, None], [None, None, None, 0.0000, None], [None, None, None, 2.0000, 0.0000], [1.0000, None, None, None, None]], [[[None, 1.0000, 3.0000, None], [1.0000, None, None, None], [4.0000, None, None, 4.0000], [4.0000, None, None, 4.0000]], [[None], [None], [2.0000], [2.0000]], [[None, 2.0000, 4.0000, None]], [[None]]]]",
     "convertToSingleRate": {
         "_actors": "[AMS, EHV, MST, TAH, TAS, TEA, TEM, THA, THE, THG, TME, l, s]",
         "_channels": "[ch1, ch10, ch11, ch12, ch13, ch14, ch15, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9]",
@@ -66,7 +62,7 @@
                 "executionTime": "3.0000"
             }
         },
-        "_outchannels": {
+        "_outChannels": {
             "l": "[ch1]",
             "TAS": "[ch2]",
             "AMS": "[ch3, ch9]",
@@ -80,7 +76,7 @@
             "THA": "[ch14]",
             "THE": "[ch15]"
         },
-        "_inchannels": {
+        "_inChannels": {
             "MST": "[ch1, ch11]",
             "s": "[ch2]",
             "TAH": "[ch3]",
@@ -172,8 +168,8 @@
             "EHV": "1.0000",
             "TEA": "1.0000",
             "THE": "1.0000",
-            "THG": "1.0000",
             "AMS": "1.0000",
+            "THG": "1.0000",
             "TAH": "1.0000",
             "TAS": "1.0000",
             "THA": "1.0000",
@@ -181,5 +177,9 @@
         },
         "_symbolicTimeStampSize": "5.0000",
         "_symbolicVector": "[ch3, ch4, ch5, ch6, l]"
-    }
+    },
+    "throughput": "0.2500",
+    "stateSpaceMatrices": "[[[None, None, None, 2.0000, 0.0000], [None, 1.0000, 3.0000, None, None], [None, 1.0000, 3.0000, None, None], [0.0000, None, None, None, None], [1.0000, None, None, None, None], [None, 0.0000, None, None, None], [4.0000, None, None, 4.0000, 2.0000], [None, None, 0.0000, None, None], [None, None, None, 0.0000, None], [None, None, None, 2.0000, 0.0000], [1.0000, None, None, None, None]], [[[None, 1.0000, 3.0000, None], [1.0000, None, None, None], [4.0000, None, None, 4.0000], [4.0000, None, None, 4.0000]], [[None], [None], [2.0000], [2.0000]], [[None, 2.0000, 4.0000, None]], [[None]]]]",
+    "latency": "[[4.0000]]",
+    "generalizedLatency": "[[[4.0000, 2.0000, 4.0000, 4.0000]], [[2.0000]]]"
 }

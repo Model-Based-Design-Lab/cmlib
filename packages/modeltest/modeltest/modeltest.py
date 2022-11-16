@@ -106,6 +106,10 @@ class Model_pytest(object):
             self.output[name] = result
             expected_result = self.output[name]
         
+        if not result == expected_result:
+            print("Expected result: " + str(expected_result))
+            print("Actual result: " + str(result))
+
         assert result == expected_result
 
     def incorrect_test(self, func, expected_result):
