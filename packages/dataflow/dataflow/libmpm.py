@@ -1,5 +1,6 @@
 from functools import reduce
 from io import StringIO
+from typing import Optional
 import dataflow.maxplus.maxplus as mp
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
@@ -74,7 +75,7 @@ class VectorSequenceModel(object):
     _vectors: mp.TMPVectorList
     _labels: list[str]
 
-    def __init__(self, vectors: mp.TMPVectorList|None = None):
+    def __init__(self, vectors: Optional[mp.TMPVectorList] = None):
         if vectors is None:
             self._vectors: mp.TMPVectorList = []
         else:
@@ -144,7 +145,7 @@ class MaxPlusMatrixModel(object):
     _labels: list[str]
     _rows: list[mp.TMPVector]
 
-    def __init__(self, rows: list[mp.TMPVector]|None=None):
+    def __init__(self, rows: Optional[list[mp.TMPVector]]=None):
         self._labels = []
         if rows is None:
             self._rows = []

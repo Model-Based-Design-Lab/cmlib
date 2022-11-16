@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 from dataflow.utils.visualization import weightedGraphToGraphViz
 import pygraph.classes.digraph  as pyg
 import pygraph.algorithms.accessibility as pyga
@@ -9,7 +9,7 @@ from dataflow.maxplus.starclosure import starClosure
 
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller
 
-TTimeStamp = float|None
+TTimeStamp = Union[float,None]
 TTimeStampList = list[TTimeStamp]
 TMPVector = TTimeStampList
 TMPVectorList = list[TMPVector]
@@ -172,7 +172,7 @@ def mpThroughput(M):
         return "infinite"
     return 1.0 / lmbda
 
-def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,float|None],dict[Any,float|None]]:
+def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,TTimeStamp],dict[Any,TTimeStamp]]:
 
     def _normalizeDict(d):
         '''
@@ -206,7 +206,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,float
     # (not from all original cycle means)
     # for nodes downstream from the root node also take max with their
     # local cycle mean
-    trCycleMeansMap: dict[Any,float|None] = dict([(n, None) for n in gr.nodes()])
+    trCycleMeansMap: dict[Any,TTimeStamp] = dict([(n, None) for n in gr.nodes()])
     trCycleMeansMap[rootnode] = cycleMeansMap[rootnode]
     
     # fixed-point computation
