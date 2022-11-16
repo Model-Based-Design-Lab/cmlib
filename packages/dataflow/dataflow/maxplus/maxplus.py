@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Dict, List, Tuple, Union
 from dataflow.utils.visualization import weightedGraphToGraphViz
 import pygraph.classes.digraph  as pyg
 import pygraph.algorithms.accessibility as pyga
@@ -10,9 +10,9 @@ from dataflow.maxplus.starclosure import starClosure
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller
 
 TTimeStamp = Union[float,None]
-TTimeStampList = list[TTimeStamp]
+TTimeStampList = List[TTimeStamp]
 TMPVector = TTimeStampList
-TMPVectorList = list[TMPVector]
+TMPVectorList = List[TMPVector]
 TMPMatrix = TMPVectorList
 
 class MPException(Exception):
@@ -172,7 +172,7 @@ def mpThroughput(M):
         return "infinite"
     return 1.0 / lmbda
 
-def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,TTimeStamp],dict[Any,TTimeStamp]]:
+def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> Tuple[Dict[Any,TTimeStamp],Dict[Any,TTimeStamp]]:
 
     def _normalizeDict(d):
         '''
@@ -206,7 +206,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,TTime
     # (not from all original cycle means)
     # for nodes downstream from the root node also take max with their
     # local cycle mean
-    trCycleMeansMap: dict[Any,TTimeStamp] = dict([(n, None) for n in gr.nodes()])
+    trCycleMeansMap: Dict[Any,TTimeStamp] = dict([(n, None) for n in gr.nodes()])
     trCycleMeansMap[rootnode] = cycleMeansMap[rootnode]
     
     # fixed-point computation
@@ -254,7 +254,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,TTime
 
 
 
-def mpEigenVectors(M: TMPMatrix) -> tuple[list[tuple[TMPVector,float]],list[tuple[TMPVector,TMPVector]]]:
+def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tuple[TMPVector,TMPVector]]]:
     '''
     Compute the eigenvectors of a square matrix.
     Return a pair of a list of eigenvector and a list of generalized eigenvectors.
@@ -341,8 +341,8 @@ def mpEigenVectors(M: TMPMatrix) -> tuple[list[tuple[TMPVector,float]],list[tupl
                 trCycleMeans[sccMap[e[1]]] = trCycleMeans[sccMap[e[0]]]
 
     # two lists to keep the results
-    eigenVectors: list[tuple[TMPVector,float]] = []
-    genEigenVectors: list[tuple[TMPVector,TMPVector]] = []
+    eigenVectors: List[Tuple[TMPVector,float]] = []
+    genEigenVectors: List[Tuple[TMPVector,TMPVector]] = []
     
     # for each of the SCC subgraphs that have a cycle mean that is not -inf
     for k in range(len(subgraphs)):

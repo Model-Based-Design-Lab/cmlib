@@ -1,9 +1,10 @@
 import copy
 from functools import reduce
 from io import StringIO
+from typing import Dict, List, Optional
 from dataflow.libsdfgrammar import parseSDFDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
-from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpNumberOfColumns, mpSplitSequence
+from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpSplitSequence, TTimeStamp
 from dataflow.libmpm import MaxPlusMatrixModel
 from fractions import Fraction
 
@@ -27,11 +28,20 @@ def _splitMatrix(M, n):
         D.append(M[k][n:])
     return (A, B, C, D)
 
-class SDFDeadlockException(Exception):
+class SDFException(Exception):
+    pass
+
+class SDFDeadlockException(SDFException):
+    pass
+
+class SDFInconsistentException(SDFException):
     pass
 
 class DataflowGraph(object):
 
+    _repetitionVector: Optional[Dict[str,int]]
+    _symbolicVector: List[str]
+ 
     def __init__(self):
         # set of actors, including inputs and outputs!
         self._actors = list()
@@ -40,9 +50,9 @@ class DataflowGraph(object):
         # dict actors -> (spec -> value)
         self._actorSpecs = dict()
         # dict actor -> set of channels
-        self._outchannels = dict()
+        self._outChannels = dict()
         # dict actor -> set of channels
-        self._inchannels = dict()
+        self._inChannels = dict()
         # dict chan -> producing actor
         self._chanProducer = dict()
         # dict chan -> producing actor
@@ -101,11 +111,15 @@ class DataflowGraph(object):
         '''
         if self._repetitionVector is None:
             self._repetitionVector = self.repetitionVector()
+            if self._repetitionVector is None:
+                raise SDFInconsistentException("Dataflow graph is inconsistent")
         return self._repetitionVector[actor]
 
     def repetitionVectorSum(self):
         if self._repetitionVector is None:
             self._repetitionVector = self.repetitionVector()
+            if self._repetitionVector is None:
+                raise SDFInconsistentException("Dataflow graph is inconsistent")
         res = 0
         for a in self._actors:
             res = res + self._repetitionVector[a]
@@ -117,10 +131,10 @@ class DataflowGraph(object):
         '''
         unreadInputs = set(self._inputs).difference(set(self._actors))
         if len(unreadInputs) > 0:
-            raise Exception('Invalid model. The following inputs are not read: {}.'.format('. '.join(unreadInputs)))
+            raise SDFException('Invalid model. The following inputs are not read: {}.'.format('. '.join(unreadInputs)))
         unwrittenOutputs = set(self._outputs).difference(set(self._actors))
         if len(unwrittenOutputs) > 0:
-            raise Exception('Invalid model. The following outputs are not written: {}.'.format('. '.join(unwrittenOutputs)))
+            raise SDFException('Invalid model. The following outputs are not written: {}.'.format('. '.join(unwrittenOutputs)))
 
     def addActor(self, a, specs):
         # invalidate cached repetition vector
@@ -139,12 +153,12 @@ class DataflowGraph(object):
             chName = specs['name']
         else:
             chName = self._newChannelName()
-        if not a in self._outchannels:
-            self._outchannels[a] = set()
-        self._outchannels[a].add(chName)
-        if not b in self._inchannels:
-            self._inchannels[b] = set()
-        self._inchannels[b].add(chName)
+        if not a in self._outChannels:
+            self._outChannels[a] = set()
+        self._outChannels[a].add(chName)
+        if not b in self._inChannels:
+            self._inChannels[b] = set()
+        self._inChannels[b].add(chName)
 
         self._chanProducer[chName] = a
         self. _chanConsumer[chName] = b
@@ -230,13 +244,13 @@ class DataflowGraph(object):
         return result
 
     def inChannels(self, a):
-        if a in self._inchannels:
-            return self._inchannels[a]
+        if a in self._inChannels:
+            return self._inChannels[a]
         return set()
 
     def outChannels(self, a):
-        if a in self._outchannels:
-            return self._outchannels[a]
+        if a in self._outChannels:
+            return self._outChannels[a]
         return set()
 
     def listOfInputsStr(self):
@@ -293,7 +307,7 @@ class DataflowGraph(object):
             for n in range(self.repetitions(i)):
                 self._symbolicVector.append(self._inputTokenLabel(i, n))
 
-    def _symbolicTimeStampMinusInfinity(self):
+    def _symbolicTimeStampMinusInfinity(self) -> List[TTimeStamp]:
         return [None] * self._symbolicTimeStampSize
 
     def symbolicTimeStamp(self, t):
@@ -403,7 +417,7 @@ class DataflowGraph(object):
 
         return H, _splitMatrix(A, self.numberOfInitialTokens())
 
-    def repetitionVector(self):
+    def repetitionVector(self) -> Optional[Dict[str,int]]:
 
         def _findIntegerRates(comp, rates):
             factor = Fraction(1,1)
@@ -434,8 +448,8 @@ class DataflowGraph(object):
                 b = next(iter(proc))
                 proc.remove(b)
                 actors.remove(b)
-                if b in self._outchannels:
-                    for c in self._outchannels[b]:
+                if b in self._outChannels:
+                    for c in self._outChannels[b]:
                         pr = self.productionRate(c)
                         co = self.consumptionRate(c)
                         ca = self._chanConsumer[c]
@@ -449,8 +463,8 @@ class DataflowGraph(object):
                             rates[ca] = rate
                             proc.add(ca)
                             comp.add(ca)
-                if b in self._inchannels:
-                    for c in self._inchannels[b]:
+                if b in self._inChannels:
+                    for c in self._inChannels[b]:
                         pr = self.productionRate(c)
                         co = self.consumptionRate(c)
                         ca = self._chanProducer[c]
@@ -501,7 +515,7 @@ class DataflowGraph(object):
         try:
             scAmu = mpStarClosure(Amu)
         except PositiveCycleException:
-            raise Exception('The period is smaller than smallest period the system can sustain.')
+            raise SDFException('The period is smaller than smallest period the system can sustain.')
         CscAmu = mpMultiplyMatrices(C, scAmu)
         x00 = mpMultiplyMatrices(mpTransposeMatrix([x0]), [mpZeroVector(len(self._inputs))])
         Bmmu= mpMatrixMinusScalar(B, mu)
@@ -521,7 +535,7 @@ class DataflowGraph(object):
         try:
             scAmu = mpStarClosure(Amu)
         except PositiveCycleException:
-            raise Exception('The period is smaller than smallest period the system can sustain.')
+            raise SDFException('The period is smaller than smallest period the system can sustain.')
         CscAmu = mpMultiplyMatrices(C, scAmu)
 
         Bmmu= mpMatrixMinusScalar(B, mu)
@@ -561,6 +575,8 @@ class DataflowGraph(object):
             return self
         
         repVec = self.repetitionVector()
+        if repVec is None:
+            raise SDFInconsistentException("Graph is inconsistent")
         
         res = DataflowGraph()
 
@@ -624,7 +640,7 @@ class DataflowGraph(object):
                     inputs.extend(mpSplitSequence(inputOverride[s], self.repetitions(s)))
                 else:
                     if inputOverride[s] not in inpSig:
-                        raise Exception("Unknown event sequence: {}.".format(inputOverride[s]))
+                        raise SDFException("Unknown event sequence: {}.".format(inputOverride[s]))
                     inputs.extend(mpSplitSequence(inpSig[inputOverride[s]], self.repetitions(s)))
             else:
                 if s in inpSig:
@@ -632,7 +648,7 @@ class DataflowGraph(object):
                 else:
                     inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
 
-        vt = MaxPlusMatrixModel.vectortrace(Matrices, x0, ni, inputs)
+        vt = MaxPlusMatrixModel.vectorTrace(Matrices, x0, ni, inputs)
         ssvt = [v[inputSize:stateSize+inputSize]+v[0:inputSize] for v in vt]
         
         inputTraces = [v[0:inputSize] for v in vt]

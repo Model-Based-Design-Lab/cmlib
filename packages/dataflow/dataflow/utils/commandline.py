@@ -466,7 +466,7 @@ def _makeVectorTrace(matrices, vectorsequences, eventsequences, args):
         x0 = parseInitialState(args, stateSize)
         nt, ut = parseInputTraces(eventsequences, vectorsequences, args)
         inputs = MaxPlusMatrixModel.extractSequences(nt, ut, eventsequences, vectorsequences, inputLabels)
-        vt = MaxPlusMatrixModel.vectortrace(matrices, x0, ni, inputs, True)
+        vt = MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, inputs, True)
 
     labels = []
     labels = labels + inputLabels

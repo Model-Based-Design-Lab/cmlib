@@ -1,6 +1,6 @@
 from functools import reduce
 from io import StringIO
-from typing import Optional
+from typing import List, Optional, Tuple
 import dataflow.maxplus.maxplus as mp
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
@@ -62,7 +62,7 @@ class EventSequenceModel(object):
         res._sequence = mp.mpScale(self._sequence, c)
         return res
 
-    def extractSequenceList(self)->list[mp.TTimeStampList]:
+    def extractSequenceList(self)->List[mp.TTimeStampList]:
         '''Determine list of sequences. For an event sequence, the list will contain only one list as an element'''
         return [self._sequence]
 
@@ -73,14 +73,14 @@ class EventSequenceModel(object):
 class VectorSequenceModel(object):
 
     _vectors: mp.TMPVectorList
-    _labels: list[str]
+    _labels: List[str]
 
     def __init__(self, vectors: Optional[mp.TMPVectorList] = None):
         if vectors is None:
             self._vectors: mp.TMPVectorList = []
         else:
             self._vectors = vectors
-        self._labels: list[str] = []
+        self._labels: List[str] = []
 
     def addVector(self, v: mp.TMPVector):
         '''Add a vector to the vector sequence'''
@@ -91,11 +91,11 @@ class VectorSequenceModel(object):
         # TODO: remove method divert to calls to addVector
         self._vectors.append(row)
 
-    def setLabels(self, labels: list[str]):
+    def setLabels(self, labels: List[str]):
         '''Set labels for the vector elements. The length of the list of labels should match the size of the vectors in the list'''
         self._labels = labels
 
-    def labels(self)->list[str]:
+    def labels(self)->List[str]:
         '''Get the labels of the vector elements'''
         return self._labels
 
@@ -132,7 +132,7 @@ class VectorSequenceModel(object):
         res._vectors = mp.mpMaxVectorSequences(self._vectors, vs._vectors)
         return res
 
-    def extractSequenceList(self)->list[mp.TTimeStampList]:
+    def extractSequenceList(self)->List[mp.TTimeStampList]:
         '''Convert vector sequence into a list of event sequences from the corresponding elements from each of the vectors.'''
         return mp.mpTransposeMatrix(self._vectors)
 
@@ -142,21 +142,21 @@ class VectorSequenceModel(object):
 class MaxPlusMatrixModel(object):
     '''Model of a max-plus matrix'''
 
-    _labels: list[str]
-    _rows: list[mp.TMPVector]
+    _labels: List[str]
+    _rows: List[mp.TMPVector]
 
-    def __init__(self, rows: Optional[list[mp.TMPVector]]=None):
+    def __init__(self, rows: Optional[List[mp.TMPVector]]=None):
         self._labels = []
         if rows is None:
             self._rows = []
         else:
             self._rows = rows
 
-    def setLabels(self, labels: list[str]):
+    def setLabels(self, labels: List[str]):
         '''Set labels for the rows / columns of the matrix'''
         self._labels = labels
 
-    def labels(self) -> list[str]:
+    def labels(self) -> List[str]:
         '''Get the row/column labels'''
         return self._labels
 
@@ -212,7 +212,7 @@ class MaxPlusMatrixModel(object):
     def __str__(self) -> str:
         return "[" + '\n'.join(['['+(', '.join([str(e) for e in r]))+']' for r in self._rows]) + ']'
 
-    def eigenvectors(self) -> tuple[list[tuple[mp.TMPVector,float]],list[tuple[mp.TMPVector,mp.TMPVector]]]:
+    def eigenvectors(self) -> Tuple[List[Tuple[mp.TMPVector,float]],List[Tuple[mp.TMPVector,mp.TMPVector]]]:
         '''
         Compute eigenvectors and generalized eigenvector and corresponding (generalized) eigenvalues.
         Returns a pair with:
@@ -225,14 +225,14 @@ class MaxPlusMatrixModel(object):
     def eigenvalue(self):
         return mp.mpEigenValue(self._rows)
 
-    def _precedencegraphLabels(self):
+    def _precedenceGraphLabels(self):
         return self.labels() if len(self.labels()) == self.numberOfRows() else [ 'x{}'.format(k) for k in range(self.numberOfRows())]
 
-    def precedencegraph(self):
-        return mp.mpPrecedenceGraph(self._rows, self._precedencegraphLabels())
+    def precedenceGraph(self):
+        return mp.mpPrecedenceGraph(self._rows, self._precedenceGraphLabels())
             
-    def precedencegraphGraphviz(self):
-        return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedencegraphLabels())
+    def precedenceGraphGraphviz(self):
+        return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedenceGraphLabels())
 
     def starClosure(self):
         try:
@@ -247,7 +247,7 @@ class MaxPlusMatrixModel(object):
         else:
             return MaxPlusMatrixModel(mp.mpMultiplyMatrices(self._rows, matOrVs._rows))
         
-    def vectortraceClosed(self, x0, ni):
+    def vectorTraceClosed(self, x0, ni):
         '''
         Compute a vector trace of state vectors of the matrix in this model. Requires that the matrix is square.
 
@@ -264,10 +264,10 @@ class MaxPlusMatrixModel(object):
         matrices['B'] = MaxPlusMatrixModel()
         matrices['C'] = MaxPlusMatrixModel()
         matrices['D'] = MaxPlusMatrixModel()
-        return MaxPlusMatrixModel.vectortrace(matrices, x0, ni, [])
+        return MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, [])
 
     @staticmethod
-    def vectortrace(matrices, x0, ni, inputs, useEndingState = False):
+    def vectorTrace(matrices, x0, ni, inputs, useEndingState = False):
         '''
         Compute a vector trace of the combined state vector and output vector, stacked
 
@@ -322,10 +322,10 @@ class MaxPlusMatrixModel(object):
             if len(i) < ni:
                 raise Exception('Insufficiently long input sequences for {} iterations.'.format(ni))
         inpPref = [i[0:ni] for i in inputs]
-        inputvectors = list(map(list, zip(*inpPref)))
-        if len(inputvectors) ==0:
+        inputVectors = list(map(list, zip(*inpPref)))
+        if len(inputVectors) ==0:
             # degenerate case of no inputs
-            inputvectors = [[]] * ni
+            inputVectors = [[]] * ni
 
         if x0 is None:
             x = mp.mpZeroVector(mp.mpNumberOfRows(MA))
@@ -334,18 +334,18 @@ class MaxPlusMatrixModel(object):
 
         trace = []
         for n in range(ni):
-            nextX = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputvectors[n]))
-            outputvector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MC, x), mp.mpMultiplyMatrixVector(MD, inputvectors[n]))
+            nextX = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputVectors[n]))
+            outputVector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MC, x), mp.mpMultiplyMatrixVector(MD, inputVectors[n]))
             if useEndingState:
                 stateVector = nextX
             else:
                 stateVector = x
-            trace.append(mp.mpStackVectors(inputvectors[n], mp.mpStackVectors(stateVector, outputvector)))
+            trace.append(mp.mpStackVectors(inputVectors[n], mp.mpStackVectors(stateVector, outputVector)))
             x = nextX
         return trace
 
     @staticmethod
-    def extractSequences(nSeq, uSeq, eventsequences, vectorsequences, inputLabels):
+    def extractSequences(nSeq, uSeq, eventSequences, vectorSequences, inputLabels):
         '''
         Extract the input sequence for the input labels from the combined information from named and unnamed sequenced provided on the command line and the sequences defined in the model. Priority is given to sequences specified on the command line. Sequences that cannot be fined by name are filled with the unnamed sequences.
         '''
@@ -358,12 +358,12 @@ class MaxPlusMatrixModel(object):
             allNamed = nSeq.copy()
 
         # add event sequences
-        for e in eventsequences:
-            allNamed[e] = eventsequences[e].sequence()
+        for e in eventSequences:
+            allNamed[e] = eventSequences[e].sequence()
 
         # add vector sequences.
-        for v in vectorsequences:
-            vsl = vectorsequences[v].extractSequenceList()
+        for v in vectorSequences:
+            vsl = vectorSequences[v].extractSequenceList()
             for k in range(len(vsl)):
                 allNamed[v+str(k+1)] = vsl[k]
 
