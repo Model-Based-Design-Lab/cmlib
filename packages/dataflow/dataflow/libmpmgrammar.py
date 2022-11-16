@@ -72,7 +72,7 @@ def parseMPMDSL(content, factory):
         model =  MetaModelMPM.model_from_str(content)
     except TextXSyntaxError as err:
         sys.stderr.write("Syntax error in line %d col %d: %s\n" % (err.line, err.col, err.message))
-        return (None, None)
+        return (None, None, None, None)
     
     resMatrices = {}
     for m in model.matrices:

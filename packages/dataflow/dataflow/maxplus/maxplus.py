@@ -1,3 +1,4 @@
+from typing import Any
 from dataflow.utils.visualization import weightedGraphToGraphViz
 import pygraph.classes.digraph  as pyg
 import pygraph.algorithms.accessibility as pyga
@@ -8,13 +9,21 @@ from dataflow.maxplus.starclosure import starClosure
 
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller
 
+TTimeStamp = float|None
+TTimeStampList = list[TTimeStamp]
+TMPVector = TTimeStampList
+TMPVectorList = list[TMPVector]
+TMPMatrix = TMPVectorList
+
+class MPException(Exception):
+    pass
 
 def mpMatrixMinusScalar(M, c):
     if c == MP_MINUSINFINITY:
         raise MPAlgebraException('Cannot subtract minus infinity')
     return [ [MP_MINUS(e, c) for e in r] for r in M]
 
-def mpTransposeMatrix(A):
+def mpTransposeMatrix(A)->TMPMatrix:
     return list(map(list, zip(*A)))
 
 def mpZeroVector(n):
@@ -29,14 +38,14 @@ def mpInnerProduct(v, w):
         res = MP_MAX(res, MP_PLUS(v[k], w[k]))
     return res
 
-def mpMultiplyMatrices(A, B):
+def mpMultiplyMatrices(A, B)->TMPMatrix:
     BT = mpTransposeMatrix(B)
     return [[mpInnerProduct(ra, rb) for rb in BT] for ra in A]
 
-def mpMultiplyMatrixVectorSequence(A, x):
+def mpMultiplyMatrixVectorSequence(A, x) -> TMPMatrix:
     return [mpMultiplyMatrixVector(A,v) for v in x]
 
-def mpMultiplyMatrixVector(A, x):
+def mpMultiplyMatrixVector(A, x) -> TMPVector:
     return [ mpInnerProduct(ra, x) for ra in A]
 
 def mpMaxVectors(x, y):
@@ -163,7 +172,7 @@ def mpThroughput(M):
         return "infinite"
     return 1.0 / lmbda
 
-def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
+def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> tuple[dict[Any,float|None],dict[Any,float|None]]:
 
     def _normalizeDict(d):
         '''
@@ -197,7 +206,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
     # (not from all original cycle means)
     # for nodes downstream from the root node also take max with their
     # local cycle mean
-    trCycleMeansMap = dict([(n, None) for n in gr.nodes()])
+    trCycleMeansMap: dict[Any,float|None] = dict([(n, None) for n in gr.nodes()])
     trCycleMeansMap[rootnode] = cycleMeansMap[rootnode]
     
     # fixed-point computation
@@ -215,7 +224,7 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
                             trCycleMeansMap[e[1]] = cycleMeansMap[e[1]]
                             change = True
                 else:
-                    if trCycleMeansMap[e[0]] > trCycleMeansMap[e[1]]:
+                    if trCycleMeansMap[e[0]] > trCycleMeansMap[e[1]]:  # type: ignore
                         trCycleMeansMap[e[1]] = trCycleMeansMap[e[0]]
                         change = True
 
@@ -245,7 +254,11 @@ def _normalizedLongestPaths(gr, rootnode, cycleMeansMap):
 
 
 
-def mpEigenVectors(M):
+def mpEigenVectors(M: TMPMatrix) -> tuple[list[tuple[TMPVector,float]],list[tuple[TMPVector,TMPVector]]]:
+    '''
+    Compute the eigenvectors of a square matrix.
+    Return a pair of a list of eigenvector and a list of generalized eigenvectors.
+    '''
     # compute the precedence graphs
     # compute the strongly connected components and their cycle means
     # for each scc, determine a (generalized) eigenvector
@@ -257,18 +270,17 @@ def mpEigenVectors(M):
                 values.add(evv[n])
         return len(values) <= 1
 
-    def _asEigenValue(evv):
+    def _asEigenValue(evv)->float:
         for n in evv:
             if evv[n] is not None:
                 return evv[n]
-        return None
+        raise MPException("Eigenvalue cannot be minus infinity.")
 
     def _asGeneralizedEigenValue(evv):
         evl = []
         for n in gr.nodes():
             evl.append(evv[n])
         return evl
-
 
     gr = mpMatrixToPrecedenceGraph(M)
 
@@ -329,8 +341,8 @@ def mpEigenVectors(M):
                 trCycleMeans[sccMap[e[1]]] = trCycleMeans[sccMap[e[0]]]
 
     # two lists to keep the results
-    eigenVectors = []
-    genEigenVectors = []
+    eigenVectors: list[tuple[TMPVector,float]] = []
+    genEigenVectors: list[tuple[TMPVector,TMPVector]] = []
     
     # for each of the SCC subgraphs that have a cycle mean that is not -inf
     for k in range(len(subgraphs)):
@@ -339,12 +351,12 @@ def mpEigenVectors(M):
             # in the normalized graph from the criticalNode of the SCC
             ev, evv = _normalizedLongestPaths(gr, criticalNodes[k], cycleMeansMap)
             # collect the eigenvector in the list evl
-            evl = []
+            evl: TMPVector = []
             # for each of the nodes of the precedence graph
             for n in gr.nodes():
                 # append the path length to node n
                 evl.append(ev[n])
-            # check of the result is a normal eigenvalue or only a generalized eigenvalue
+            # check if the result is a normal eigenvalue or only a generalized eigenvalue
             # and process the results accordingly
             if _isRegularEigenValue(evv):
                 eigenVectors.append((evl, _asEigenValue(evv)))
@@ -376,7 +388,7 @@ def mpMaxEventSequences(es1, es2):
     return mpMaxVectors(es1, es2)
 
 
-def mpMaxVectorSequences(vs1, vs2):
+def mpMaxVectorSequences(vs1: TMPVectorList, vs2: TMPVectorList) -> TMPVectorList:
     return [mpMaxVectors(vs1[k], vs2[k]) for k in range(min(len(vs1), len(vs2)))]
 
 def mpSplitSequence(seq, n):
@@ -391,6 +403,6 @@ def mpMergeSequences(seqs):
 def mpDelay(seq, n):
     return ([MP_MINUSINFINITY] * n) + seq
 
-def mpScale(seq, c):
+def mpScale(seq, c)->TTimeStampList:
     return [MP_PLUS(v, c) for v in seq]
 
