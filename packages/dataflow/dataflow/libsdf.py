@@ -1,3 +1,4 @@
+from typing import Tuple,Any
 import copy
 from functools import reduce
 from io import StringIO
@@ -734,7 +735,7 @@ class DataflowGraph(object):
         return result
 
     @staticmethod
-    def fromDSL(dslString):
+    def fromDSL(dslString)->Tuple[str,Any]:
         '''
         Parse the model provides as a string.
         Returns if successful a pair with the name of the model and the constructed instance of `DataflowGraph`
@@ -750,7 +751,7 @@ class DataflowGraph(object):
         result = parseSDFDSL(dslString, factory)
         if result[0] is None:
             exit(1)
-        return result
+        return result  # type: ignore
 
 
     def __str__(self):

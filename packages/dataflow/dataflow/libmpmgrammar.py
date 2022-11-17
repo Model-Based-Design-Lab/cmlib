@@ -1,3 +1,4 @@
+from typing import Any, Dict, Tuple, Union
 from textx import metamodel_from_str, TextXSyntaxError
 import sys
 
@@ -67,7 +68,7 @@ Comment:
 
 MetaModelMPM = metamodel_from_str(MPMGrammar, classes=[])
 
-def parseMPMDSL(content, factory):
+def parseMPMDSL(content, factory) -> Union[Tuple[None,None,None,None],Tuple[str,Dict[str,Any],Dict[str,Any],Dict[str,Any]]]:
     try:
         model =  MetaModelMPM.model_from_str(content)
     except TextXSyntaxError as err:

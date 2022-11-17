@@ -1,6 +1,7 @@
 """ miscellaneous utility functions """
 
 import re
+from typing import Union
 from dataflow.maxplus.maxplus import mpParseVector, MP_MINUSINFINITY
 from dataflow.maxplus.maxplus import mpZeroVector
 
@@ -230,12 +231,16 @@ def parseInitialState(args, stateSize):
             raise Exception('Provided initial state is not of the expected size.')
         return x0
 
-def requireNumberOfIterations(args):
+def requireNumberOfIterations(args) -> int:
     if not args.numberofiterations:
         raise Exception("Operation requires number of iterations to be given.")
-    return parseNumberOfIterations(args)
+    val = parseNumberOfIterations(args)
+    if val is None:
+        raise Exception("Failed to parse number of iterations.")
+    return val
 
-def parseNumberOfIterations(args):
+
+def parseNumberOfIterations(args) -> Union[None,int]:
     if not args.numberofiterations:
         return None
     try:

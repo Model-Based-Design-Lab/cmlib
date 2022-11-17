@@ -1,16 +1,16 @@
 from functools import reduce
 from io import StringIO
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union, Dict
 import dataflow.maxplus.maxplus as mp
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
 import pygraph.classes.digraph  as pyg
 
-from packages.dataflow.dataflow.maxplus.maxplus import mpStarClosure
-
 # Represent a finite event sequence, i.e., a list of time stamps
+class MPMException(mp.MPException):
+    pass
 
-class MPMValidateException(mp.MPException):
+class MPMValidateException(MPMException):
     pass
 class EventSequenceModel(object):
 
@@ -40,7 +40,7 @@ class EventSequenceModel(object):
     def convolveWith(self: 'EventSequenceModel', es: 'EventSequenceModel')->'EventSequenceModel':
         '''Compute the convolution with another EventSequenceModel'''
         if not isinstance(es, EventSequenceModel):
-            raise Exception('Object of the wrong type to take convolution with event sequence.')
+            raise MPMException('Object of the wrong type to take convolution with event sequence.')
         res = EventSequenceModel()
         res._sequence = mp.mpConvolution(self._sequence, es._sequence)
         return res
@@ -48,7 +48,7 @@ class EventSequenceModel(object):
     def maxWith(self, es: 'EventSequenceModel') -> 'EventSequenceModel':
         '''Compute the maximum with another event sequence'''
         if not isinstance(es, EventSequenceModel):
-            raise Exception('Object of the wrong type to take maximum with event sequence.')
+            raise MPMException('Object of the wrong type to take maximum with event sequence.')
         res = EventSequenceModel()
         res._sequence = mp.mpMaxEventSequences(self._sequence, es._sequence)
         return res
@@ -139,6 +139,9 @@ class VectorSequenceModel(object):
         '''Convert vector sequence into a list of event sequences from the corresponding elements from each of the vectors.'''
         return mp.mpTransposeMatrix(self._vectors)
 
+    def multiply(self, m: Union['VectorSequenceModel','MaxPlusMatrixModel']):
+        raise MPMException("Cannot multiply vector sequence on the left-hand side.")
+
     def __str__(self)->str:
         return '[\n'+'\n'.join([mp.mpVector(v) for v in self._vectors])+'\n]'
 
@@ -222,7 +225,7 @@ class MaxPlusMatrixModel(object):
         A list of pairs of eigenvector and eigenvalue and a list of pairs of generalized eigenvectors and generalized eigenvalues.
         '''
         if not self.isSquare():
-            raise mp.MPException("Matrix must be square to compute eigenvectors.")
+            raise MPMException("Matrix must be square to compute eigenvectors.")
         return mp.mpEigenVectors(self._rows)
 
     def eigenvalue(self) -> mp.TTimeStamp:
@@ -244,18 +247,19 @@ class MaxPlusMatrixModel(object):
     def starClosure(self)->Tuple[bool,Optional['MaxPlusMatrixModel']]:
         '''Determine the * closure. If it exist return True and the star close. If it doesn't return False and None.'''
         try:
-            cl = MaxPlusMatrixModel(mpStarClosure(self._rows))
+            cl = MaxPlusMatrixModel(mp.mpStarClosure(self._rows))
         except PositiveCycleException:
             return False, None
         return True, cl
 
-    def multiply(self, matOrVs):
+    def multiply(self, matOrVs: Union['MaxPlusMatrixModel',VectorSequenceModel]) -> Union['MaxPlusMatrixModel',VectorSequenceModel]:
+        '''Multiply the matrix with another matrix or with a vector sequence.'''
         if isinstance(matOrVs, VectorSequenceModel):
             return VectorSequenceModel(mp.mpMultiplyMatrixVectorSequence(self._rows, matOrVs._vectors))
         else:
             return MaxPlusMatrixModel(mp.mpMultiplyMatrices(self._rows, matOrVs._rows))
         
-    def vectorTraceClosed(self, x0, ni):
+    def vectorTraceClosed(self, x0: mp.TMPVector, ni: int) -> mp.TMPVectorList:
         '''
         Compute a vector trace of state vectors of the matrix in this model. Requires that the matrix is square.
 
@@ -275,7 +279,7 @@ class MaxPlusMatrixModel(object):
         return MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, [])
 
     @staticmethod
-    def vectorTrace(matrices, x0, ni, inputs, useEndingState = False):
+    def vectorTrace(matrices: Dict[str,'MaxPlusMatrixModel'], x0: mp.TMPVector, ni: int, inputs: List[mp.TTimeStampList], useEndingState: bool = False) -> mp.TMPVectorList:
         '''
         Compute a vector trace of the combined state vector and output vector, stacked
 
@@ -293,29 +297,30 @@ class MaxPlusMatrixModel(object):
 
         '''
         
-        def _validate(mat):
+        def _validate(mat: Dict[str,'MaxPlusMatrixModel'])->None:
             if not ('A' in mat and 'B' in mat and 'C' in mat and 'D' in mat):
-                raise Exception('Expected matrices A, B, C and D')
+                raise MPMValidateException('Expected matrices A, B, C and D')
             A = mat['A']
             B = mat['B']
             C = mat['C']
             D = mat['D']
             if A.numberOfRows() != B.numberOfRows():
                 if A.numberOfColumns() > 0 and B.numberOfColumns() > 0:
-                    raise Exception('The number of rows of A does not match the number of rows of B')
+                    raise MPMValidateException('The number of rows of A does not match the number of rows of B')
             if C.numberOfRows() != D.numberOfRows():
                 if C.numberOfColumns() > 0 and D.numberOfColumns() > 0:
-                    raise Exception('The number of rows of C does not match the number of rows of D')
+                    raise MPMValidateException('The number of rows of C does not match the number of rows of D')
             if A.numberOfColumns() != C.numberOfColumns():
                 if A.numberOfRows() > 0 and C.numberOfRows() > 0:
-                    raise Exception('The number of columns of A does not match the number of columns of C')
+                    raise MPMValidateException('The number of columns of A does not match the number of columns of C')
             if B.numberOfColumns() != D.numberOfColumns():
                 if B.numberOfRows() > 0 and D.numberOfRows() > 0:
-                    raise Exception('The number of columns of B does not match the number of columns of D')
-            return True
+                    raise MPMValidateException('The number of columns of B does not match the number of columns of D')
 
-        if not _validate(matrices):
-            raise Exception("Provided matrices are not a valid state-space model.")
+        try:
+            _validate(matrices)
+        except MPMValidateException:
+            raise MPMException("Provided matrices are not a valid state-space model.")
 
         MA = matrices['A'].mpMatrix()
         MB = matrices['B'].mpMatrix()
@@ -323,26 +328,27 @@ class MaxPlusMatrixModel(object):
         MD = matrices['D'].mpMatrix()
 
         if len(inputs) < mp.mpNumberOfColumns(MB):
-            raise Exception('Insufficient inputs sequences provided. ')
+            raise MPMException('Insufficient inputs sequences provided. ')
         if ni is None:
             ni = min([len(l) for l in inputs])
         for i in inputs:
             if len(i) < ni:
-                raise Exception('Insufficiently long input sequences for {} iterations.'.format(ni))
+                raise MPMException('Insufficiently long input sequences for {} iterations.'.format(ni))
         inpPref = [i[0:ni] for i in inputs]
-        inputVectors = list(map(list, zip(*inpPref)))
+        inputVectors: mp.TMPVectorList = list(map(list, zip(*inpPref)))
         if len(inputVectors) ==0:
             # degenerate case of no inputs
             inputVectors = [[]] * ni
 
+        x: mp.TMPVector
         if x0 is None:
             x = mp.mpZeroVector(mp.mpNumberOfRows(MA))
         else:
             x = x0
 
-        trace = []
+        trace: mp.TMPVectorList = []
         for n in range(ni):
-            nextX = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputVectors[n]))
+            nextX: mp.TMPVector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputVectors[n]))
             outputVector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MC, x), mp.mpMultiplyMatrixVector(MD, inputVectors[n]))
             if useEndingState:
                 stateVector = nextX
@@ -353,9 +359,9 @@ class MaxPlusMatrixModel(object):
         return trace
 
     @staticmethod
-    def extractSequences(nSeq, uSeq, eventSequences, vectorSequences, inputLabels):
+    def extractSequences(nSeq: Optional[Dict[str,mp.TTimeStampList]], uSeq: Optional[List[mp.TTimeStampList]], eventSequences: Dict[str,EventSequenceModel], vectorSequences: Dict[str,VectorSequenceModel], inputLabels: List[str]) -> List[mp.TTimeStampList]:
         '''
-        Extract the input sequence for the input labels from the combined information from named and unnamed sequenced provided on the command line and the sequences defined in the model. Priority is given to sequences specified on the command line. Sequences that cannot be fined by name are filled with the unnamed sequences.
+        Extract the input sequence for the input labels from the combined information from named (nSeq) and unnamed (uSeq) sequences provided on the command line and the sequences defined in the model. Priority is given to sequences specified on the command line. Sequences that cannot be found by name are filled with the unnamed sequences.
         '''
 
         if uSeq is None:
@@ -375,25 +381,26 @@ class MaxPlusMatrixModel(object):
             for k in range(len(vsl)):
                 allNamed[v+str(k+1)] = vsl[k]
 
-        res = []
+        res: List[mp.TTimeStampList] = []
         uInd = 0
         for l in inputLabels:
             if l in allNamed:
                 res.append(allNamed[l])
             else:
                 if uInd >= len(uSeq):
-                    raise Exception("Insufficient input sequences specified")
+                    raise MPMException("Insufficient input sequences specified")
                 res.append(uSeq[uInd])
                 uInd += 1
         return res
 
     @staticmethod
-    def multiplySequence(matrices):
+    def multiplySequence(matrices: List[Union['MaxPlusMatrixModel',VectorSequenceModel]]):
+        '''Multiply the sequence of matrices, possibly ending with a vector sequence.'''
         return reduce(lambda prod, mat: prod.multiply(mat), matrices)
         
 
     @staticmethod
-    def fromDSL(dslString):
+    def fromDSL(dslString)-> Tuple[str,Dict[str,'MaxPlusMatrixModel'],Dict[str,VectorSequenceModel],Dict[str,EventSequenceModel]]:
 
         factory = dict()
         factory['Init'] = lambda : MaxPlusMatrixModel()
@@ -403,8 +410,9 @@ class MaxPlusMatrixModel(object):
         factory['AddLabels'] = lambda m, labels: m.setLabels(labels)
 
         name, resMatrices, resVectorSequences, resEventSequences = parseMPMDSL(dslString, factory)
+        if name is None or resMatrices is None or resVectorSequences is None or resEventSequences is None:
+            raise Exception("Failed to parse max-plus model")
         return name, resMatrices, resVectorSequences, resEventSequences
-        
 
 
     def asDSL(self, name, allInstances = None):

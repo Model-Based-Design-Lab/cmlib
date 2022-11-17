@@ -8,17 +8,12 @@ from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
 
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller
-
-TTimeStamp = Union[float,None]
-TTimeStampList = List[TTimeStamp]
-TMPVector = TTimeStampList
-TMPVectorList = List[TMPVector]
-TMPMatrix = TMPVectorList
+from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
 
 class MPException(Exception):
     pass
 
-def mpMatrixMinusScalar(M, c):
+def mpMatrixMinusScalar(M: TMPMatrix, c) -> TMPMatrix:
     if c == MP_MINUSINFINITY:
         raise MPAlgebraException('Cannot subtract minus infinity')
     return [ [MP_MINUS(e, c) for e in r] for r in M]
@@ -26,8 +21,8 @@ def mpMatrixMinusScalar(M, c):
 def mpTransposeMatrix(A)->TMPMatrix:
     return list(map(list, zip(*A)))
 
-def mpZeroVector(n):
-    return [0] * n
+def mpZeroVector(n) -> TMPVector:
+    return [0.0] * n
 
 def mpMinusInfVector(n):
     return [MP_MINUSINFINITY] * n
@@ -66,7 +61,7 @@ def mpScaleVector(c, x):
     return [MP_PLUS(c, x[k]) for k in range(len(x))]
 
 
-def mpStackVectors(x, y):
+def mpStackVectors(x: TMPVector, y: TMPVector)->TMPVector:
     return x + y
 
 def mpMaxMatrices(A, B):
@@ -375,7 +370,7 @@ def mpPrecedenceGraphGraphviz(M, labels):
     gr = mpMatrixToPrecedenceGraph(M, labels)
     return weightedGraphToGraphViz(gr)
 
-def mpStarClosure(M):
+def mpStarClosure(M: TMPMatrix) -> TMPMatrix:
         return starClosure(M)
 
 def mpConvolution(s, t):
