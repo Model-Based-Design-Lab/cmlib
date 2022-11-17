@@ -147,7 +147,7 @@ def _subgraph(gr, nodes):
         res.add_edge(e, gr.edge_weight(e))
     return res
 
-def mpEigenValue(M):
+def mpEigenValue(M) -> TTimeStamp:
     gr = mpMatrixToPrecedenceGraph(M)
 
     sccs = pyga.mutual_accessibility(gr)
@@ -170,6 +170,8 @@ def mpThroughput(M):
     lmbda = mpEigenValue(M)
     if lmbda == 0.0:
         return "infinite"
+    if lmbda is None:
+        return "undefined"
     return 1.0 / lmbda
 
 def _normalizedLongestPaths(gr, rootnode, cycleMeansMap) -> Tuple[Dict[Any,TTimeStamp],Dict[Any,TTimeStamp]]:

@@ -4,6 +4,9 @@ from typing import List, Optional, Tuple
 import dataflow.maxplus.maxplus as mp
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
+import pygraph.classes.digraph  as pyg
+
+from packages.dataflow.dataflow.maxplus.maxplus import mpStarClosure
 
 # Represent a finite event sequence, i.e., a list of time stamps
 
@@ -222,21 +225,26 @@ class MaxPlusMatrixModel(object):
             raise mp.MPException("Matrix must be square to compute eigenvectors.")
         return mp.mpEigenVectors(self._rows)
 
-    def eigenvalue(self):
+    def eigenvalue(self) -> mp.TTimeStamp:
+        '''Determine the largest eigenvalue of the matrix.'''
         return mp.mpEigenValue(self._rows)
 
-    def _precedenceGraphLabels(self):
+    def _precedenceGraphLabels(self) -> List[str]:
+        '''Return a lst of labels for the rows/columns of the matrix. If none have been explicitly defined it generate labels `x` with a number.'''
         return self.labels() if len(self.labels()) == self.numberOfRows() else [ 'x{}'.format(k) for k in range(self.numberOfRows())]
 
-    def precedenceGraph(self):
+    def precedenceGraph(self) -> pyg.digraph:
+        '''Determine the precedence graph of the matrix.'''
         return mp.mpPrecedenceGraph(self._rows, self._precedenceGraphLabels())
             
-    def precedenceGraphGraphviz(self):
+    def precedenceGraphGraphviz(self) -> str:
+        '''Return a Graphviz representation of the precedence graph as a string.'''
         return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedenceGraphLabels())
 
-    def starClosure(self):
+    def starClosure(self)->Tuple[bool,Optional['MaxPlusMatrixModel']]:
+        '''Determine the * closure. If it exist return True and the star close. If it doesn't return False and None.'''
         try:
-            cl = starClosure(self._rows)
+            cl = MaxPlusMatrixModel(mpStarClosure(self._rows))
         except PositiveCycleException:
             return False, None
         return True, cl
