@@ -1,17 +1,17 @@
 {
     "deadlock": "True",
     "repetitionVector": {
-        "i": "1.0000",
-        "A": "1.0000",
+        "o": "1.0000",
         "B": "1.0000",
         "C": "1.0000",
-        "o": "1.0000"
+        "A": "1.0000",
+        "i": "1.0000"
     },
     "listOfInputsStr": "i",
     "listOfOutputsStr": "o",
     "listOfStateElementsStr": "",
     "convertToSingleRate": {
-        "_actors": "[A, B, C, i, o]",
+        "_actorsAndIO": "[A, B, C, i, o]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5]",
         "_actorSpecs": {
             "i": {
@@ -61,11 +61,11 @@
         "_outputs": "[o]",
         "_inputSignals": {},
         "_repetitionVector": {
-            "i": "1.0000",
-            "A": "1.0000",
+            "o": "1.0000",
             "B": "1.0000",
             "C": "1.0000",
-            "o": "1.0000"
+            "A": "1.0000",
+            "i": "1.0000"
         },
         "_symbolicTimeStampSize": "1.0000",
         "_symbolicVector": "[i]"

@@ -69,8 +69,8 @@ class SDF_pytest(Model_pytest):
     def Incorrect_behaviour_tests(self):
         if self.mu is not None:
             x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
-            self.incorrect_test(lambda: self.model.latency(x0, self.mu-0.01), "The period is smaller than smallest period the system can sustain.")
-            self.incorrect_test(lambda: self.model.generalizedLatency(self.mu-0.01), "The period is smaller than smallest period the system can sustain.")
+            self.incorrect_test(lambda: self.model.latency(x0, self.mu-0.01), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
+            self.incorrect_test(lambda: self.model.generalizedLatency(self.mu-0.01), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
 
     # Class to create namespace args consisting of user input arguments 
     class Namespace:

@@ -106,7 +106,7 @@ class Model_pytest(object):
             self.output[name] = result
             expected_result = self.output[name]
         
-        if not result == expected_result:
+        if not (result == expected_result):
             print("Expected result: " + str(expected_result))
             print("Actual result: " + str(result))
 

@@ -296,11 +296,9 @@ def requireSquareMatrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
     return sqMatrixModels
 
 def getSquareMatrix(matrices: Dict[str, MaxPlusMatrixModel], args: Any) -> str:
-    '''Get a square matrix from the arguments. Requires that exactly one, square matrix was specified, otherwise an exception is raised.'''
+    '''Get a square matrix from the arguments. If no square matrix was specified, take the first one from the model.'''
     sqMatrixModels = requireSquareMatrices(matrices)
     mat = parseOneMatrix(args)
-    if mat is None:
-        raise Exception("No matrix was specified.")
     if mat:
         if mat not in sqMatrixModels:
             raise Exception("Matrix {0} is not square.".format(mat))
