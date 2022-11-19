@@ -1,6 +1,6 @@
 from functools import reduce
 from io import StringIO
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Literal, Optional, Tuple, Union, Dict
 import dataflow.maxplus.maxplus as mp
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
@@ -71,7 +71,7 @@ class EventSequenceModel(object):
 
     def __str__(self)->str:
         '''Return a string representation.'''
-        return mp.mpVector(self._sequence)
+        return mp.mpVectorToString(self._sequence)
 
 class VectorSequenceModel(object):
 
@@ -117,6 +117,9 @@ class VectorSequenceModel(object):
         '''Returns the number of vector in the list.'''
         return len(self._vectors)
 
+    def __len__(self) -> int:
+        return self.length()
+
     def vectorLength(self) -> int:
         '''Returns the length of the vectors in the list. Assumes that all vectors in the list have the same length. Returns 0 if there are no vectors in the list.'''
         if len(self._vectors) == 0:
@@ -143,7 +146,7 @@ class VectorSequenceModel(object):
         raise MPMException("Cannot multiply vector sequence on the left-hand side.")
 
     def __str__(self)->str:
-        return '[\n'+'\n'.join([mp.mpVector(v) for v in self._vectors])+'\n]'
+        return '[\n'+'\n'.join([mp.mpVectorToString(v) for v in self._vectors])+'\n]'
 
 class MaxPlusMatrixModel(object):
     '''Model of a max-plus matrix'''
@@ -244,7 +247,7 @@ class MaxPlusMatrixModel(object):
         '''Return a Graphviz representation of the precedence graph as a string.'''
         return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedenceGraphLabels())
 
-    def starClosure(self)->Tuple[bool,Optional['MaxPlusMatrixModel']]:
+    def starClosure(self)->Union[Tuple[Literal[False],None],Tuple[Literal[True],'MaxPlusMatrixModel']]:
         '''Determine the * closure. If it exist return True and the star close. If it doesn't return False and None.'''
         try:
             cl = MaxPlusMatrixModel(mp.mpStarClosure(self._rows))
@@ -394,13 +397,16 @@ class MaxPlusMatrixModel(object):
         return res
 
     @staticmethod
-    def multiplySequence(matrices: List[Union['MaxPlusMatrixModel',VectorSequenceModel]]):
+    def multiplySequence(matrices: List[Union['MaxPlusMatrixModel',VectorSequenceModel]])->Union['MaxPlusMatrixModel',VectorSequenceModel]:
         '''Multiply the sequence of matrices, possibly ending with a vector sequence.'''
         return reduce(lambda prod, mat: prod.multiply(mat), matrices)
         
-
     @staticmethod
-    def fromDSL(dslString)-> Tuple[str,Dict[str,'MaxPlusMatrixModel'],Dict[str,VectorSequenceModel],Dict[str,EventSequenceModel]]:
+    def fromDSL(dslString: str)-> Tuple[str,Dict[str,'MaxPlusMatrixModel'],Dict[str,VectorSequenceModel],Dict[str,EventSequenceModel]]:
+        '''
+        Parse dslString and extract model name, matrices, vector sequences and event sequences.
+        Raise an exception if the parsing fails. 
+        '''
 
         factory = dict()
         factory['Init'] = lambda : MaxPlusMatrixModel()
@@ -411,21 +417,25 @@ class MaxPlusMatrixModel(object):
 
         name, resMatrices, resVectorSequences, resEventSequences = parseMPMDSL(dslString, factory)
         if name is None or resMatrices is None or resVectorSequences is None or resEventSequences is None:
-            raise Exception("Failed to parse max-plus model")
+            raise MPMException("Failed to parse max-plus model")
         return name, resMatrices, resVectorSequences, resEventSequences
 
 
-    def asDSL(self, name, allInstances = None):
+    def asDSL(self, name: str, allInstances: Optional[Dict[str,Union['MaxPlusMatrixModel',VectorSequenceModel,EventSequenceModel]]] = None) -> str:
+
+        '''
+        Convert the receiver and all entities in optional allInstances to a string in the MPM Domain Specific Language using the provided name as the name for the model.
+        '''
 
         # create string writer for the output
         output = StringIO()
         if allInstances is None:
             output.write("max-plus model {} : \nmatrices\nA = [\n".format(name))
             for r in self._rows:
-                output.write("\t{}\n".format(mp.mpVector(r)))
+                output.write("\t{}\n".format(mp.mpVectorToString(r)))
             output.write("]\n")
         else:
-            mats = [i for i in allInstances if isinstance(allInstances[i], MaxPlusMatrixModel)]
+            mats: List[str] = [i for i in allInstances if isinstance(allInstances[i], MaxPlusMatrixModel)]
             vSequences = [i for i in allInstances if isinstance(allInstances[i], VectorSequenceModel)]
             eSequences = [i for i in allInstances if isinstance(allInstances[i], EventSequenceModel)]
 
@@ -434,32 +444,34 @@ class MaxPlusMatrixModel(object):
             if len(mats) > 0:
                 output.write("\nmatrices\n")
                 for mat in mats:
-                    if len(allInstances[mat].labels()) > 0:
-                        labels = '({})'.format(' '.join(allInstances[mat].labels()))
+                    mm: MaxPlusMatrixModel = allInstances[mat]  # type: ignore
+                    if len(mm.labels()) > 0:
+                        labels = '({})'.format(' '.join(mm.labels()))
                     else:
-                        labels=''
+                        labels = ''
                     output.write("{} {} = [\n".format(mat, labels))
-                    for r in allInstances[mat].rows():
-                        output.write("\t{}\n".format(mp.mpVector(r)))
+                    for r in mm.rows():
+                        output.write("\t{}\n".format(mp.mpVectorToString(r)))
                     output.write("]\n")
-
 
             if len(vSequences) > 0:
                 output.write("\nvector sequences\n")
                 for vs in vSequences:
-                    if len(allInstances[vs].labels()) > 0:
-                        labels = '({})'.format(' '.join(allInstances[vs].labels()))
+                    vsm: VectorSequenceModel = allInstances[vs]  # type: ignore
+                    if len(vsm.labels()) > 0:
+                        labels = '({})'.format(' '.join(vsm.labels()))
                     else:
                         labels=''
                     output.write("{} {} = [\n".format(vs, labels))
-                    for v in allInstances[vs].vectors():
-                        output.write("\t{}\n".format(mp.mpVector(v)))
+                    for v in vsm.vectors():
+                        output.write("\t{}\n".format(mp.mpVectorToString(v)))
                     output.write("]\n")
 
             if len(eSequences) > 0:
                 output.write("\nevent sequences\n")
                 for es in eSequences:
-                    output.write("{} = {}".format(es, mp.mpVector(allInstances[es].sequence())))
+                    esm: EventSequenceModel = allInstances[es]  # type: ignore
+                    output.write("{} = {}".format(es, mp.mpVectorToString(esm.sequence())))
         
         result = output.getvalue()
         output.close()

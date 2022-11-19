@@ -68,7 +68,7 @@ Comment:
 
 MetaModelMPM = metamodel_from_str(MPMGrammar, classes=[])
 
-def parseMPMDSL(content, factory) -> Union[Tuple[None,None,None,None],Tuple[str,Dict[str,Any],Dict[str,Any],Dict[str,Any]]]:
+def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,None,None],Tuple[str,Dict[str,Any],Dict[str,Any],Dict[str,Any]]]:
     try:
         model =  MetaModelMPM.model_from_str(content)
     except TextXSyntaxError as err:
@@ -102,7 +102,7 @@ def parseMPMDSL(content, factory) -> Union[Tuple[None,None,None,None],Tuple[str,
     return model.name, resMatrices, resVectorSequences, resEventSequences
 
 
-def parseRow(r, mpm, factory):
+def parseRow(r: Any, mpm: Any, factory: Dict[str,Any]):
     row = []
     for e in r.elements:
         if e == "-inf":
@@ -112,6 +112,6 @@ def parseRow(r, mpm, factory):
 
     factory['AddRow'](mpm, row)
     
-def parseLabels(lbls):
-    return lbls.label
+def parseLabels(labels):
+    return labels.label
 
