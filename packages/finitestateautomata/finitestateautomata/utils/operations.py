@@ -72,7 +72,7 @@ OperationDescriptions = [
     OP_FSA_MINIMIZE_BUCHI + ' (minimize the Buchi automaton)', 
     OP_FSA_RELABEL + ' (relabel the states of the automaton)', 
     OP_FSA_AS_REGEX + ' (convert the automaton to a regular expression)',
-    OP_REGEX_CONVERT_FSA + ' (convert the regular expresson to an FSA)',
+    OP_REGEX_CONVERT_FSA + ' (convert the regular expression to an FSA)',
     OP_REGEX_CONVERT_OMEGA_REGEX + ' (convert the omega-regular expression to a Buchi automaton)',
     OP_LTL_CONVERT_LTL + ' (convert the LTL formula to an automaton)'
 ]

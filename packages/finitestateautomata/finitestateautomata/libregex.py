@@ -1,7 +1,6 @@
-from functools import reduce
-from io import StringIO
 from enum import Enum
 import re
+from typing import Dict, List, Optional, Tuple,Set
 
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libregexgrammar import parseRegExDSL
@@ -16,14 +15,18 @@ REGEXKLEENE = re.compile(r"^\*\(", re.MULTILINE|re.DOTALL)
 REGEXLETTER = re.compile(r"^([a-zA-Z]|'[^']+\')", re.MULTILINE|re.DOTALL)
 REGEXLETTERSIMPLE = re.compile(r"^[a-zA-Z]$")
 
+class RegExException(Exception):
+    pass
+
 class RegExTerm(object):
 
-    def __init__(self, exprType, subexpressions = list()):
+    def __init__(self):
         pass
 
     # parse expression. return expression and remainder of the string
     @staticmethod
-    def fromString(s):
+    def fromString(s: str)->Tuple['RegExTerm',str]:
+        '''Parse expression. return expression and remainder of the string.'''
         if REGEXEMPTYSET.match(s):
             return (RegExTermEmptySet(), s[2:])
         if REGEXEMPTYWORD.match(s):
@@ -36,124 +39,150 @@ class RegExTerm(object):
             return RegExTermKleene.fromString(s)
         if REGEXLETTER.match(s):
             return RegExTermLetter.fromString(s)
-        raise Exception('malformed reglar expression')
+        raise Exception('malformed regular expression')
 
-    # parse expression. return expression and remainder of the string
-    @staticmethod
-    def fromDSL(s):
-        pass
-
-
-    def subExpressions(self):
+    def subExpressions(self)->Set['RegExTerm']:
+        '''Return the set of all subexpressions.'''
         return set()
 
-    def _collectAlphabet(self, result):
+    def _collectAlphabet(self, result: Set[str])->None:
+        '''Collet the alphabet of the regex term into the set result.'''
         for e in self.subExpressions():
             e._collectAlphabet(result)
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
+        '''Return if the expression represents a finite regular expression, not an omega-regular expression.'''
         # default result, override if necessary
         return True
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
+        '''Return if the expression represent an omega-regular regular expression, not a finite expression.'''
         # default result, override if necessary
         return True
 
-    def _bindingLevel(self):
-        return "to be filled in subclasses to determine parentheses"
+    def _bindingLevel(self)->int:
+        '''Return binding level to determine how to place parentheses.'''
+        raise RegExException("Should have been filled in subclasses to determine parentheses")
 
-    def _parenthesize(self, e):
+    def _parenthesize(self, e: 'RegExTerm')->str:
+        '''Convert to string with the right parentheses.'''
         if e._bindingLevel() < self._bindingLevel():
             return '('+str(e)+')'
         return str(e)
 
-    def __str__(self):
-        return "to be filled in subclasses"
-
+    def __str__(self)->str:
+        raise RegExException("to be filled in subclasses")
  
-    def simplify(self):
+    def simplify(self)->'RegExTerm':
+        '''Return a simplified expression.'''
         return self
 
-    def isEmptyWord(self):
+    def isEmptyWord(self)->bool:
+        '''Return whether the expression represents the empty word.'''
         return False
 
-    def isEmptySet(self):
+    def isEmptySet(self)->bool:
+        '''Return whether the expression represents the empty language.'''
         return False
 
-    def asNBA(self):
+    def asNBA(self)->Automaton:
+        '''Converts omega-regular expression to an equivalent NBA.'''
         if not self.isOmegaRegEx():
             raise Exception('Not an omega-regular expression.')
         return self._asNBA()
 
-    def asFSA(self):
+    def asFSA(self)->Automaton:
+        '''Converts finite regular expression to an equivalent FSA.'''
         if not self.isFiniteRegEx():
             raise Exception('Not a finite regular expression.')
         return self._asFSA()
 
-    def _asNBA(self):
-        pass
+    def _asNBA(self)->Automaton:
+        '''Perform conversion to an NBA.'''
+        raise RegExException("Overwrite in subclasses")
 
-    def _asFSA(self):
-        pass
+    def _asFSA(self)->Automaton:
+        '''Perform conversion to an FSA.'''
+        raise RegExException("Overwrite in subclasses")
 
 
     @staticmethod
-    def fromFSA(A):
+    def fromFSA(A: Automaton)->'RegExTerm':
 
-        def _addTransition(u, v, re):
-            # add (to) transition u->v if it exists, or create transition
+        # map a vertex to a tuple
+        # - set of vertices with backward transition, 
+        # - set of vertices with forward transition, 
+        # - a dict with for every forward next vertex, a set of regular expressions with which the transition is labelled
+        verticesMap: Dict[str,Tuple[Set[str],Set[str],Dict[str,Set['RegExTerm']]]]
+
+        def _addTransition(u: str, v: str, re: 'RegExTerm'):
+            '''Add (to) transition u->v if it exists, or create transition.'''
+            nonlocal verticesMap
             if not v in verticesMap[u][1]:
+                # add the forward link
                 verticesMap[u][1].add(v)
-                verticesMap[u][2][v] = set()
+                # add the backward link
                 verticesMap[v][0].add(u)
+                # create a set for labels
+                verticesMap[u][2][v] = set()
+            # add the regex to the transition labels
             verticesMap[u][2][v].add(re)
 
         def _removeTransition(u,v):
-            # remove transition u->v
+            '''remove transition u->v'''
+            nonlocal verticesMap
+            # Remove the forward link
             verticesMap[u][1].remove(v)
+            # remove the regex labels
             del verticesMap[u][2][v]
+            # remove the backward link
             verticesMap[v][0].remove(u)
 
-
-        def _removeCycle(s):
+        def _removeCycle(s)->Optional['RegExTerm']:
+            '''If s has a cycle, return a regular expression that represents the alternatives of the labels on the cycle. Returns None if there is no cycle on s.'''
+            nonlocal verticesMap
+            # if s has transition to itself
             if s in verticesMap[s][1]:
+                # create an alternatives term with each of the labels on the cycle
                 re = RegExTermAlternatives(list(verticesMap[s][2][s]))
+                # remove the cycle forward and backward links and labels
                 verticesMap[s][0].remove(s)
                 verticesMap[s][1].remove(s)
                 del verticesMap[s][2][s]
+                # return the alternatives expression created from the cycle
                 return re
             else:
                 # there is no cycle
                 return None
 
-        # # take care of the degenerate case
-        # if len(A.initialStates()) == 0 or len(A.finalStates()) == 0:
-        #     return RegExTermEmptySet()
-
         # create a graph 
-        states = A.statesInBFSOrder()
+        states: List[str] = A.statesInBFSOrder()
         verticesMap = dict()
+        
         # add all states
         for s in A.states():
             # incoming states, outgoing states, map of outgoing states to sets of alternative REs
             verticesMap[s] = (set(), set(), dict())
+        
         # add all edges
         for t in A.transitions():
             _addTransition(t[0], t[2], RegExTermLetter(t[1]))
-
         for t in A.epsilonTransitions():
             _addTransition(t[0], t[1], RegExTermEmptyWord())
 
         # make a single source connected to all initial states
+        if '_src' in states:
+            raise RegExException("Automaton has a clashing state name: '_src'")
         verticesMap['_src'] = (set(), set(), dict())
         for s in A.initialStates():
             _addTransition('_src', s, RegExTermEmptyWord())
 
         # make a single sink, connected to all final states
+        if '_snk' in states:
+            raise RegExException("Automaton has a clashing state name: '_snk'")
         verticesMap['_snk'] = (set(), set(), dict())
         for s in A.finalStates():
             _addTransition(s, '_snk', RegExTermEmptyWord())
-
 
         # eliminate all nodes for all states of the FSA by bypassing pairs of incoming and outgoing edges
         for s in states:
@@ -165,8 +194,8 @@ class RegExTerm(object):
             sOut = verticesMap[s][1].copy()
             for u in sIn:
                 for v in sOut:
-                    re1 = RegExTermAlternatives(verticesMap[u][2][s])
-                    re2 = RegExTermAlternatives(verticesMap[s][2][v])
+                    re1 = RegExTermAlternatives(list(verticesMap[u][2][s]))
+                    re2 = RegExTermAlternatives(list(verticesMap[s][2][v]))
                     if cycleRegEx:
                         reNew = RegExTermConcatenation([re1, RegExTermKleene(cycleRegEx), re2])
                     else:
@@ -190,22 +219,22 @@ class RegExTermEmptySet(RegExTerm):
     def __init__(self):
         pass
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 3
 
-    def __str__(self):
+    def __str__(self)->str:
         return "\\o"
 
-    def isEmptySet(self):
+    def isEmptySet(self)->bool:
         return True
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         result = Automaton()
         si = result.addStateUnique("S")
         result.makeInitialState(si)
         return result
 
-    def _asNBA(self):
+    def _asNBA(self)->Automaton:
         return self._asFSA()
 
 class RegExTermEmptyWord(RegExTerm):
@@ -213,19 +242,19 @@ class RegExTermEmptyWord(RegExTerm):
     def __init__(self):
         pass
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 3
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         return False
 
-    def __str__(self):
+    def __str__(self)->str:
         return "\\e"
 
-    def isEmptyWord(self):
+    def isEmptyWord(self)->bool:
         return True
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         result = Automaton()
         si = result.addStateUnique("S")
         result.makeInitialState(si)
@@ -233,14 +262,16 @@ class RegExTermEmptyWord(RegExTerm):
         return result
 
 class RegExTermConcatenation(RegExTerm):
+    
+    _expressions: List[RegExTerm]
 
-    def __init__(self, expressions):
+    def __init__(self, expressions: List[RegExTerm]):
         self._expressions = expressions
 
-    def subExpressions(self):
+    def subExpressions(self)->List[RegExTerm]:
         return self._expressions
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
         for k in range(len(self._expressions)-1):
             if not self._expressions[k].isFiniteRegEx():
                 raise Exception('Invalid regular expression.')
@@ -248,7 +279,7 @@ class RegExTermConcatenation(RegExTerm):
             return True
         return self._expressions[-1].isFiniteRegEx()
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         for k in range(len(self._expressions)-1):
             if not self._expressions[k].isFiniteRegEx():
                 raise Exception('Invalid regular expression.')
@@ -256,7 +287,7 @@ class RegExTermConcatenation(RegExTerm):
             return True
         return self._expressions[-1].isOmegaRegEx()
 
-    def simplify(self):
+    def simplify(self)->RegExTerm:
 
         simplifiedExpressions = [e.simplify() for e in self._expressions]
         if RegExTermEmptySet() in simplifiedExpressions:
@@ -269,7 +300,7 @@ class RegExTermConcatenation(RegExTerm):
 
 
     @staticmethod
-    def fromString(s):
+    def fromString(s: str)->Tuple[RegExTerm,str]:
         # read subexpressions until the terminating ')' symbol
         s = s[2:]
         expressions = list()
@@ -278,13 +309,13 @@ class RegExTermConcatenation(RegExTerm):
             expressions.append(exp)
         return (RegExTermConcatenation(expressions), s[1:])
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 1
 
-    def __str__(self):
+    def __str__(self)->str:
         return ".".join([self._parenthesize(e) for e in self._expressions])
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         # get automata for subexpressions
         exprFSA = [e._asFSA() for e in self._expressions]
         ia = exprFSA[0]
@@ -300,8 +331,8 @@ class RegExTermConcatenation(RegExTerm):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symb, dst) in a.transitions():
-                result.addTransition(stateMap[a][src], symb, stateMap[a][dst])
+            for (src, symbol, dst) in a.transitions():
+                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
             for (src, dst) in a.epsilonTransitions():
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
@@ -323,7 +354,7 @@ class RegExTermConcatenation(RegExTerm):
 
         return result
 
-    def _asNBA(self):
+    def _asNBA(self)->Automaton:
         # get automata for subexpressions
         exprFSA = [e._asFSA() for e in self._expressions[:-1]]
         if len(exprFSA) > 0:
@@ -343,8 +374,8 @@ class RegExTermConcatenation(RegExTerm):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symb, dst) in a.transitions():
-                result.addTransition(stateMap[a][src], symb, stateMap[a][dst])
+            for (src, symbol, dst) in a.transitions():
+                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
             for (src, dst) in a.epsilonTransitions():
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
@@ -368,25 +399,27 @@ class RegExTermConcatenation(RegExTerm):
 
 class RegExTermAlternatives(RegExTerm):
 
-    def __init__(self, expressions):
+    _expressions: List[RegExTerm]
+    
+    def __init__(self, expressions: List[RegExTerm]):
         self._expressions = expressions
 
-    def subExpressions(self):
+    def subExpressions(self)->List[RegExTerm]:
         return self._expressions
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
         for e in self._expressions:
             if not e.isFiniteRegEx():
                 return False
         return True
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         for e in self._expressions:
             if not e.isOmegaRegEx():
                 return False
         return True
 
-    def simplify(self):
+    def simplify(self)->RegExTerm:
         simplifiedExpressions = [e.simplify() for e in self._expressions]
         nonTrivialExpr = list(filter(lambda e: not e.isEmptySet(), simplifiedExpressions))
         if len(nonTrivialExpr) == 0: return RegExTermEmptySet()
@@ -396,7 +429,7 @@ class RegExTermAlternatives(RegExTerm):
         return RegExTermAlternatives(list(uniqueExpressions))
 
     @staticmethod
-    def fromString(s):
+    def fromString(s: str)->Tuple[RegExTerm,str]:
         # read subexpressions until the terminating ')' symbol
         s = s[2:]
         expressions = list()
@@ -405,13 +438,13 @@ class RegExTermAlternatives(RegExTerm):
             expressions.append(exp)
         return (RegExTermAlternatives(expressions), s[1:])
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 0
 
-    def __str__(self):
+    def __str__(self)->str:
         return "+".join([self._parenthesize(e) for e in self._expressions])
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         # get automata for subexpressions
         exprFSA = [e._asFSA() for e in self._expressions]
 
@@ -425,8 +458,8 @@ class RegExTermAlternatives(RegExTerm):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symb, dst) in a.transitions():
-                result.addTransition(stateMap[a][src], symb, stateMap[a][dst])
+            for (src, symbol, dst) in a.transitions():
+                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
             for (src, dst) in a.epsilonTransitions():
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
@@ -439,7 +472,7 @@ class RegExTermAlternatives(RegExTerm):
 
         return result
 
-    def _asNBA(self):
+    def _asNBA(self)->Automaton:
         # get automata for subexpressions
         exprNBA = [e.asNBA() for e in self._expressions]
 
@@ -453,8 +486,8 @@ class RegExTermAlternatives(RegExTerm):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symb, dst) in a.transitions():
-                result.addTransition(stateMap[a][src], symb, stateMap[a][dst])
+            for (src, symbol, dst) in a.transitions():
+                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
             for (src, dst) in a.epsilonTransitions():
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
@@ -469,18 +502,20 @@ class RegExTermAlternatives(RegExTerm):
 
 class RegExTermKleene(RegExTerm):
 
-    def __init__(self, expression):
+    _expression: RegExTerm
+    
+    def __init__(self, expression: RegExTerm):
         self._expression = expression
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
         if not self._expression.isFiniteRegEx():
             raise Exception('Illegal regular expression.')
         return True
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         return False
 
-    def simplify(self):
+    def simplify(self)->RegExTerm:
         simplifiedExpression = self._expression.simplify()
         if simplifiedExpression.isEmptySet():
             return RegExTermEmptySet()
@@ -488,25 +523,25 @@ class RegExTermKleene(RegExTerm):
             return RegExTermEmptyWord()
         return RegExTermKleene(simplifiedExpression)
 
-    def subExpressions(self):
+    def subExpressions(self)->Set[RegExTerm]:
         res = set()
         res.add(self._expression)
         return res
 
     @staticmethod
-    def fromString(s):
+    def fromString(s: str)->Tuple[RegExTerm,str]:
         # read subexpression and the terminating ')' symbol
         s = s[2:]
         (exp, s) = RegExTerm.fromString(s)
         return (RegExTermKleene(exp), s[1:])
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 2
 
-    def __str__(self):
+    def __str__(self)->str:
         return self._parenthesize(self._expression)+"*"
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         # get automaton for subexpression
         result = self._expression._asFSA()
 
@@ -528,18 +563,20 @@ class RegExTermKleene(RegExTerm):
         return result
 class RegExTermOmega(RegExTerm):
 
-    def __init__(self, expression):
+    _expression: RegExTerm
+    
+    def __init__(self, expression: RegExTerm):
         self._expression = expression
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
         return False
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         if not self._expression.isFiniteRegEx():
             raise Exception('Illegal regular expression.')
         return True
 
-    def simplify(self):
+    def simplify(self)->RegExTerm:
         simplifiedExpression = self._expression.simplify()
         if simplifiedExpression.isEmptySet():
             return RegExTermEmptySet()
@@ -547,25 +584,25 @@ class RegExTermOmega(RegExTerm):
             raise Exception('Invalid omega-regular expression')
         return RegExTermOmega(simplifiedExpression)
 
-    def subExpressions(self):
+    def subExpressions(self)->Set[RegExTerm]:
         res = set()
         res.add(self._expression)
         return res
 
     @staticmethod
-    def fromString(s):
+    def fromString(s: str)->Tuple[RegExTerm,str]:
         # read subexpression and the terminating ')' symbol
         s = s[2:]
         (exp, s) = RegExTerm.fromString(s)
         return (RegExTermOmega(exp), s[1:])
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 2
 
-    def __str__(self):
+    def __str__(self)->str:
         return self._parenthesize(self._expression)+"**"
 
-    def _asNBA(self):
+    def _asNBA(self)->Automaton:
         # get automaton for subexpression
         result = self._expression._asFSA()
 
@@ -577,65 +614,76 @@ class RegExTermOmega(RegExTerm):
         return result
 
 class RegExTermLetter(RegExTerm):
-    def __init__(self, letter):
+    
+    _letter: str
+    
+    def __init__(self, letter: str):
         self._letter = letter
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         return False
 
-    def _collectAlphabet(self, result):
+    def _collectAlphabet(self, result: Set[str])->None:
         result.add(self._letter)
 
     @staticmethod
-    def fromString(s):
-        letter = REGEXLETTER.search(s).group(0)
+    def fromString(s: str)->Tuple[RegExTerm,str]:
+        m = REGEXLETTER.search(s)
+        if m is None:
+            raise RegExException("Failed to match REGEXLETTER expression.")
+        letter = m.group(0)
         return (RegExTermLetter(letter), s[len(letter):])
 
-    def _bindingLevel(self):
+    def _bindingLevel(self)->int:
         return 3
 
-    def __str__(self):
+    def __str__(self)->str:
         if REGEXLETTERSIMPLE.match(self._letter):
             return self._letter
         return "'"+self._letter.replace("'", "\\'")+"'"
 
-    def _asFSA(self):
+    def _asFSA(self)->Automaton:
         
         result = Automaton()
         si = result.addStateUnique("S")
         sf = result.addStateUnique("S")
-        symb = self._letter.replace("'", "")
-        result.addTransition(si, symb, sf)
+        symbol = self._letter.replace("'", "")
+        result.addTransition(si, symbol, sf)
         result.makeInitialState(si)
         result.makeFinalState(sf)
         return result
 
 class RegEx(object):
 
-    def __init__(self, name, expression):
+    _expression: RegExTerm
+    _name: str
+
+    def __init__(self, name: str, expression: RegExTerm):
         self._expression = expression
         self._name = name
 
-    def asFSA(self):
+    def asFSA(self)->Automaton:
         if not self._expression.isFiniteRegEx():
             raise Exception('Not a finite regular expression.')
         return self._expression.asFSA()
 
-    def alphabet(self):
+    def alphabet(self)->Set[str]:
         '''Return the alphabet of the regex '''
-        return self._expression._collectAlphabet(set())
+        result: Set[str] = set()
+        self._expression._collectAlphabet(result)
+        return result
 
-    def isOmegaRegEx(self):
+    def isOmegaRegEx(self)->bool:
         return self._expression.isOmegaRegEx()
 
-    def isFiniteRegEx(self):
+    def isFiniteRegEx(self)->bool:
         return self._expression.isFiniteRegEx()
 
-    def asDSL(self, name):
+    def asDSL(self, name: str):
         return 'regular expression {} = {}'.format(name, str(self))
 
     @staticmethod
-    def fromDSL(regexString):
+    def fromDSL(regexString)->Tuple[str,RegExTerm]:
         factory = dict()
         factory['Letter'] = lambda l: RegExTermLetter(l)
         factory['Kleene'] = lambda exp: RegExTermKleene(exp)
@@ -644,10 +692,10 @@ class RegEx(object):
         factory['Concatenations'] = lambda exp: RegExTermConcatenation(exp)
         factory['EmptyLanguage'] = lambda : RegExTermEmptySet()
         factory['EmptyWord'] = lambda : RegExTermEmptyWord()
-        res = parseRegExDSL(regexString, factory)
-        if res[0] is None:
+        (name, expression) = parseRegExDSL(regexString, factory)
+        if name is None or expression is None:
             exit(1)
-        return res
+        return name, expression
 
     @staticmethod
     def fromString(regexString):
@@ -666,5 +714,5 @@ class RegEx(object):
     def fromFSA(A, name):
         return RegEx(name, RegExTerm.fromFSA(A).simplify())
 
-    def __str__(self):
+    def __str__(self)->str:
         return str(self._expression)

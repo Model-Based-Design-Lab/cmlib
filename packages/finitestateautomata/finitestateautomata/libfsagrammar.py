@@ -1,3 +1,4 @@
+from typing import Any, Optional, Tuple
 from textx import metamodel_from_str, TextXSyntaxError
 import sys
 
@@ -86,7 +87,7 @@ Comment:
 
 MetaModelFSA = metamodel_from_str(FSAGrammar, classes=[])
 
-def parseFSADSL(content, factory):
+def parseFSADSL(content: str, factory: Any)->Tuple[Optional[str], Optional[Any]]:
     try:
         model =  MetaModelFSA.model_from_str(content)
     except TextXSyntaxError as err:

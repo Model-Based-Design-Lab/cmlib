@@ -1,3 +1,4 @@
+from typing import Any, Dict, Optional, Tuple
 from textx import metamodel_from_str, TextXSyntaxError
 import sys
 
@@ -85,7 +86,7 @@ Comment:
 
 MetaModelRegEx = metamodel_from_str(RegExGrammar, classes=[])
 
-def parseRegExDSL(content, factory):
+def parseRegExDSL(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
     try:
         model =  MetaModelRegEx.model_from_str(content)
     except TextXSyntaxError as err:
@@ -94,20 +95,20 @@ def parseRegExDSL(content, factory):
     regex = parseRefsAndRegularExpression(model, factory)
     return (model.name, regex)
 
-def parseRefsAndRegularExpression(m, factory):
+def parseRefsAndRegularExpression(m: Any, factory: Any)->Any:
     references = dict()
     if m.definitions:
-        references = parseRefs(m.definitions, factory)
+        references = parseRefs(m.definitions)
     return parseRegularExpression(m.expression, references, factory)
 
-def parseRefs(defs, factory):
-    res = dict()
+def parseRefs(defs:Dict[Any,Any])->Dict[str,Any]:
+    res:Dict[str,Any] = dict()
     res['_processed'] = set()
     for d in defs:
         res[d.symbol] = d.expression
     return res    
 
-def parseRegularExpression(m, references, factory):
+def parseRegularExpression(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if len(m.alternatives) > 0:
         expr = [ parseRegularExpression1(m.expression, references, factory) ]
         for n in m.alternatives:
@@ -116,7 +117,7 @@ def parseRegularExpression(m, references, factory):
     else: 
         return parseRegularExpression1(m.expression, references, factory)
 
-def parseRegularExpression1(m, references, factory):
+def parseRegularExpression1(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if len(m.concatenations) > 0:
         expr = [ parseRegularExpression2(m.expression, references, factory) ]
         for n in m.concatenations:
@@ -125,7 +126,7 @@ def parseRegularExpression1(m, references, factory):
     else: 
         return parseRegularExpression2(m.expression, references, factory)
 
-def parseRegularExpression2(m, references, factory):
+def parseRegularExpression2(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if m.kleene:
         return factory['Kleene'](parseRegularExpression3(m.subexpression, references, factory))
     if m.omega:
@@ -133,7 +134,7 @@ def parseRegularExpression2(m, references, factory):
     else: 
         return parseRegularExpression3(m.subexpression, references, factory)
 
-def parseRegularExpression3(m, references, factory):
+def parseRegularExpression3(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if m.emptyLangExpression:
         return factory['EmptyLanguage']()
     if m.emptyWordExpression:
