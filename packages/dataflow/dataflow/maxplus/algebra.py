@@ -9,17 +9,17 @@ NumericalEpsilon = 1e-8
 class MPAlgebraException(Exception):
     pass
 
-def significantlySmaller(x: float, y: float)->bool:
-    '''Test if x is significantly smaller than y.'''
-    return y-x > NumericalEpsilon 
+# def significantlySmaller(x: float, y: float)->bool:
+#     '''Test if x is significantly smaller than y.'''
+#     return y-x > NumericalEpsilon 
 
-def significantlyLarger(x: float, y: float)->bool:
-    '''Test if x is significantly larger than y.'''
-    return significantlySmaller(y, x)
+# def significantlyLarger(x: float, y: float)->bool:
+#     '''Test if x is significantly larger than y.'''
+#     return significantlySmaller(y, x)
 
 
-def approximatelyEqual(x: float, y: float)->bool:
-    return (y-x < NumericalEpsilon) and (x-y < NumericalEpsilon)
+# def approximatelyEqual(x: float, y: float)->bool:
+#     return (y-x < NumericalEpsilon) and (x-y < NumericalEpsilon)
 
 MP_MINUSINFINITY = None
 
@@ -49,4 +49,4 @@ def MP_LARGER(x: TTimeStamp, y: TTimeStamp)->bool:
         return False
     if y is None:
         return True
-    return significantlySmaller(y, x)
+    return y<x

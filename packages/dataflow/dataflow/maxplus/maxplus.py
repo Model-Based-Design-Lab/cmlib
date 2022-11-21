@@ -7,7 +7,7 @@ from functools import reduce
 from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
 from fractions import Fraction
-from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MPAlgebraException, significantlySmaller, significantlyLarger, approximatelyEqual
+from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MPAlgebraException
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
 
 class MPException(Exception):
@@ -171,7 +171,7 @@ def _subgraph(gr: pyg.digraph, nodes: AbstractSet[Any] ) -> pyg.digraph:
         res.add_edge(e, gr.edge_weight(e))
     return res
 
-def mpEigenValue(M: TMPMatrix) -> Union[None,float]:
+def mpEigenValue(M: TMPMatrix) -> Union[None,Fraction]:
     '''Determine the largest eigenvalue of the matrix.'''
     
     # convert to precedence graph
@@ -179,13 +179,13 @@ def mpEigenValue(M: TMPMatrix) -> Union[None,float]:
 
     # get the strongly connected components
     sccs = pyga.mutual_accessibility(gr)
-    cycleMeans: List[float] = []
+    cycleMeans: List[Fraction] = []
     subgraphs: List[pyg.digraph] = []
     mu = Fraction(0.0)
     for sn in ({frozenset(v) for v in sccs.values()}):
         grs = _subgraph(gr, sn)
         if len(grs.edges()) > 0:
-            mu: float
+            mu: Fraction
             mu, _, _ = maximumCycleMean(grs)  # type: ignore as returned cycle mean cannot be None
             subgraphs.append(grs)
         cycleMeans.append(mu)
@@ -194,12 +194,12 @@ def mpEigenValue(M: TMPMatrix) -> Union[None,float]:
         return None
     return max(cycleMeans)
 
-def mpThroughput(M: TMPMatrix) -> Union[float,Literal["infinite"]]:
+def mpThroughput(M: TMPMatrix) -> Union[Fraction,Literal["infinite"]]:
     '''Return the maximal throughput of a system with state matrix M.'''
     vLambda = mpEigenValue(M)
     if vLambda is None:
         return "infinite"
-    if not significantlyLarger(vLambda, Fraction(0.0)):
+    if not vLambda> Fraction(0.0):
         return "infinite"
     return Fraction(1.0) / vLambda
 
@@ -276,7 +276,7 @@ def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[
                     length[e[1]] = newLength
                     change = True
                 else:
-                    if significantlySmaller(length[e[1]], newLength):# type: ignore we know that length[e[1]] is a float
+                    if length[e[1]] < newLength:
                         length[e[1]] = newLength
                         change = True
 
@@ -303,7 +303,7 @@ def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tupl
                 if value is None:
                     value = evv[n]
                 else:
-                    if not approximatelyEqual(value, evv_n):
+                    if not value==evv_n:
                         return False
         return True
 

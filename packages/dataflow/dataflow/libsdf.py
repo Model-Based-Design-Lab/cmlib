@@ -215,7 +215,7 @@ class DataflowGraph(object):
         '''Add input port i.'''
         self._repetitionVector = None
         # output ports should be in actors
-        if not o in self._actors:
+        if not o in self._actorsAndIO:
             self.addActor(o, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
         else:
             self._actorSpecs[o][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
@@ -241,7 +241,7 @@ class DataflowGraph(object):
             k += 1
         return fname(k)
 
-    def executionTimeOfActor(self, a: str)->float:
+    def executionTimeOfActor(self, a: str)->Fraction:
         '''Get the execution time of actor a'''
         if not EXECUTION_TIME_SPEC_KEY in self._actorSpecs[a]:
             return DEFAULT_ACTOR_EXECUTION_TIME
@@ -603,7 +603,7 @@ class DataflowGraph(object):
         # convert fractional rates to integer rates
         return _makeIntegerRates(rates)  
 
-    def throughput(self)->Union[float,Literal['infinite']]:
+    def throughput(self)->Union[Fraction,Literal['infinite']]:
         '''
         Compute throughput of the graph
         '''
@@ -750,7 +750,7 @@ class DataflowGraph(object):
 
         return res
 
-    def determineTrace(self, ni: int, x0: Optional[TMPVector]=None, inputOverride: Optional[Dict[str,Union[TTimeStampList,str]]]=None) -> Tuple[List[TTimeStampList],List[TTimeStampList],List[TTimeStampList],List[float]]:
+    def determineTrace(self, ni: int, x0: Optional[TMPVector]=None, inputOverride: Optional[Dict[str,Union[TTimeStampList,str]]]=None) -> Tuple[List[TTimeStampList],List[TTimeStampList],List[TTimeStampList],List[Fraction]]:
         '''Determine execution trace for the dataflow graph.
         The trace is ni iterations long.
         x0 is an optional initial state for the execution. If it is not provided, initial tokens are assumed to be available at time 0.
@@ -811,7 +811,7 @@ class DataflowGraph(object):
         firingDurations= [self.executionTimeOfActor(a) for a in self.actorsWithoutInputsOutputs()]
         return inputTraces, outputTraces, firingStarts, firingDurations
 
-    def determineTraceZeroBased(self, ni:int, x0: Optional[TMPVector]=None) -> Tuple[List[str],List[str],List[TTimeStampList],List[str],List[TTimeStampList],List[TTimeStampList],List[float]]:
+    def determineTraceZeroBased(self, ni:int, x0: Optional[TMPVector]=None) -> Tuple[List[str],List[str],List[TTimeStampList],List[str],List[TTimeStampList],List[TTimeStampList],List[Fraction]]:
         '''Determine a trace with ni iterations, assuming that actors cannot fire before time 0.
         Optional x0 can be used to specify an initial state for the graph.
         Returns a tuple with the following elements
@@ -828,7 +828,7 @@ class DataflowGraph(object):
             G.addInputPort(inpName)
             G.addChannel(inpName, a, dict())
             # set the input sequence to the new channel with tokens with time stamp 0 to prevent it from firing earlier.
-            G.addInputSignal(inpName, [0] * ni)
+            G.addInputSignal(inpName, [Fraction(0)] * ni)
 
         inputTraces, outputTraces, firingStarts, firingDurations = G.determineTrace(ni, x0)
 

@@ -1,12 +1,10 @@
 {
     "deadlock": "False",
     "repetitionVector": {
-        "Box": "2.0000",
         "o": "20.0000",
-        "Clean": "5.0000",
         "Box": "2.0000",
-        "i": "20.0000",
-        "o": "20.0000"
+        "Clean": "5.0000",
+        "i": "20.0000"
     },
     "listOfInputsStr": "i",
     "listOfOutputsStr": "o",

@@ -2,6 +2,7 @@
 # https://pypi.org/project/python-graph/
 # https://github.com/Shoobx/python-graph
 
+from fractions import Fraction
 from typing import Any, Dict, List, Set, Tuple, Union
 import pygraph.classes.digraph  as pyg
 
@@ -68,26 +69,26 @@ class Tree:
 
 # numerical comparisons
 
-NumericalEpsilon = 1e-8
+# NumericalEpsilon = 1e-8
 
-def significantlySmaller(x: float, y: float)->bool:
-    return y-x > NumericalEpsilon 
+# def significantlySmaller(x: float, y: float)->bool:
+#     return y-x > NumericalEpsilon 
 
-def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[float,Tree,Any]]:
+def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fraction,Tree,Any]]:
     ''' 
     given a strongly connected graph with at least one cycle
     find the maximum cycle mean and a longest path spanning tree.
     Returns a tuple with the maximum cycle mean, spanning tree, and a node on the critical cycle.
     '''
 
-    def _newLambda(sTree: Tree, leaf: Any, nn: Any)->float:
+    def _newLambda(sTree: Tree, leaf: Any, nn: Any)->Fraction:
         # compute cycle mean of the cycle leaf through parents up to nn and back to leaf
         # print('newLambda from {} to {}'.format(nn, leaf))
         if leaf == nn:
             # print('self-edge on {} weight: {}'.format(nn, gr.edge_weight((nn, nn))))
             return gr.edge_weight((nn, nn))
 
-        cycleLength: float = gr.edge_weight((leaf, nn))
+        cycleLength: Fraction = gr.edge_weight((leaf, nn))
         cycleSteps: int = 1
         nd = leaf
         pn = sTree.parentOf(nd)
@@ -107,11 +108,11 @@ def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[float,T
         return None, None, None
 
     # start with lambda = undefined (lower bound) and increase whenever a cycle mean larger than lambda is found
-    lowerBoundCycleMean: float = float(gr.edge_weight(grEdges[0]))
+    lowerBoundCycleMean: Fraction = Fraction(gr.edge_weight(grEdges[0]))
     for e in grEdges:
         if gr.edge_weight(e) < lowerBoundCycleMean:
             lowerBoundCycleMean = gr.edge_weight(e)
-    cLambda = lowerBoundCycleMean - 1.0
+    cLambda = lowerBoundCycleMean - Fraction(1)
     
     # create a longest path weighted spanning tree without positive cycles.
 
@@ -146,7 +147,7 @@ def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[float,T
                 if spTree.containsNode(nn):
                     treePathLength = spTree.pathLengthOf(nn)
                     # with equal or longer path length continue, otherwise
-                    if significantlySmaller(treePathLength, pathLength):
+                    if treePathLength< pathLength:
                         # it is already in the tree with smaller path length
                         # check if it is a predecessor of the current node
                         if spTree.isReflexivePredecessor(nn, leaf):

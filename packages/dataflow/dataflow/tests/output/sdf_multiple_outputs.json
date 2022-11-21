@@ -1,10 +1,12 @@
 {
     "deadlock": "False",
     "repetitionVector": {
-        "A": "1.0000",
-        "B": "1.0000",
         "o1": "1.0000",
-        "i": "1.0000"
+        "B": "1.0000",
+        "C": "1.0000",
+        "A": "1.0000",
+        "i": "1.0000",
+        "o2": "1.0000"
     },
     "listOfInputsStr": "i",
     "listOfOutputsStr": "o1, o2",
@@ -69,12 +71,12 @@
         "_outputs": "[o1, o2]",
         "_inputSignals": {},
         "_repetitionVector": {
-            "o2": "1.0000",
+            "o1": "1.0000",
+            "B": "1.0000",
             "C": "1.0000",
             "A": "1.0000",
-            "B": "1.0000",
-            "o1": "1.0000",
-            "i": "1.0000"
+            "i": "1.0000",
+            "o2": "1.0000"
         },
         "_symbolicTimeStampSize": "3.0000",
         "_symbolicVector": "[ch3_1, ch3_2, i]"
