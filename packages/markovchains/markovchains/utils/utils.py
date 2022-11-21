@@ -1,40 +1,41 @@
 """ miscellaneous utility functions """
 
 from string import digits
+from typing import Iterable, List, Optional, Set, Tuple, Union
 
-def warn(s):
+def warn(s: str):
     print("Warning: " + s)
 
-def error(s):
+def error(s: str):
     print("Error: "+ s)
     exit()
 
-def onlyDigits(s):
+def onlyDigits(s: str)->str:
     return ''.join(c for c in s if c in digits)
 
-def onlyNonDigits(s):
+def onlyNonDigits(s: str)->str:
     return ''.join(c for c in s if c not in digits)
 
 
-def getIndex(name):
+def getIndex(name: str)->int:
     dig = onlyDigits(name)
     if dig == '':
         return -1
     else:
         return int(dig)
 
-def isNumerical(setOfNames):
-    alphNames = set([onlyNonDigits(s) for s in setOfNames])
-    return len(alphNames) <= 1
+def isNumerical(setOfNames: Iterable[str])->bool:
+    alphaNames = set([onlyNonDigits(s) for s in setOfNames])
+    return len(alphaNames) <= 1
 
-def stringToFloat(s, default):
+def stringToFloat(s: str, default: float)->float:
     try:
         return float(s)
     except ValueError:
         return default
 
 
-def sortNames(setOfNames):
+def sortNames(setOfNames: Iterable[str])->List[str]:
 
     listOfNames = list(setOfNames)
     if isNumerical(setOfNames):
@@ -43,16 +44,49 @@ def sortNames(setOfNames):
         listOfNames.sort()
     return listOfNames
 
-def printList(l):
+def printList(l: List[float])->str:
     try:
         string = "["
         for item in l:
             string += "{:.4f}, ".format(item)
         return string[:-2] + "]"
     except:
-        return l
+        return str(l)
 
-def printDList(dl):
+def printOptionalList(l: Optional[List[float]])->str:
+    if l is None:
+        return "--"
+    return printList(l)
+
+
+
+def printInterval(i: Tuple[float,float])->str:
+    return printList([i[0],i[1]])
+
+def printListOfIntervals(l: List[Tuple[float,float]])->str:
+    try:
+        string = "["
+        for i in l:
+            string += printInterval(i) + ", "
+        return string[:-2] + "]"
+    except:
+        return str(l)
+
+
+
+def printOptionalInterval(i: Optional[Tuple[float,float]])->str:
+    if i is None:
+        return "--"
+    return printList([i[0],i[1]])
+
+def printOptionalListOfIntervals(l: Optional[List[Tuple[float,float]]])->str:
+    if l is None:
+        return "--"
+    return printListOfIntervals(l)
+    
+
+
+def printDList(dl:List[List[float]]):
     try:
         string = "["
         for l in dl:
@@ -64,26 +98,37 @@ def printDList(dl):
     except:
         return dl
 
-def print4F(nr):
+def print4F(nr: float):
     try:
         return "{:.4f}".format(nr)
     except:
         return "{}".format(nr)
 
-def printSortedSet(s):
+def printOptional4FOrString(nr: Optional[Union[str,float]]):
+    if nr is None:
+        return "--"
+    if isinstance(nr, str):
+        return nr
+    try:
+        return "{:.4f}".format(nr)
+    except:
+        return "{}".format(nr)
+
+
+def printSortedSet(s: Iterable[str]):
     print("{{{}}}".format(", ".join(sortNames(s))))
 
-def printSortedList(s):
+def printSortedList(s: Iterable[str]):
     print("{}".format(", ".join(sortNames(s))))
 
-def printVector(s):
+def printVector(s: List[str]):
     print ("[{}]\n".format(", ".join(s)))
 
 
-def stopCriteria(c):
+def stopCriteria(c: List[float])->List[float]:
     # Format stop criteria: 
     stop = '''
-    Steady state behaviour = 
+    Steady state behavior = 
     [
         Confidence level,
         Absolute error,
@@ -93,7 +138,7 @@ def stopCriteria(c):
         Time (in seconds)
     ]
 
-    Transient behaviour = 
+    Transient behavior = 
     [
         Confidence level,
         Absolute error,
@@ -119,7 +164,7 @@ def stopCriteria(c):
     
     return c
 
-def nrOfSteps(ns):
+def nrOfSteps(ns: int)->int:
     if ns == None:
         s = "Number of steps required (flag -ns)"
         error(s)
