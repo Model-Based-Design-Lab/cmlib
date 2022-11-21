@@ -65,7 +65,7 @@ def main():
     try:
         process(args, dsl)
     except Exception as e:
-        sys.stderr.write("An error occurred: {}\n".format(e))
+        sys.stderr.write("{}\n".format(e))
         # raise e
         exit(1)
 

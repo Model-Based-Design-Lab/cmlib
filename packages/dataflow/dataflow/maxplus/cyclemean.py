@@ -10,7 +10,7 @@ class Tree:
 
     _nodes: Set[Any]
     _root: Any
-    _pathLengths: Dict[Any,float]
+    _pathLengths: Dict[Any,Fraction]
     _parents: Dict[Any,Any]
     _children: Dict[Any,Set[Any]]
 
@@ -18,13 +18,13 @@ class Tree:
         self._nodes = {n}
         self._root = n
         self._pathLengths = dict()
-        self._pathLengths[n] = 0.0
+        self._pathLengths[n] = Fraction(0.0)
         self._parents = dict()
         self._children = dict()
         self._parents[n] = None
         self._children[n] = set()
 
-    def pathLengthOf(self, n: Any)->float:
+    def pathLengthOf(self, n: Any)->Fraction:
         return self._pathLengths[n]
 
     def parentOf(self, n: Any)->Any:
@@ -42,7 +42,7 @@ class Tree:
             n = self._parents[n]
         return False
 
-    def addNode(self, n: Any, parent: Any, dist: float):
+    def addNode(self, n: Any, parent: Any, dist: Fraction):
         '''Add node to parent at given distance.'''
         self._nodes.add(n)
         self._parents[n] = parent
@@ -50,10 +50,10 @@ class Tree:
         self._children[parent].add(n)
         self._pathLengths[n] = self._pathLengths[parent] + dist
         
-    def modifyParent(self, n: Any, newParent: Any, dist: float):
+    def modifyParent(self, n: Any, newParent: Any, dist: Fraction):
         '''Move node from tree to a different parent at given distance from the new parent.'''
         
-        def _updateDescendants(nd: Any, offset: float):
+        def _updateDescendants(nd: Any, offset: Fraction):
             for m in self._children[nd]:
                 _updateDescendants(m, offset)
             self._pathLengths[nd] += offset
@@ -71,7 +71,7 @@ class Tree:
 
 # NumericalEpsilon = 1e-8
 
-# def significantlySmaller(x: float, y: float)->bool:
+# def significantlySmaller(x: Fraction, y: Fraction)->bool:
 #     return y-x > NumericalEpsilon 
 
 def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fraction,Tree,Any]]:
@@ -129,7 +129,6 @@ def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fractio
     
     while restart:
 
-        # print('Trying lambda = {}'.format(cLambda))
         spTree = Tree(nRoot)
         leaves: List[Any] = [nRoot]
         restart: bool = False
@@ -142,7 +141,7 @@ def maximumCycleMean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fractio
             nn: Any # digraph node
             for nn in gr.neighbors(leaf):
                 # compute their path length
-                pathLength: float = spTree.pathLengthOf(leaf) + float(gr.edge_weight((leaf, nn))) - cLambda 
+                pathLength: Fraction = spTree.pathLengthOf(leaf) + Fraction(gr.edge_weight((leaf, nn))) - cLambda 
                 # if it is already in the tree
                 if spTree.containsNode(nn):
                     treePathLength = spTree.pathLengthOf(nn)

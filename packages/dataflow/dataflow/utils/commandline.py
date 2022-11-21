@@ -2,6 +2,7 @@
 '''Operations on dataflow '''
 
 import argparse
+from fractions import Fraction
 from typing import Any, Dict, Union
 from dataflow.maxplus.types import TTimeStampList
 from dataflow.libsdf import DataflowGraph
@@ -54,7 +55,7 @@ def main():
     try:
         process(args, dsl)
     except Exception as e:
-        sys.stderr.write("An error occurred: {}\n".format(e))
+        sys.stderr.write("{}\n".format(e))
         # in final version comment out following line
         # raise e
         exit(1)
@@ -199,7 +200,8 @@ def processDataflowOperation(args, dsl):
         rv = G.repetitionVector()
         if rv is None:
             raise Exception("The graph is inconsistent.")
-        printXmlGanttChart(G.actorsWithoutInputsOutputs(), rv, firingStarts, firingDurations, G.inputs(), inputTraces, G.outputs(), outputTraces)
+        floatFiringDurations = [float(d) for d in firingDurations]
+        printXmlGanttChart(G.actorsWithoutInputsOutputs(), rv, firingStarts, floatFiringDurations, G.inputs(), inputTraces, G.outputs(), outputTraces)
 
     if args.operation == OP_SDF_GANTT_CHART_ZERO_BASED:
         # make a Gantt chart assuming that actors cannot fire before time 0
@@ -222,7 +224,7 @@ def processDataflowOperation(args, dsl):
             G.addChannel(inpName(a), a, dict())
             # provide the new inputs with input event sequences of sufficient zeros
             # add signal of number of iterations times the repetition vector of the actor consuming from the input
-            G.addInputSignal(inpName(a), list([0.0] * ni * reps[a]))
+            G.addInputSignal(inpName(a), list([Fraction(0.0)] * ni * reps[a]))
 
         inputTraces, outputTraces, firingStarts, firingDurations = _determineTrace(G, args, ni)
 
@@ -232,7 +234,8 @@ def processDataflowOperation(args, dsl):
         realInputTraces = list(map(reduceRealInputs, inputTraces))
 
         # write gantt chart trace
-        printXmlGanttChart(G.actorsWithoutInputsOutputs(), reps, firingStarts, firingDurations, realInputs, realInputTraces, G.outputs(), outputTraces)
+        floatFiringDurations = [float(d) for d in firingDurations]
+        printXmlGanttChart(G.actorsWithoutInputsOutputs(), reps, firingStarts, floatFiringDurations, realInputs, realInputTraces, G.outputs(), outputTraces)
 
 
 def processMaxPlusOperation(args, dsl):
@@ -272,7 +275,7 @@ def processMaxPlusOperation(args, dsl):
             print('None')
         else:
             for v in ev:
-                print('{}, with eigenvalue: {}'.format(mpVector(v[0]), v[1]))
+                print('{}, with eigenvalue: {}'.format(mpVectorToString(v[0]), v[1]))
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
