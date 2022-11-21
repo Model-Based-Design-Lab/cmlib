@@ -1487,8 +1487,8 @@ class MarkovChain(object):
     def estimationHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: Union[str,List[str]], mode: bool, func: bool, states: List[str])->Tuple[
         List[Optional[Union[float,str]]],
         List[int],
-        list[Optional[float]],
-        list[Optional[float]],
+        List[Optional[float]],
+        List[Optional[float]],
         List[Optional[Tuple[float,float]]],
         List[Optional[str]]]:
         '''
