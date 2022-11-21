@@ -2,14 +2,14 @@
 '''Operations on dataflow '''
 
 import argparse
+from typing import Any, Dict, Union
+from dataflow.maxplus.types import TTimeStampList
 from dataflow.libsdf import DataflowGraph
-from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
+from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel, EventSequenceModel
 from dataflow.utils.utils import printXmlTrace, printXmlGanttChart, parseInputTraces, parseInitialState, requireNumberOfIterations, parseNumberOfIterations, requirePeriod, getSquareMatrix, requireSequenceOfMatricesAndPossiblyVectorSequence, determineStateSpaceLabels, parseSequences, validateEventSequences, requireParameterInteger, requireOneEventSequence, requireParameterMPValue
-from dataflow.maxplus.maxplus import printMPMatrix, mpVector, mpElement, mpNumberOfColumns, mpMinusInfVector, mpMultiplyMatrixVector, mpTransposeMatrix, mpSplitSequence
+from dataflow.maxplus.maxplus import printMPMatrix, printMPVectorList, mpVectorToString, mpElementToString, mpTransposeMatrix
 from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_SPACE_MATRICES, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
 import sys
-import re
-
 
 def main():
 
@@ -29,7 +29,7 @@ def main():
     parser.add_argument('-sq', '--sequences', dest='sequences',
                         help="the sequences to operate on")
     parser.add_argument('-pa', '--parameter', dest='parameter',
-                        help="parmeter for the operation")
+                        help="parameter for the operation")
     parser.add_argument('-ni', '--numberofiterations', dest='numberofiterations',
                         help="number of iterations to analyze")
     parser.add_argument('-og', '--outputgraph', dest='outputGraph',
@@ -42,6 +42,7 @@ def main():
         sys.stderr.write("Operation should be one of: {}.\n".format(", ".join(Operations)))
         exit(1)
 
+    dsl = None
     if args.dataflow_graph_or_mpmatrix:
         try:
             with open(args.dataflow_graph_or_mpmatrix, 'r') as sdfMpmFile:
@@ -195,7 +196,10 @@ def processDataflowOperation(args, dsl):
         inputTraces, outputTraces, firingStarts, firingDurations = _determineTrace(G, args, ni)
 
         # write gantt chart trace
-        printXmlGanttChart(G.actorsWithoutInputsOutputs(), G.repetitionVector(), firingStarts, firingDurations, G.inputs(), inputTraces, G.outputs(), outputTraces)
+        rv = G.repetitionVector()
+        if rv is None:
+            raise Exception("The graph is inconsistent.")
+        printXmlGanttChart(G.actorsWithoutInputsOutputs(), rv, firingStarts, firingDurations, G.inputs(), inputTraces, G.outputs(), outputTraces)
 
     if args.operation == OP_SDF_GANTT_CHART_ZERO_BASED:
         # make a Gantt chart assuming that actors cannot fire before time 0
@@ -209,6 +213,8 @@ def processDataflowOperation(args, dsl):
 
         # determine the repetition vector for the extended graph
         reps = G.repetitionVector()
+        if reps is None:
+            raise Exception("The graph is inconsistent")
 
         # add the new inputs and channels
         for a in G.actorsWithoutInputsOutputs():
@@ -216,7 +222,7 @@ def processDataflowOperation(args, dsl):
             G.addChannel(inpName(a), a, dict())
             # provide the new inputs with input event sequences of sufficient zeros
             # add signal of number of iterations times the repetition vector of the actor consuming from the input
-            G.addInputSignal(inpName(a), [0] * ni * reps[a])
+            G.addInputSignal(inpName(a), list([0.0] * ni * reps[a]))
 
         inputTraces, outputTraces, firingStarts, firingDurations = _determineTrace(G, args, ni)
 
@@ -270,12 +276,12 @@ def processMaxPlusOperation(args, dsl):
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
-                print('{}, with generalized eigenvalue: {}'.format(mpVector(v[0]), mpVector(v[1])))
+                print('{}, with generalized eigenvalue: {}'.format(mpVectorToString(v[0]), mpVectorToString(v[1])))
 
     # precedence graph
     if args.operation == OP_MPM_PRECEDENCEGRAPH:
         mat = getSquareMatrix(Matrices, args)
-        g = Matrices[mat].precedencegraph()
+        g = Matrices[mat].precedenceGraph()
         print("The nodes of the precedence graph are:")
         print(", ".join(g.nodes()))
         print("The edges of the precedence graph are:")
@@ -285,7 +291,7 @@ def processMaxPlusOperation(args, dsl):
     # precedence graph graphviz
     if args.operation == OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ:
         mat = getSquareMatrix(Matrices, args)
-        g = Matrices[mat].precedencegraphGraphviz()
+        g = Matrices[mat].precedenceGraphGraphviz()
         print(g)
 
     # star closure
@@ -293,7 +299,8 @@ def processMaxPlusOperation(args, dsl):
         mat = getSquareMatrix(Matrices, args)
         success, cl = Matrices[mat].starClosure()
         if success:
-            printMPMatrix(cl)
+            m: MaxPlusMatrixModel = cl  # type: ignore
+            printMPMatrix(m.mpMatrix())
         else:
             print("The matrix has no star closure.")
 
@@ -303,7 +310,10 @@ def processMaxPlusOperation(args, dsl):
         matrices = [(Matrices[m] if m in Matrices else VectorSequences[m]) for m in names]
         result = MaxPlusMatrixModel.multiplySequence(matrices)
         print("The product of {} is:".format(', '.join(names)))
-        printMPMatrix(result.mpMatrix())
+        if isinstance(result, VectorSequenceModel):
+            printMPVectorList(result.vectors())
+        else:
+            printMPMatrix(result.mpMatrix())
 
     # multiplytransform 
     if args.operation == OP_MPM_MULTIPLY_TRANSFORM:
@@ -331,7 +341,7 @@ def processMaxPlusOperation(args, dsl):
         labels, vt = _makeVectorTrace(Matrices, VectorSequences, EventSequences, args)
         print('Vector elements: [{}]'.format(', '.join(labels)))
         print('Trace:')
-        print(', '.join([mpVector(v) for v in vt]))
+        print(', '.join([mpVectorToString(v) for v in vt]))
     
     # vectortracetransform
     if args.operation == OP_MPM_VECTOR_TRACE_TRANSFORM:
@@ -360,8 +370,8 @@ def processMaxPlusOperation(args, dsl):
                 # still nothing?
                 raise Exception("vectortracexml requires sequences.")
 
-        # determine the labels and the final legnth of the trace
-        tracelen = ni
+        # determine the labels and the final length of the trace
+        traceLen = ni
         labels = []
         for s in sequences:
             if not (s in VectorSequences or s in EventSequences):
@@ -370,11 +380,11 @@ def processMaxPlusOperation(args, dsl):
                 vs = VectorSequences[s]
                 for n in range(vs.vectorLength()):
                     labels.append(vs.getLabel(n, s))
-                tracelen = vs.length() if tracelen is None else min(tracelen, vs.length())
+                traceLen = vs.length() if traceLen is None else min(traceLen, vs.length())
             elif s in EventSequences:
                 ms = EventSequences[s]
                 labels.append(s)
-                tracelen = ms.length() if tracelen is None else min(tracelen, ms.length())
+                traceLen = ms.length() if traceLen is None else min(traceLen, ms.length())
             else:
                 raise Exception("Sequence {} is unknown.".format(s))
 
@@ -384,10 +394,10 @@ def processMaxPlusOperation(args, dsl):
             if s in VectorSequences:
                 vs = VectorSequences[s]
                 for r in mpTransposeMatrix(vs.vectors()):
-                    vt.append(r[:tracelen])
+                    vt.append(r[:traceLen])
             else:
                 es = EventSequences[s]
-                vt.append(es.sequence()[:tracelen])
+                vt.append(es.sequence()[:traceLen])
 
         # transpose the result
         vt = mpTransposeMatrix(vt)
@@ -402,9 +412,9 @@ def processMaxPlusOperation(args, dsl):
 
     # convolutiontransform
     if args.operation == OP_MPM_CONVOLUTION_TRANSFORM:
-        sequences, ress = _convolution(EventSequences, args)
+        sequences, resS = _convolution(EventSequences, args)
         res = dict()
-        res['{}_conv'.format('_'.join(sequences))] = ress
+        res['{}_conv'.format('_'.join(sequences))] = resS
         print(MaxPlusMatrixModel().asDSL(name+'_conv', res))
 
     # maxsequences
@@ -415,9 +425,9 @@ def processMaxPlusOperation(args, dsl):
 
     # maxsequencestransform
     if args.operation == OP_MPM_MAXIMUM_TRANSFORM:
-        sequences, ress = _maximum(EventSequences, args)
+        sequences, resS = _maximum(EventSequences, args)
         res = dict()
-        res['{}_max'.format('_'.join(sequences))] = ress
+        res['{}_max'.format('_'.join(sequences))] = resS
         print(MaxPlusMatrixModel().asDSL(name+'_max', res))
 
     #'delaysequence'
@@ -433,7 +443,7 @@ def processMaxPlusOperation(args, dsl):
         scale = requireParameterMPValue(args)
         seq = requireOneEventSequence(EventSequences, args)
         res = EventSequences[seq].scale(scale)
-        print("The scaled sequence of {} by scaling factor {} is:".format(seq, mpElement(scale)))
+        print("The scaled sequence of {} by scaling factor {} is:".format(seq, mpElementToString(scale)))
         print(res)
 
 
@@ -446,27 +456,27 @@ def _determineInputLabels(matrices):
         return inputLabels
 
 
-def _makeVectorTrace(matrices, vectorsequences, eventsequences, args):
+def _makeVectorTrace(matrices, vectorSequences, eventSequences, args):
     if len(matrices) == 1:
         ni = requireNumberOfIterations(args)
         M =matrices.values()[0] 
         if not M.isSquare():
             raise Exception("Matrix must be square.")
         x0 = parseInitialState(args, M.numberOfRows())
-        vt = M.vectortraceClosed(x0, ni)
+        vt = M.vectorTraceClosed(x0, ni)
         inputs = []
         stateSize = M.numberOfRows()
         inputLabels = []
         outputLabels = []
         stateLabels = []
     else:
-        ni = parseNumberOfIterations(args)
+        ni = requireNumberOfIterations(args)
         inputLabels, stateLabels, outputLabels = determineStateSpaceLabels(matrices)            
         stateSize = len(stateLabels)
         x0 = parseInitialState(args, stateSize)
-        nt, ut = parseInputTraces(eventsequences, vectorsequences, args)
-        inputs = MaxPlusMatrixModel.extractSequences(nt, ut, eventsequences, vectorsequences, inputLabels)
-        vt = MaxPlusMatrixModel.vectortrace(matrices, x0, ni, inputs, True)
+        nt, ut = parseInputTraces(eventSequences, vectorSequences, args)
+        inputs = MaxPlusMatrixModel.extractSequences(nt, ut, eventSequences, vectorSequences, inputLabels)
+        vt = MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, inputs, True)
 
     labels = []
     labels = labels + inputLabels
@@ -475,39 +485,40 @@ def _makeVectorTrace(matrices, vectorsequences, eventsequences, args):
     
     return labels, vt
 
-def _convolution(eventsequences, args):
+def _convolution(eventSequences, args):
     sequences = parseSequences(args)
     if len(sequences) < 2:
         raise Exception("Please specify at least two sequences to convolve.")
-    validateEventSequences(eventsequences, sequences)
+    validateEventSequences(eventSequences, sequences)
 
-    res = eventsequences[sequences[0]]
+    res = eventSequences[sequences[0]]
     for s in sequences[1:]:
-        res = res.convolveWith(eventsequences[s])
+        res = res.convolveWith(eventSequences[s])
     return sequences, res
 
-def _maximum(eventsequences, args):
+def _maximum(eventSequences, args):
     sequences = parseSequences(args)
     if len(sequences) < 2:
         raise Exception("Please specify at least two sequences to maximize.")
-    validateEventSequences(eventsequences, sequences)
+    validateEventSequences(eventSequences, sequences)
 
-    res = eventsequences[sequences[0]]
+    res = eventSequences[sequences[0]]
     for s in sequences[1:]:
-        res = res.maxWith(eventsequences[s])
+        res = res.maxWith(eventSequences[s])
     return sequences, res
 
-def _determineTrace(G: DataflowGraph, args, ni):
+def _determineTrace(G: DataflowGraph, args: Dict[str,Any], ni: int):
     stateSize = G.numberOfInitialTokens()
     x0 = parseInitialState(args, stateSize)
 
     # get input sequences.
-    nt, _ = parseInputTraces(G.inputSignals(), {}, args)
+    inpSig = G.inputSignals()
+    nt, _ = parseInputTraces(inpSig, {}, args)  # type: ignore type system issue
 
     if stateSize != len(x0):
         raise Exception('Initial state vector is of incorrect size.')
 
-    return G.determineTrace(ni, x0, nt)
+    return G.determineTrace(ni, x0, nt)  # type: ignore type system issue
 
 
 if __name__ == "__main__":

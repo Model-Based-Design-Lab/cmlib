@@ -1,3 +1,4 @@
+from typing import Union,Tuple,Any
 from textx import metamodel_from_str, TextXSyntaxError
 from fractions import Fraction
 import sys
@@ -105,7 +106,7 @@ Comment:
 
 MetaModelSDF = metamodel_from_str(SDFGrammar, classes=[])
 
-def parseSDFDSL(content, factory):
+def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
     '''
     Parse the provided content. Using the factory operations to build the result.
     Returns a pair with the name of the model and the constructed result.

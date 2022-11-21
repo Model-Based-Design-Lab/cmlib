@@ -13,7 +13,7 @@
     "listOfOutputsStr": "o",
     "listOfStateElementsStr": "Sh_Sh, DM_DM, CE_DM_0, CE_DM_1",
     "convertToSingleRate": {
-        "_actors": "[CE, DC, DM, Sh, ce, i, o]",
+        "_actorsAndIO": "[CE, DC, DM, Sh, ce, i, o]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9]",
         "_actorSpecs": {
             "i": {
@@ -38,7 +38,7 @@
                 "executionTime": "0"
             }
         },
-        "_outchannels": {
+        "_outChannels": {
             "i": "[ch1]",
             "Sh": "[ch2, ch3]",
             "ce": "[ch4]",
@@ -46,7 +46,7 @@
             "CE": "[ch7]",
             "DC": "[ch9]"
         },
-        "_inchannels": {
+        "_inChannels": {
             "Sh": "[ch1, ch2]",
             "DM": "[ch3, ch4, ch6, ch7]",
             "CE": "[ch5]",
@@ -99,8 +99,7 @@
             "ce": "[0, 1/2, 1, 3/2, 2, 5/2, 3]"
         },
         "_repetitionVector": {
-            "o": "1.0000",
-            "DC": "1.0000",
+            "ce": "1.0000",
             "DM": "1.0000",
             "CE": "1.0000",
             "ce": "1.0000",

@@ -12,7 +12,7 @@ Any of the packages can be installed as follows.
 In a console (shell, command prompt or powershell), in this folder, type:
 
 ``` shell
-$ python -m pip install "git+https://github.com/Shoobx/python-graph#egg=pkg&subdirectory=core"
+$ python -m pip install "git+https://github.com/Shoobx/python-graph#egg=python-graph-core&subdirectory=core"
 $ cd markovchains
 $ python -m pip install .
 $ cd ../finitestateautomata

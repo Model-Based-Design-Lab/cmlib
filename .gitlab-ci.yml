@@ -1,17 +1,17 @@
 before_script:
     - apt-get update
-    - apt-get install -y python3.8 python3.8-dev python3-pip
-    - python3.8 -m pip install pytest setuptools textx matplotlib statistics numpy
-    - python3.8 -m pip install pandas sympy
+    - apt-get install -y python3.9 python3.9-dev python3-pip
+    - python3.9 -m pip install pytest setuptools textx matplotlib statistics numpy
+    - python3.9 -m pip install pandas
     - git clone https://github.com/Shoobx/python-graph.git
-    - cd "python-graph/core/" && python3.8 ./setup.py install
+    - cd "python-graph/core/" && python3.9 ./setup.py install
     - cd ../..
     - cd packages/markovchains
-    - python3.8 -m pip install .
+    - python3.9 -m pip install .
     - cd ../dataflow
-    - python3.8 -m pip install .
+    - python3.9 -m pip install .
     - cd ../finitestateautomata
-    - python3.8 -m pip install .
+    - python3.9 -m pip install .
     - cd ../..
 
 
@@ -24,13 +24,13 @@ test:
         - Ubuntu2004-64bit
     script:
         - cd packages/modeltest
-        - python3.8 -m pip install .
+        - python3.9 -m pip install .
         - cd ../markovchains
-        - python3.8 -m pytest . -v -l
+        - python3.9 -m pytest . -v -l
         - cd ../dataflow
-        - python3.8 -m pytest . -v -l
+        - python3.9 -m pytest . -v -l
         - cd ../finitestateautomata
-        - python3.8 -m pytest . -v -l
+        - python3.9 -m pytest . -v -l
 
 variables:
     GIT_SUBMODULE_STRATEGY: recursive

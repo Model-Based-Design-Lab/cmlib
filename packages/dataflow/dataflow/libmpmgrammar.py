@@ -1,3 +1,4 @@
+from typing import Any, Dict, Tuple, Union
 from textx import metamodel_from_str, TextXSyntaxError
 from fractions import Fraction
 import sys
@@ -75,7 +76,7 @@ Comment:
 
 MetaModelMPM = metamodel_from_str(MPMGrammar, classes=[])
 
-def parseMPMDSL(content, factory):
+def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,None,None],Tuple[str,Dict[str,Any],Dict[str,Any],Dict[str,Any]]]:
 
     def _getNumber(n):
         if n.ratio != None:
@@ -85,7 +86,7 @@ def parseMPMDSL(content, factory):
         if n.int != None:
             return Fraction(n.int).limit_denominator()
 
-    def _parseRow(r, mpm, factory):
+    def _parseRow(r: Any, mpm: Any, factory: Dict[str,Any]):
         row = []
         for e in r.elements:
             if e == "-inf":
@@ -94,7 +95,7 @@ def parseMPMDSL(content, factory):
                 row.append(_getNumber(e))
 
         factory['AddRow'](mpm, row)
-        
+
     def _parseLabels(lbls):
         return lbls.label
 
@@ -102,7 +103,7 @@ def parseMPMDSL(content, factory):
         model =  MetaModelMPM.model_from_str(content)
     except TextXSyntaxError as err:
         sys.stderr.write("Syntax error in line %d col %d: %s\n" % (err.line, err.col, err.message))
-        return (None, None)
+        return (None, None, None, None)
     
     resMatrices = {}
     for m in model.matrices:
@@ -129,5 +130,4 @@ def parseMPMDSL(content, factory):
         resEventSequences[e.name] = es
 
     return model.name, resMatrices, resVectorSequences, resEventSequences
-
 

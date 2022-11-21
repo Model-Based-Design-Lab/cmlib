@@ -11,7 +11,7 @@
     "listOfOutputsStr": "o",
     "listOfStateElementsStr": "",
     "convertToSingleRate": {
-        "_actors": "[A, B, C, i, o]",
+        "_actorsAndIO": "[A, B, C, i, o]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5]",
         "_actorSpecs": {
             "i": {
@@ -24,13 +24,13 @@
                 "executionTime": "0"
             }
         },
-        "_outchannels": {
+        "_outChannels": {
             "i": "[ch1]",
             "A": "[ch2]",
             "B": "[ch3, ch5]",
             "C": "[ch4]"
         },
-        "_inchannels": {
+        "_inChannels": {
             "A": "[ch1, ch4]",
             "B": "[ch2]",
             "C": "[ch3]",

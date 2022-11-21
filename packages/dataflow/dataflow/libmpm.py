@@ -1,192 +1,268 @@
 from functools import reduce
 from io import StringIO
-from dataflow.libmpmgrammar import parseMPMDSL
+from typing import List, Literal, Optional, Tuple, Union, Dict
 import dataflow.maxplus.maxplus as mp
-from dataflow.maxplus.starclosure import starClosure, PositiveCycleException
+from dataflow.libmpmgrammar import parseMPMDSL
+from dataflow.maxplus.starclosure import PositiveCycleException, starClosure
+import pygraph.classes.digraph  as pyg
 
+# Represent a finite event sequence, i.e., a list of time stamps
+class MPMException(mp.MPException):
+    pass
+
+class MPMValidateException(MPMException):
+    pass
 class EventSequenceModel(object):
 
-    def __init__(self, seq = []):
+    _sequence: mp.TTimeStampList
+
+    def __init__(self, seq: mp.TTimeStampList = []):
+        # _sequence captures the event sequence
         self._sequence = seq
     
     def validate(self):
+        # no checks needed
         pass
 
-    def addRow(self, row):
+    def addRow(self, row: mp.TTimeStampList):
+        ''' bit of a hack for the parser to reuse code. Do not use. '''
+        # TODO: get rid of this method by making the parse call an appropriate function
         self._sequence = row
 
     def sequence(self):
+        '''Get the time stamp sequence'''
         return self._sequence
 
-    def length(self):
+    def length(self)->int:
+        '''Returns the length of the sequence'''
         return len(self._sequence)
 
-    def convolveWith(self, es):
+    def convolveWith(self: 'EventSequenceModel', es: 'EventSequenceModel')->'EventSequenceModel':
+        '''Compute the convolution with another EventSequenceModel'''
+        if not isinstance(es, EventSequenceModel):
+            raise MPMException('Object of the wrong type to take convolution with event sequence.')
         res = EventSequenceModel()
         res._sequence = mp.mpConvolution(self._sequence, es._sequence)
         return res
 
-    def maxWith(self, es):
+    def maxWith(self, es: 'EventSequenceModel') -> 'EventSequenceModel':
+        '''Compute the maximum with another event sequence'''
         if not isinstance(es, EventSequenceModel):
-            raise Exception('Object of the wrong type to take maximum with event sequence.')
+            raise MPMException('Object of the wrong type to take maximum with event sequence.')
         res = EventSequenceModel()
         res._sequence = mp.mpMaxEventSequences(self._sequence, es._sequence)
         return res
 
-    def delay(self, n):
+    def delay(self, n: int)->'EventSequenceModel':
+        '''Compute the delayed event sequence, delayed by n samples'''
         res = EventSequenceModel()
         res._sequence = mp.mpDelay(self._sequence, n)
         return res
 
-    def scale(self, c):
+    def scale(self, c: mp.TTimeStamp)->'EventSequenceModel':
+        '''Compute a scaled version of the event sequence, i.e., add constant to every element.'''
         res = EventSequenceModel()
         res._sequence = mp.mpScale(self._sequence, c)
         return res
 
-    def extractSequenceList(self):
+    def extractSequenceList(self)->List[mp.TTimeStampList]:
+        '''Determine list of sequences. For an event sequence, the list will contain only one list as an element'''
         return [self._sequence]
 
-    def __str__(self):
-        return mp.mpVector(self._sequence)
+    def __str__(self)->str:
+        '''Return a string representation.'''
+        return mp.mpVectorToString(self._sequence)
 
 class VectorSequenceModel(object):
 
-    def __init__(self, vectors=None):
+    _vectors: mp.TMPVectorList
+    _labels: List[str]
+
+    def __init__(self, vectors: Optional[mp.TMPVectorList] = None):
         if vectors is None:
-            self._vectors = []
+            self._vectors: mp.TMPVectorList = []
         else:
             self._vectors = vectors
-        self._labels = []
+        self._labels: List[str] = []
 
-    def addVector(self, v):
-        self.addRow(v)
+    def addVector(self, v: mp.TMPVector):
+        '''Add a vector to the vector sequence'''
+        self._vectors.append(v)
 
-    def addRow(self, row):
+    def addRow(self, row: mp.TMPVector):
+        '''Cheat method to reuse matrix like methods. Do not use.'''
+        # TODO: remove method divert to calls to addVector
         self._vectors.append(row)
 
-    def setLabels(self, labels):
+    def setLabels(self, labels: List[str]):
+        '''Set labels for the vector elements. The length of the list of labels should match the size of the vectors in the list'''
         self._labels = labels
 
-    def labels(self):
+    def labels(self)->List[str]:
+        '''Get the labels of the vector elements'''
         return self._labels
 
-    def getLabel(self, n, base = 's'):
+    def getLabel(self, n: int, base: str = 's'):
+        '''Get the label of element n (starting from 0) of the vectors. If the label has not been previously set, a default is constructed from the base with a number.'''
         if n < len(self._labels):
             return self._labels[n]
         else:
-            return base + (str(n+1))
+            return base + str(n+1)
 
-    def vectors(self):
+    def vectors(self) -> mp.TMPVectorList:
+        '''Get the list of vectors.'''
         return self._vectors
 
-    def length(self):
+    def length(self) -> int:
+        '''Returns the number of vector in the list.'''
         return len(self._vectors)
 
-    def vectorLength(self):
+    def __len__(self) -> int:
+        return self.length()
+
+    def vectorLength(self) -> int:
+        '''Returns the length of the vectors in the list. Assumes that all vectors in the list have the same length. Returns 0 if there are no vectors in the list.'''
         if len(self._vectors) == 0:
             return 0
         else:
             return len(self._vectors[0])
 
     def validate(self):
-        # check if all vectors are of the same length
+        '''Check if all vectors are of the same length. Raise an MPMValidateException if the vector sequence does not validate.'''
         if len(set([len(r) for r in self._vectors])) > 1:
-            raise Exception("Vector sequence contains vectors of unequal length.")
+            raise MPMValidateException("Vector sequence contains vectors of unequal length.")
 
-    def maxWith(self, vs):
+    def maxWith(self, vs: 'VectorSequenceModel')->'VectorSequenceModel':
+        '''Compute the maximum with another vector sequence.'''
         res = VectorSequenceModel()
         res._vectors = mp.mpMaxVectorSequences(self._vectors, vs._vectors)
         return res
 
-    def extractSequenceList(self):
+    def extractSequenceList(self)->List[mp.TTimeStampList]:
+        '''Convert vector sequence into a list of event sequences from the corresponding elements from each of the vectors.'''
         return mp.mpTransposeMatrix(self._vectors)
 
-    def __str__(self):
-        return '[\n'+'\n'.join([mp.mpVector(v) for v in self._vectors])+'\n]'
+    def multiply(self, m: Union['VectorSequenceModel','MaxPlusMatrixModel']):
+        raise MPMException("Cannot multiply vector sequence on the left-hand side.")
+
+    def __str__(self)->str:
+        return '[\n'+'\n'.join([mp.mpVectorToString(v) for v in self._vectors])+'\n]'
 
 class MaxPlusMatrixModel(object):
+    '''Model of a max-plus matrix'''
 
-    def __init__(self, rows=None):
+    _labels: List[str]
+    _rows: List[mp.TMPVector]
+
+    def __init__(self, rows: Optional[List[mp.TMPVector]]=None):
         self._labels = []
         if rows is None:
             self._rows = []
         else:
             self._rows = rows
 
-    def setLabels(self, labels):
+    def setLabels(self, labels: List[str]):
+        '''Set labels for the rows / columns of the matrix'''
         self._labels = labels
 
-    def labels(self):
+    def labels(self) -> List[str]:
+        '''Get the row/column labels'''
         return self._labels
 
     @staticmethod
-    def fromMatrix(M):
+    def fromMatrix(M: mp.TMPMatrix)->'MaxPlusMatrixModel':
+        '''Create a matrix model from a matrix in the form of a list of row vectors'''
         res = MaxPlusMatrixModel()
         res._rows = M
         return res
 
     def validate(self):
-        pass
+        '''Validate any constraints on the matrix.'''
+        if len(self._rows) == 0:
+            return
+        n = self.numberOfColumns()
+        for r in self._rows:
+            if len(r) != n:
+                raise MPMValidateException("Matrix contains rows of unequal length.")
 
-    def setMatrix(self, rows):
+    def setMatrix(self, rows: mp.TMPMatrix):
+        '''Add rows to the matrix'''
         for r in rows:
             self.addRow(r)
 
-    def addRow(self, row):
+    def addRow(self, row: mp.TMPVector):
+        '''Add a row vector to the matrix.'''
         self._rows.append(row)
 
-    def numberOfRows(self):
+    def numberOfRows(self) -> int:
+        '''Returns the number of row of the matrix.'''
         return len(self._rows)
 
-    def rows(self):
+    def rows(self) -> mp.TMPMatrix:
+        '''Return the matrix as a list of row vectors.'''
         return self._rows
 
-    def numberOfColumns(self):
+    def numberOfColumns(self) -> int:
+        '''Return the number of columns of the matrix'''
         if len(self._rows) == 0:
             return 0
         return len(self._rows[0])
 
-    def isSquare(self):
+    def isSquare(self) -> bool:
+        '''Check if the matrix is square.'''
         return self.numberOfRows() == self.numberOfColumns()
 
-    def mpMatrix(self):
+    def mpMatrix(self) -> mp.TMPMatrix:
         '''
-        Return the matrix (array of rows) in this MaxPlusMatrixModel
+        Return the matrix (list of rows) in this MaxPlusMatrixModel
         '''
-        return self._rows
+        return self.rows()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "[" + '\n'.join(['['+(', '.join([str(e) for e in r]))+']' for r in self._rows]) + ']'
 
-    def eigenvectors(self):
+    def eigenvectors(self) -> Tuple[List[Tuple[mp.TMPVector,float]],List[Tuple[mp.TMPVector,mp.TMPVector]]]:
+        '''
+        Compute eigenvectors and generalized eigenvector and corresponding (generalized) eigenvalues.
+        Returns a pair with:
+        A list of pairs of eigenvector and eigenvalue and a list of pairs of generalized eigenvectors and generalized eigenvalues.
+        '''
+        if not self.isSquare():
+            raise MPMException("Matrix must be square to compute eigenvectors.")
         return mp.mpEigenVectors(self._rows)
 
-    def eigenvalue(self):
+    def eigenvalue(self) -> mp.TTimeStamp:
+        '''Determine the largest eigenvalue of the matrix.'''
         return mp.mpEigenValue(self._rows)
 
-    def _precedencegraphLabels(self):
+    def _precedenceGraphLabels(self) -> List[str]:
+        '''Return a lst of labels for the rows/columns of the matrix. If none have been explicitly defined it generate labels `x` with a number.'''
         return self.labels() if len(self.labels()) == self.numberOfRows() else [ 'x{}'.format(k) for k in range(self.numberOfRows())]
 
-    def precedencegraph(self):
-        return mp.mpPrecedenceGraph(self._rows, self._precedencegraphLabels())
+    def precedenceGraph(self) -> pyg.digraph:
+        '''Determine the precedence graph of the matrix.'''
+        return mp.mpPrecedenceGraph(self._rows, self._precedenceGraphLabels())
             
-    def precedencegraphGraphviz(self):
-        return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedencegraphLabels())
+    def precedenceGraphGraphviz(self) -> str:
+        '''Return a Graphviz representation of the precedence graph as a string.'''
+        return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedenceGraphLabels())
 
-    def starClosure(self):
+    def starClosure(self)->Union[Tuple[Literal[False],None],Tuple[Literal[True],'MaxPlusMatrixModel']]:
+        '''Determine the * closure. If it exist return True and the star close. If it doesn't return False and None.'''
         try:
-            cl = starClosure(self._rows)
+            cl = MaxPlusMatrixModel(mp.mpStarClosure(self._rows))
         except PositiveCycleException:
             return False, None
         return True, cl
 
-    def multiply(self, matOrVs):
+    def multiply(self, matOrVs: Union['MaxPlusMatrixModel',VectorSequenceModel]) -> Union['MaxPlusMatrixModel',VectorSequenceModel]:
+        '''Multiply the matrix with another matrix or with a vector sequence.'''
         if isinstance(matOrVs, VectorSequenceModel):
             return VectorSequenceModel(mp.mpMultiplyMatrixVectorSequence(self._rows, matOrVs._vectors))
         else:
             return MaxPlusMatrixModel(mp.mpMultiplyMatrices(self._rows, matOrVs._rows))
         
-    def vectortraceClosed(self, x0, ni):
+    def vectorTraceClosed(self, x0: mp.TMPVector, ni: int) -> mp.TMPVectorList:
         '''
         Compute a vector trace of state vectors of the matrix in this model. Requires that the matrix is square.
 
@@ -203,10 +279,10 @@ class MaxPlusMatrixModel(object):
         matrices['B'] = MaxPlusMatrixModel()
         matrices['C'] = MaxPlusMatrixModel()
         matrices['D'] = MaxPlusMatrixModel()
-        return MaxPlusMatrixModel.vectortrace(matrices, x0, ni, [])
+        return MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, [])
 
     @staticmethod
-    def vectortrace(matrices, x0, ni, inputs, useEndingState = False):
+    def vectorTrace(matrices: Dict[str,'MaxPlusMatrixModel'], x0: mp.TMPVector, ni: int, inputs: List[mp.TTimeStampList], useEndingState: bool = False) -> mp.TMPVectorList:
         '''
         Compute a vector trace of the combined state vector and output vector, stacked
 
@@ -224,29 +300,30 @@ class MaxPlusMatrixModel(object):
 
         '''
         
-        def _validate(mat):
+        def _validate(mat: Dict[str,'MaxPlusMatrixModel'])->None:
             if not ('A' in mat and 'B' in mat and 'C' in mat and 'D' in mat):
-                raise Exception('Expected matrices A, B, C and D')
+                raise MPMValidateException('Expected matrices A, B, C and D')
             A = mat['A']
             B = mat['B']
             C = mat['C']
             D = mat['D']
             if A.numberOfRows() != B.numberOfRows():
                 if A.numberOfColumns() > 0 and B.numberOfColumns() > 0:
-                    raise Exception('The number of rows of A does not match the number of rows of B')
+                    raise MPMValidateException('The number of rows of A does not match the number of rows of B')
             if C.numberOfRows() != D.numberOfRows():
                 if C.numberOfColumns() > 0 and D.numberOfColumns() > 0:
-                    raise Exception('The number of rows of C does not match the number of rows of D')
+                    raise MPMValidateException('The number of rows of C does not match the number of rows of D')
             if A.numberOfColumns() != C.numberOfColumns():
                 if A.numberOfRows() > 0 and C.numberOfRows() > 0:
-                    raise Exception('The number of columns of A does not match the number of columns of C')
+                    raise MPMValidateException('The number of columns of A does not match the number of columns of C')
             if B.numberOfColumns() != D.numberOfColumns():
                 if B.numberOfRows() > 0 and D.numberOfRows() > 0:
-                    raise Exception('The number of columns of B does not match the number of columns of D')
-            return True
+                    raise MPMValidateException('The number of columns of B does not match the number of columns of D')
 
-        if not _validate(matrices):
-            raise Exception("Provided matrices are not a valid state-space model.")
+        try:
+            _validate(matrices)
+        except MPMValidateException:
+            raise MPMException("Provided matrices are not a valid state-space model.")
 
         MA = matrices['A'].mpMatrix()
         MB = matrices['B'].mpMatrix()
@@ -254,39 +331,40 @@ class MaxPlusMatrixModel(object):
         MD = matrices['D'].mpMatrix()
 
         if len(inputs) < mp.mpNumberOfColumns(MB):
-            raise Exception('Insufficient inputs sequences provided. ')
+            raise MPMException('Insufficient inputs sequences provided. ')
         if ni is None:
             ni = min([len(l) for l in inputs])
         for i in inputs:
             if len(i) < ni:
-                raise Exception('Insufficiently long input sequences for {} iterations.'.format(ni))
+                raise MPMException('Insufficiently long input sequences for {} iterations.'.format(ni))
         inpPref = [i[0:ni] for i in inputs]
-        inputvectors = list(map(list, zip(*inpPref)))
-        if len(inputvectors) ==0:
+        inputVectors: mp.TMPVectorList = list(map(list, zip(*inpPref)))
+        if len(inputVectors) ==0:
             # degenerate case of no inputs
-            inputvectors = [[]] * ni
+            inputVectors = [[]] * ni
 
+        x: mp.TMPVector
         if x0 is None:
             x = mp.mpZeroVector(mp.mpNumberOfRows(MA))
         else:
             x = x0
 
-        trace = []
+        trace: mp.TMPVectorList = []
         for n in range(ni):
-            nextX = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputvectors[n]))
-            outputvector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MC, x), mp.mpMultiplyMatrixVector(MD, inputvectors[n]))
+            nextX: mp.TMPVector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MA, x), mp.mpMultiplyMatrixVector(MB, inputVectors[n]))
+            outputVector = mp.mpMaxVectors(mp.mpMultiplyMatrixVector(MC, x), mp.mpMultiplyMatrixVector(MD, inputVectors[n]))
             if useEndingState:
                 stateVector = nextX
             else:
                 stateVector = x
-            trace.append(mp.mpStackVectors(inputvectors[n], mp.mpStackVectors(stateVector, outputvector)))
+            trace.append(mp.mpStackVectors(inputVectors[n], mp.mpStackVectors(stateVector, outputVector)))
             x = nextX
         return trace
 
     @staticmethod
-    def extractSequences(nSeq, uSeq, eventsequences, vectorsequences, inputLabels):
+    def extractSequences(nSeq: Optional[Dict[str,mp.TTimeStampList]], uSeq: Optional[List[mp.TTimeStampList]], eventSequences: Dict[str,EventSequenceModel], vectorSequences: Dict[str,VectorSequenceModel], inputLabels: List[str]) -> List[mp.TTimeStampList]:
         '''
-        Extract the input sequence for the input labels from the combined information from named and unnamed sequenced provided on the command line and the sequences defined in the model. Priority is given to sequences specified on the command line. Sequences that cannot be fined by name are filled with the unnamed sequences.
+        Extract the input sequence for the input labels from the combined information from named (nSeq) and unnamed (uSeq) sequences provided on the command line and the sequences defined in the model. Priority is given to sequences specified on the command line. Sequences that cannot be found by name are filled with the unnamed sequences.
         '''
 
         if uSeq is None:
@@ -297,34 +375,38 @@ class MaxPlusMatrixModel(object):
             allNamed = nSeq.copy()
 
         # add event sequences
-        for e in eventsequences:
-            allNamed[e] = eventsequences[e].sequence()
+        for e in eventSequences:
+            allNamed[e] = eventSequences[e].sequence()
 
         # add vector sequences.
-        for v in vectorsequences:
-            vsl = vectorsequences[v].extractSequenceList()
+        for v in vectorSequences:
+            vsl = vectorSequences[v].extractSequenceList()
             for k in range(len(vsl)):
                 allNamed[v+str(k+1)] = vsl[k]
 
-        res = []
+        res: List[mp.TTimeStampList] = []
         uInd = 0
         for l in inputLabels:
             if l in allNamed:
                 res.append(allNamed[l])
             else:
                 if uInd >= len(uSeq):
-                    raise Exception("Insufficient input sequences specified")
+                    raise MPMException("Insufficient input sequences specified")
                 res.append(uSeq[uInd])
                 uInd += 1
         return res
 
     @staticmethod
-    def multiplySequence(matrices):
+    def multiplySequence(matrices: List[Union['MaxPlusMatrixModel',VectorSequenceModel]])->Union['MaxPlusMatrixModel',VectorSequenceModel]:
+        '''Multiply the sequence of matrices, possibly ending with a vector sequence.'''
         return reduce(lambda prod, mat: prod.multiply(mat), matrices)
         
-
     @staticmethod
-    def fromDSL(dslString):
+    def fromDSL(dslString: str)-> Tuple[str,Dict[str,'MaxPlusMatrixModel'],Dict[str,VectorSequenceModel],Dict[str,EventSequenceModel]]:
+        '''
+        Parse dslString and extract model name, matrices, vector sequences and event sequences.
+        Raise an exception if the parsing fails. 
+        '''
 
         factory = dict()
         factory['Init'] = lambda : MaxPlusMatrixModel()
@@ -334,21 +416,26 @@ class MaxPlusMatrixModel(object):
         factory['AddLabels'] = lambda m, labels: m.setLabels(labels)
 
         name, resMatrices, resVectorSequences, resEventSequences = parseMPMDSL(dslString, factory)
+        if name is None or resMatrices is None or resVectorSequences is None or resEventSequences is None:
+            raise MPMException("Failed to parse max-plus model")
         return name, resMatrices, resVectorSequences, resEventSequences
-        
 
 
-    def asDSL(self, name, allInstances = None):
+    def asDSL(self, name: str, allInstances: Optional[Dict[str,Union['MaxPlusMatrixModel',VectorSequenceModel,EventSequenceModel]]] = None) -> str:
+
+        '''
+        Convert the receiver and all entities in optional allInstances to a string in the MPM Domain Specific Language using the provided name as the name for the model.
+        '''
 
         # create string writer for the output
         output = StringIO()
         if allInstances is None:
             output.write("max-plus model {} : \nmatrices\nA = [\n".format(name))
             for r in self._rows:
-                output.write("\t{}\n".format(mp.mpVector(r)))
+                output.write("\t{}\n".format(mp.mpVectorToString(r)))
             output.write("]\n")
         else:
-            mats = [i for i in allInstances if isinstance(allInstances[i], MaxPlusMatrixModel)]
+            mats: List[str] = [i for i in allInstances if isinstance(allInstances[i], MaxPlusMatrixModel)]
             vSequences = [i for i in allInstances if isinstance(allInstances[i], VectorSequenceModel)]
             eSequences = [i for i in allInstances if isinstance(allInstances[i], EventSequenceModel)]
 
@@ -357,32 +444,34 @@ class MaxPlusMatrixModel(object):
             if len(mats) > 0:
                 output.write("\nmatrices\n")
                 for mat in mats:
-                    if len(allInstances[mat].labels()) > 0:
-                        labels = '({})'.format(' '.join(allInstances[mat].labels()))
+                    mm: MaxPlusMatrixModel = allInstances[mat]  # type: ignore
+                    if len(mm.labels()) > 0:
+                        labels = '({})'.format(' '.join(mm.labels()))
                     else:
-                        labels=''
+                        labels = ''
                     output.write("{} {} = [\n".format(mat, labels))
-                    for r in allInstances[mat].rows():
-                        output.write("\t{}\n".format(mp.mpVector(r)))
+                    for r in mm.rows():
+                        output.write("\t{}\n".format(mp.mpVectorToString(r)))
                     output.write("]\n")
-
 
             if len(vSequences) > 0:
                 output.write("\nvector sequences\n")
                 for vs in vSequences:
-                    if len(allInstances[vs].labels()) > 0:
-                        labels = '({})'.format(' '.join(allInstances[vs].labels()))
+                    vsm: VectorSequenceModel = allInstances[vs]  # type: ignore
+                    if len(vsm.labels()) > 0:
+                        labels = '({})'.format(' '.join(vsm.labels()))
                     else:
                         labels=''
                     output.write("{} {} = [\n".format(vs, labels))
-                    for v in allInstances[vs].vectors():
-                        output.write("\t{}\n".format(mp.mpVector(v)))
+                    for v in vsm.vectors():
+                        output.write("\t{}\n".format(mp.mpVectorToString(v)))
                     output.write("]\n")
 
             if len(eSequences) > 0:
                 output.write("\nevent sequences\n")
                 for es in eSequences:
-                    output.write("{} = {}".format(es, mp.mpVector(allInstances[es].sequence())))
+                    esm: EventSequenceModel = allInstances[es]  # type: ignore
+                    output.write("{} = {}".format(es, mp.mpVectorToString(esm.sequence())))
         
         result = output.getvalue()
         output.close()

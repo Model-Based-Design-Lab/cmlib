@@ -1,11 +1,11 @@
-from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_LARGER, MP_MINUSINFINITY, NumericalEpsilon
+from dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_LARGER, MP_MINUSINFINITY, NumericalEpsilon
 from fractions import Fraction
+from dataflow.maxplus.types import TMPMatrix
 
 class PositiveCycleException(Exception):
     pass
 
-def starClosure(M):
-
+def starClosure(M: TMPMatrix)->TMPMatrix:
 
     N = len(M)
 
@@ -31,7 +31,7 @@ def starClosure(M):
                 res[v][u] = path_u2v
 
     for k in range(N):
-        if res[k][k] > NumericalEpsilon:
+        if MP_LARGER(res[k][k], 0.0):
             raise PositiveCycleException("Star Closure does not exist")
 
     return res

@@ -60,7 +60,7 @@ class Automaton_pytest(Model_pytest):
             self.function_test(lambda: self.model.languageIncluded(model), "languageIncluded_refModel")
             self.function_test(lambda: vars(self.model.product(model)), "product_refModel", sort = True)
 
-        self.function_test(lambda: self.model.asRegularBuchiAutomaton().languageEmptyBuchiAlternative(), "languageEmptyBuchi", sort = True)
+        self.function_test(lambda: self.model.asRegularBuchiAutomaton().languageEmptyBuchi(), "languageEmptyBuchi", sort = True)
         self.function_test(lambda: vars(self.model.asRegularBuchiAutomaton().productBuchi(self.model.asRegularBuchiAutomaton())), "productBuchi", sort = True)
         self.function_test(lambda: vars(self.model.minimizeBuchi()), "minimizeBuchi", sort = True)
 

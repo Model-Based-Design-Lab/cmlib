@@ -1,4 +1,5 @@
 from io import StringIO
+from typing import AbstractSet, Any, Callable, Dict, Iterable, List, Literal, Optional, Set, Tuple, Union
 
 # pygraph library from:
 # https://pypi.org/project/python-graph/
@@ -17,40 +18,53 @@ from statistics import NormalDist
 from markovchains.libdtmcgrammar import parseDTMCDSL
 from markovchains.utils.utils import sortNames
 
+TStoppingCriteria = Tuple[float,float,float,int,int,float]
+
+class DTMCException(Exception):
+    pass
 class MarkovChain(object):
 
-    # for floating point comparissons
+    # for floating point comparisons
     _epsilon = 1e-10
 
-    # As a rule of thumb, a reasonable number of results are needed before certian calculations can be considered valid
+    # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
     # this variable determines the number of results that are required for the markov simulation before the stop conditions
     # are checked. (Based on the law of strong numbers)
-    _law = 30
+    _law: int = 30
+
+    # states is a list of strings
+    _states: List[str]
+    # transitions maps states to another dictionary that maps target states to the probability of reaching that target state
+    _transitions: Dict[str, Dict[str,float]]
+    # initialProbabilities maps states to the probability of starting in a given state
+    _initialProbabilities: Dict[str,float]
+    # rewards is a dictionary that maps states to their rewards
+    _rewards: Dict[str,float]
+    # transitionMatrix holds the transition matrix of the Markov Chains if it is computed
+    _transitionMatrix: Optional[Any]
+    # initialProbabilityVector holds the initial probabilities in the form of a vector
+    _initialProbabilityVector: Optional[Any]
+    # Recurrent state for simulation run calibration
+    _recurrent_state: Optional[str]
+
 
     def __init__(self):
-        # states is a list of strings
         self._states = list()
-        # transitions maps states to another dictionary that maps target states to the probability of reaching that target state
         self._transitions = dict()
-        # initialProbabilities maps states to the probability of starting in a given state
         self._initialProbabilities = dict()
-        # rewards is a dictionary that maps states to their rewards
         self._rewards = dict()
-        # transitionMatrix holds the transition matrix of the Markov Chains if it is computed
         self._transitionMatrix = None
-        # initialProbabilityVector holds the initial probabilities in the form of a vector
         self._initialProbabilityVector = None
-        # Recurrent state for simulation run calibration
-        self.recurrent_state = None
+        self._recurrent_state = None
         # Set pseudo random seed based on os current time
         random_data = os.urandom(8)
         seed = int.from_bytes(random_data, byteorder="big")
         random.seed(seed)
 
-    def asDSL(self, name, state_info = True, reward_info = True):
-
+    def asDSL(self, name: str, state_info:bool = True, reward_info:bool = True)->str:
+        '''Return the model as a string of the domain-specific language.'''
         # keep track of the states that have been output
-        statesOutput = set()
+        statesOutput: Set[str] = set()
         # create string writer for the output
         output = StringIO()
         # write header
@@ -70,7 +84,6 @@ class MarkovChain(object):
                 elif not state_info and (reward_info or r!=0):
                     output.write("\t{} [r: {}] -- {} --> {}\n".format(tr[0], r, tr[1], tr[2]))
 
-
         output.write("}\n")
 
         result = output.getvalue()
@@ -78,58 +91,68 @@ class MarkovChain(object):
         return result
 
     @staticmethod
-    def _smaller(x, y):
-        """Compare two floating point numbers allowing for rounding errors. x is smaller than y only if the difference is significant (more than epsilon)"""
-        return x < y - MarkovChain._epsilon
+    def _smaller(x: float, y: float)->bool:
+        '''Compare two floating point numbers allowing for rounding errors. x is smaller than y only if the difference is significant (more than epsilon)'''
+        return y-x > MarkovChain._epsilon
 
     @staticmethod
-    def _larger(x, y):
-        """Compare two floating point numbers allowing for rounding errors. x is larger than y only if the difference is significant (more than epsilon)"""
-        return x > y + MarkovChain._epsilon
+    def _larger(x: float, y: float)->bool:
+        '''Compare two floating point numbers allowing for rounding errors. x is larger than y only if the difference is significant (more than epsilon)'''
+        return x-y > MarkovChain._epsilon
 
     @staticmethod
-    def _isZero(x):
-        """Check if a floating point number is zero allowing for rounding errors. (x is considered zero if its absolute value is smaller than  epsilon)"""
+    def _isZero(x: float)->bool:
+        '''Check if a floating point number is zero allowing for rounding errors. (x is considered zero if its absolute value is smaller than  epsilon)'''
         return abs(x) < MarkovChain._epsilon
 
-    def addState(self, s):
-        """Add a state named s to the MC"""
+    def addState(self, s: str):
+        '''Add a state named s to the MC'''
         # check if it already exists or not
-        if self._states.count(s) == 0:
+        if not s in self._states:
             self._states.append(s)
 
-    def numberOfStates(self):
+    def numberOfStates(self)->int:
+        '''Return the number of states.'''
         return len(self._states)
 
-    def states(self):
+    def states(self)->List[str]:
+        '''Return the list of states.'''
         return self._states
 
     def sortStateNames(self):
+        '''Sort the list of states.'''
         self._states = sortNames(self._states)
-
-    def setInitialProbability(self, s, p):
+        self._initialProbabilityVector = None
+        self._transitionMatrix = None
+    
+    def setInitialProbability(self, s: str, p: float):
+        '''Set initial probability of state s to p.'''
         if not s in self._states:
-            raise Exception('Unknown state')
+            raise DTMCException('Unknown state')
         self._initialProbabilities[s] = p
 
     def setReward(self, s, r):
+        '''Set reward of state s to r.'''
         if not s in self._states:
-            raise Exception('Unknown state')
+            raise DTMCException('Unknown state')
         self._rewards[s] = r
 
-    def getReward(self, s):
+    def getReward(self, s: str)->float:
+        '''Get reward of state s. Defaults to 0.0 if undefined.'''
         if not s in self._rewards:
             return 0.0
         return self._rewards[s]
 
-    def setEdgeProbability(self, s, d, p):
+    def setEdgeProbability(self, s: str, d: str, p: float):
+        '''Set the probability of the transition from s to d to p.'''
         if not s in self._states or not d in self._states:
-            raise Exception('Unknown state')
+            raise DTMCException('Unknown state')
         if s not in self._transitions:
             self._transitions[s] = dict()
         self._transitions[s][d] = p
     
-    def transitions(self):
+    def transitions(self)->Set[Tuple[str,float,str]]:
+        '''Get the transitions of the dtmc as tuples (s, p, d). With source state s, destination state d and probability p.'''
         result = set()
         for i, srcstate in enumerate(self._transitions):
             for j, (dststate, p) in enumerate(self._transitions[srcstate].items()):
@@ -137,9 +160,9 @@ class MarkovChain(object):
         return result
 
     def addImplicitTransitions(self):
-        """Add the implicit transitions when the outgoing probabilities do not add up to one."""
-        # compute the transition matrix
-        M = self.transitionMatrix()
+        '''Add the implicit transitions when the outgoing probabilities do not add up to one.'''
+        # compute the transition matrix, which will have the implicit transition probabilities
+        M: Any = self.transitionMatrix()
         # set all transitions according to the non-zero elements in the matrix
         N = len(self._states)
         for i in range(N):
@@ -147,6 +170,7 @@ class MarkovChain(object):
             for j in range(N):
                 sj = self._states[j]
                 if not MarkovChain._isZero(M[i][j]):
+                    # add the transition if it does not yet exist
                     if not si in self._transitions:
                         self.setEdgeProbability(si, sj, M[i][j])
                     else:
@@ -154,24 +178,27 @@ class MarkovChain(object):
                             self.setEdgeProbability(si, sj, M[i][j])
 
     def _completeTransitionMatrix(self):
+        '''Complete the transition matrix with missing/implicit transitions.'''
+        if self._transitionMatrix is None:
+            raise DTMCException("Transition matrix is not yet initialized.")
         # ensure that all rows add up to 1.
         # compute the row sums
         sums = np.sum(self._transitionMatrix, axis=1)
         for n in range(len(self._states)):
-            # if the row n sum is smallter than 1
+            # if the row n sum is smaller than 1
             if MarkovChain._smaller(sums.item(n), 1.0):
                 # try to add the missing probability mass on a self-loop on n, if it is not specified (is zero)
                 if MarkovChain._isZero(self._transitionMatrix.item((n,n))):
                     self._transitionMatrix.itemset((n,n), 1.0 - sums.item(n))
                 else:
                     # cannot interpret it as an implicit transition
-                    raise Exception("probabilities do not add to one")
+                    raise DTMCException("probabilities do not add to one")
             else:
                 if MarkovChain._larger(sums.item(n), 1.0):
-                    raise Exception("probability mass is larger than one")
+                    raise DTMCException("probability mass is larger than one")
 
-    def transitionMatrix(self):
-        """Computes and returns the transition matrix of the MC."""
+    def transitionMatrix(self)->Any:
+        '''Computes and returns the transition matrix of the MC.'''
         N = len(self._states)
         self._transitionMatrix = np.zeros([N, N])
         row = 0
@@ -186,21 +213,26 @@ class MarkovChain(object):
         self._completeTransitionMatrix()
         return self._transitionMatrix
 
-    def initialProbabilitySpecified(self, s):
+    def initialProbabilitySpecified(self, s: str)->bool:
+        '''Return if state s has a specified initial probability.'''
         return s in self._initialProbabilities
 
-    def rewardSpecified(self, s):
+    def rewardSpecified(self, s: str)->bool:
+        '''Return if state s has a specified reward.'''
         return s in self._rewards
 
     def completeInitialProbabilityVector(self):
+        '''Complete the vector of initial probabilities with implicit probabilities.'''
+        if self._initialProbabilityVector is None:
+            raise DTMCException("Initial probability vector is not yet initialized.")
         # ensure that the initial probabilities add up to 1.
         sum = np.sum(self._initialProbabilityVector, axis=0)
         if MarkovChain._larger(sum, 1.0):
-            raise Exception("probability is larger than one")
+            raise DTMCException("probability is larger than one")
         if MarkovChain._smaller(sum, 1.0):
             K = [self.initialProbabilitySpecified(s) for s in self._states].count(False)
             if K == 0:
-                raise Exception("probability mass is smaller than one")
+                raise DTMCException("probability mass is smaller than one")
             remainder = (1.0 - sum) / K
             k = 0
             for s in self._states:
@@ -209,14 +241,15 @@ class MarkovChain(object):
                 k += 1
 
     def completeInitialProbabilities(self):
+        '''Complete the initial probabilities.'''
         # ensure that the initial probabilities add up to 1.
         sum = functools.reduce(lambda a,b : a+b, self._initialProbabilities.values(), 0.0)
         if MarkovChain._larger(sum, 1.0):
-            raise Exception("initital probability mass is larger than one")
+            raise DTMCException("initial probability mass is larger than one")
         if MarkovChain._smaller(sum, 1.0):
             K = [self.initialProbabilitySpecified(s) for s in self._states].count(False)
             if K == 0:
-                raise Exception("initial probability mass is smaller than one")
+                raise DTMCException("initial probability mass is smaller than one")
             remainder = (1.0 - sum) / K
             k = 0
             for s in self._states:
@@ -225,12 +258,14 @@ class MarkovChain(object):
                 k += 1
 
     def completeRewards(self):
+        '''Complete the implicit rewards to zero.'''
         # Initialize reward zero if not defined in dtmc model
         for s in self._states:
             if not self.rewardSpecified(s):
                 self.setReward(s, 0.0)
 
-    def initialProbabilityVector(self):
+    def initialProbabilityVector(self)->Any:
+        '''Determine and return the initial probability vector.'''
         N = len(self._states)
         self._initialProbabilityVector = np.zeros([N])
         k = 0
@@ -241,26 +276,24 @@ class MarkovChain(object):
         self.completeInitialProbabilityVector()
         return self._initialProbabilityVector
 
-    def rewardForState(self, s):
-        if not s in self._rewards:
-            return 0.0
-        return self._rewards[s]
-
-    def rewardVector(self):
+    def rewardVector(self)->Any:
+        '''Return reward vector.'''
         res = np.empty(len(self._states))
         k = 0
         for s in self._states:
-            res[k] = self.rewardForState(s)
+            res[k] = self.getReward(s)
             k += 1
         return res
 
-    def rewardForDistribution(self, d):
+    def rewardForDistribution(self, d: Any)->float:
+        '''Return expected reward for a given distribution.'''
         result = 0.0
         for k in range(self.numberOfStates()):
-            result += d[k] * self.rewardForState(self._states[k])
+            result += d[k] * self.getReward(self._states[k])
         return result
 
-    def executeSteps(self, N):
+    def executeSteps(self, N: int)->Any:
+        '''Perform N steps of the chain, return array of N+1 distributions, starting with the initial distribution and distributions after N steps.'''
         P = self.transitionMatrix()
         pi = self.initialProbabilityVector()
         result = np.empty([N+1, self.numberOfStates()])
@@ -270,7 +303,8 @@ class MarkovChain(object):
         return result
 
 
-    def _computeCommunicationGraph(self):
+    def _computeCommunicationGraph(self)->pyg.digraph:
+        '''Return the communication graph corresponding to the Markov Chain.'''
         gr = pyg.digraph()
         gr.add_nodes(self._states)
         for s in self._transitions:
@@ -279,7 +313,8 @@ class MarkovChain(object):
                     gr.add_edge((s, t))
         return gr
 
-    def _computeReverseCommunicationGraph(self):
+    def _computeReverseCommunicationGraph(self)->pyg.digraph:
+        '''Return the communication graph corresponding to the reversed transitions of the Markov Chain.'''
         gr = pyg.digraph()
         gr.add_nodes(self._states)
         for s in self._transitions:
@@ -288,12 +323,13 @@ class MarkovChain(object):
                     gr.add_edge((t, s))
         return gr
 
-
-    def communicatingClasses(self):
+    def communicatingClasses(self)->Set[AbstractSet[str]]:
+        '''Determine the communicating classes of the dtmc. Returns Set of sets of states of the dtmc.'''
         gr = self._computeCommunicationGraph()
         return set([frozenset(s) for s in pyga.mutual_accessibility(gr).values()])
 
-    def classifyTransientRecurrentClasses(self):
+    def classifyTransientRecurrentClasses(self)->Tuple[Set[AbstractSet[str]],Set[AbstractSet[str]]]:
+        '''Classify the states into transient and recurrent. Return a pair with transient classes and recurrent classes.'''
         cClasses = self.communicatingClasses()
         rClasses = cClasses.copy()
         stateMap = dict()
@@ -311,8 +347,9 @@ class MarkovChain(object):
 
         return cClasses, rClasses
 
-    def classifyTransientRecurrent(self):
-        tClasses, rClasses = self.classifyTransientRecurrentClasses()
+    def classifyTransientRecurrent(self)->Tuple[Set[str],Set[str]]:
+        '''Classify states into transient and recurrent.'''
+        _, rClasses = self.classifyTransientRecurrentClasses()
 
         # collect all recurrent states
         rStates = set()
@@ -324,17 +361,19 @@ class MarkovChain(object):
 
         return tStates, rStates
 
-    def classifyPeriodicity(self):
+    def classifyPeriodicity(self)->Dict[str,int]:
+        '''Determine periodicity of states. Returns a dictionary mapping state to periodicity.'''
 
-        def _cycleFound(k):
+        def _cycleFound(k:str):
+            nonlocal nodeStack, cyclesFound
             i = nodeStack.index(k)
             cyclesFound.add(frozenset(nodeStack[i:len(nodeStack)]))
 
-        def _exploreCycles(m):
+        def _exploreCycles(m: str):
             exploredNodes.add(m)
             nodeStack.append(m)
             for k in gr.neighbors(m):
-                if nodeStack.count(k) > 0:
+                if k in nodeStack:
                     _cycleFound(k)
                 else:
                     _exploreCycles(k)
@@ -344,12 +383,12 @@ class MarkovChain(object):
 
         gr = self._computeCommunicationGraph()
         # perform exploration for all states
-        cyclesFound = set()
-        exploredNodes =set()
-        nodesToExplore = list(gr.nodes())
-        nodeStack = list()
+        cyclesFound:Set[AbstractSet[str]] = set()
+        exploredNodes: Set[str] =set()
+        nodesToExplore: List[str] = list(gr.nodes())
+        nodeStack: List[str] = list()
         while len(nodesToExplore) > 0:
-            n = nodesToExplore.pop(0)
+            n: str = nodesToExplore.pop(0)
             if not n in exploredNodes:
                 _exploreCycles(n)
 
@@ -357,7 +396,7 @@ class MarkovChain(object):
         # periodicity is gcd of the length of all cycles reachable from the state
         _, rStates = self.classifyTransientRecurrent()
 
-        per = dict()
+        per: Dict[str,int] = dict()
         for c in cyclesFound:
             cl = len(c)
             for s in c:
@@ -379,12 +418,14 @@ class MarkovChain(object):
 
         return per
 
-    def determineMCType(self):
-        # A class that is both recurrent and aperiodic is called an ergodic class.
-        # A Markov chain having a single class of communicating states is called an irreducible Markov chain. Notice that this class of states is necessarily recurrent. In case this class is also aperiodic, i.e. if the class is ergodic, the chain is called an ergodic Markov chain.
+    def determineMCType(self)->Literal['ergodic unichain','non-ergodic unichain','ergodic non-unichain','non-ergodic non-unichain']:
+        '''Return the type of the MC.
+        A class that is both recurrent and aperiodic is called an ergodic class.
+        A Markov chain having a single class of communicating states is called an irreducible Markov chain. Notice that this class of states is necessarily recurrent. In case this class is also aperiodic, i.e. if the class is ergodic, the chain is called an ergodic Markov chain.
         #A Markov chain that contains a single recurrent class in addition to zero or more transient classes, is called a unichain. In case the recurrent class is ergodic, we speak about an ergodic unichain. A unichain visits its transients states a finite number of times, after which the chain enters the unique class of recurrent states in which it remains for ever.
+        '''
 
-        tClasses, rClasses =  self.classifyTransientRecurrentClasses()
+        _, rClasses =  self.classifyTransientRecurrentClasses()
         per = self.classifyPeriodicity()
 
         isUnichain = len(rClasses) == 1
@@ -400,29 +441,38 @@ class MarkovChain(object):
 
         return 'non-ergodic non-unichain'
 
-    def _hittingProbabilities(self, targetState):
+    def _hittingProbabilities(self, targetState: str)->Tuple[List[str],Optional[Any],Dict[str,int],Dict[str,int],Dict[str,float]]:
+        '''Determine the hitting probabilities to hit targetState. Returns a tuple with:
+        - rs: the list of states from which the target state is reachable
+        - ImEQ: the matrix of the matrix equation
+        - rIndex: index numbers of the states from rs in the equation
+        - pIndex, index of all states
+        - res: the hitting probabilities 
+        '''
 
-        def _statesReachableFrom(s):
+        def _statesReachableFrom(s: str)->List[str]:
             _, pre, _ = pygs.depth_first_search(gr, root=s)
             return pre
-
 
         # determine the set of states from which targetState is reachable
         gr = self._computeReverseCommunicationGraph()
         rs = _statesReachableFrom(targetState)
         rs = list(rs)
-        rIndex = dict()
+        # give each of the states an index in map rIndex
+        rIndex:Dict[str,int] = dict()
         for k in range(len(rs)):
             rIndex[rs[k]] = k
 
         # determine transition matrix and state indices
         P = self.transitionMatrix()
-        pIndex = dict()
+        pIndex:Dict[str,int] = dict()
         for k in range(len(self._states)):
             pIndex[self._states[k]] = k
+        # jp is index of the target state
         jp = pIndex[targetState]
 
         ImEQ = None
+        solX = None
 
         if  len(rs) > 0:
 
@@ -433,7 +483,7 @@ class MarkovChain(object):
             # solve the equation: (I-EQ) x = Pj
 
             N = len(rs)
-            # initialize matrix and vector
+            # initialize matrix I-EQ from the equation, and vector Pj
             ImEQ = np.identity(N)
             pj = np.zeros([N])
             # for all equations (rows of the matrix)
@@ -451,26 +501,30 @@ class MarkovChain(object):
             # solve the equation x = inv(I-EQ)*Pj
             solX = np.matmul(np.linalg.inv(ImEQ), pj)
 
-        # set all hitting proababilites to zero
-        res = dict()
+        # set all hitting probabilities to zero
+        res: Dict[str,float] = dict()
         for s in self._states:
             res[s] = 0.0
 
         # fill the solutions from the equation
         for s in rs:
+            solX: Any
             res[s] = solX[rIndex[s]]
 
         return rs, ImEQ, rIndex, pIndex, res
 
 
-    def hittingProbabilities(self, targetState):
+    def hittingProbabilities(self, targetState: str)->Dict[str,float]:
+        '''Determine the hitting probabilities to hit targetState.'''
+
         _, _, _, _, res = self._hittingProbabilities(targetState)
         return res
 
-    def rewardTillHit(self, targetState):
+    def rewardTillHit(self, targetState: str)->Dict[str,float]:
+        '''Determine the expected reward until hitting targetState'''
 
         rs, ImEQ, rIndex, pIndex, f = self._hittingProbabilities(targetState)
-
+        solX = None
         if  len(rs) > 0:
 
             # x_i = r(i) · fij + Sum k∈S\{j} P_ik x_k
@@ -487,6 +541,7 @@ class MarkovChain(object):
 
 
             # solve the equation x = inv(I-EQ)*Fj
+            ImEQ: Any # is not None
             solX = np.matmul(np.linalg.inv(ImEQ), fj)
 
         # set fr to zero
@@ -496,6 +551,7 @@ class MarkovChain(object):
 
         # fill the solutions from the equation
         for s in rs:
+            solX: Any # is not None
             fr[s] = solX[rIndex[s]]
 
         res = dict()
@@ -505,9 +561,18 @@ class MarkovChain(object):
         return res
 
 
-    def _hittingProbabilitiesSet(self, targetStates):
+    def _hittingProbabilitiesSet(self, targetStates: List[str])->Tuple[Any,List[str],Optional[Any],Dict[str,int],Dict[str,int],Dict[str,float]]:
+        '''Determine the hitting probabilities to hit a set targetStates. Returns a tuple with:
+        
+        - P: the transition matrix
+        - rs: the list of states from which the target state is reachable
+        - ImEQ: the matrix of the matrix equation
+        - rIndex: index numbers of the states from rs in the equation
+        - pIndex, index of all states
+        - res: the hitting probabilities 
+        '''
 
-        def _statesReachableFrom(s):
+        def _statesReachableFrom(s: str)->List[str]:
             _, pre, _ = pygs.depth_first_search(gr, root=s)
             return pre
 
@@ -564,12 +629,12 @@ class MarkovChain(object):
         # solve the equation x = inv(I-EQ)*SP
         solX = np.matmul(np.linalg.inv(ImEQ), sp)
 
-        # set all hitting proababilites to zero
+        # set all hitting probabilities to zero
         res = dict()
         for s in self._states:
             res[s] = 0.0
 
-        # set all hitting proababilites in the target set to 1
+        # set all hitting probabilities in the target set to 1
         for s in targetStates:
             res[s] = 1.0
 
@@ -579,14 +644,17 @@ class MarkovChain(object):
 
         return P, rs, ImEQ, rIndex, pIndex, res
 
-    def hittingProbabilitiesSet(self, targetStates):
+    def hittingProbabilitiesSet(self, targetStates: List[str])->Dict[str,float]:
+        '''Determine the hitting probabilities to hit a set targetStates.'''
         _, _, _, _, _, res = self._hittingProbabilitiesSet(targetStates)
         return res
 
+    def rewardTillHitSet(self, targetStates: List[str]):
+        '''Determine the expected reward until hitting set targetStates.'''
 
-    def rewardTillHitSet(self, targetStates):
+        _, rs, ImEQ, rIndex, _, h = self._hittingProbabilitiesSet(targetStates)
 
-        P, rs, ImEQ, rIndex, pIndex, h = self._hittingProbabilitiesSet(targetStates)
+        solX = None
 
         if  len(rs) > 0:
 
@@ -603,6 +671,7 @@ class MarkovChain(object):
                 hh[i] = self.getReward(si) * h[si]
 
             # solve the equation x = inv(I-EQ)*H
+            ImEQ: Any
             solX = np.matmul(np.linalg.inv(ImEQ), hh)
 
         # set hr to zero
@@ -612,6 +681,7 @@ class MarkovChain(object):
 
         # fill the solutions from the equation
         for s in rs:
+            solX: Any
             hr[s] = solX[rIndex[s]]
 
         res = dict()
@@ -622,7 +692,10 @@ class MarkovChain(object):
 
         return res
 
-    def _getSubTransitionMatrixIndices(self, indices):
+    def _getSubTransitionMatrixIndices(self, indices: List[int])->Any:
+        '''Return sub transition matrix consisting of the given list of indices.'''
+        if self._transitionMatrix is None:
+            raise DTMCException("Transition matrix has not been determined.")
         N = len(indices)
         res = np.zeros([N, N])
         for k in range(N):
@@ -630,15 +703,15 @@ class MarkovChain(object):
                 res[k][m] = self._transitionMatrix[indices[k]][indices[m]]
         return res
 
-
-    def _getSubTransitionMatrixClass(self, C):
+    def _getSubTransitionMatrixClass(self, C: AbstractSet[str])->Tuple[Dict[str,int],Any]:
+        '''Return an index for the states in C and a sub transition matrix for the class C.'''
         # get submatrix for a class C of states
-        indices = sorted([self._states.index(c) for c in C])
+        indices = sorted([self._states.index(s) for s in C])
         index = dict([(c, indices.index(self._states.index(c))) for c in C])
         return index, self._getSubTransitionMatrixIndices(indices)
 
-
-    def limitingMatrix(self):
+    def limitingMatrix(self)->Any:
+        '''Determine the limiting matrix of the dtmc.'''
         # formulate and solve balance equations for each of the  recurrent classes
         # determine the recurrent classes
         self.transitionMatrix()
@@ -646,7 +719,7 @@ class MarkovChain(object):
         N = len(self._states)
         res = np.zeros([N, N])
 
-        tClasses, rClasses =  self.classifyTransientRecurrentClasses()
+        _, rClasses =  self.classifyTransientRecurrentClasses()
 
         # for each recurrent class:
         for c in rClasses:
@@ -655,10 +728,10 @@ class MarkovChain(object):
             #       pi (P-I); 1 = [0 1],
             M = len(c)
             PmI = np.subtract(Pc, np.eye(M))
-            Q = np.matmul(PmI, np.matrix.transpose(PmI)) + np.ones([M,M])
-            Qinv = np.linalg.inv(Q)
-            pi = np.sum(Qinv, 0)
-            h = self.hittingProbabilitiesSet(c)
+            Q = np.matmul(PmI, np.matrix.transpose(PmI)) + np.ones([M,M])  # type: ignore numpy internal type issue
+            QInv = np.linalg.inv(Q)
+            pi = np.sum(QInv, 0)
+            h = self.hittingProbabilitiesSet(list(c))
             # P(i,j) = h_i * pi j
             for sj in c:
                 j = self._states.index(sj)
@@ -669,18 +742,20 @@ class MarkovChain(object):
                         res[i][j] = h[self._states[i]] * pi[index[sj]]
         return res
 
-    def limitingDistribution(self):
+    def limitingDistribution(self)->Any:
+        '''Determine the limiting distribution.'''
         P = self.limitingMatrix()
         pi0 = self.initialProbabilityVector()
         return np.dot(pi0, P)
 
-    def longRunReward(self):
+    def longRunReward(self)-> float:
+        '''Determine the long-run expected reward.'''
         pi = self.limitingDistribution()
         r = self.rewardVector()
         return np.dot(pi, r)
 
     @staticmethod
-    def fromDSL(dslString):
+    def fromDSL(dslString: str)->Tuple[Optional[str],Optional['MarkovChain']]:
 
         factory = dict()
         factory['Init'] = lambda : MarkovChain()
@@ -691,103 +766,111 @@ class MarkovChain(object):
         factory['SortNames'] = lambda dtmc: dtmc.sortStateNames()
         return parseDTMCDSL(dslString, factory)
 
-    def __str__(self):
+    def __str__(self)->str:
         return str(self._states)
 
 
     # ---------------------------------------------------------------------------- #
-    # - Markovchain simulation                                                   - #
+    # - Markov Chain simulation                                                   - #
     # ---------------------------------------------------------------------------- #
 
-    def setSeed(self, seed):
-        # Initialize random generator to seed provided by the user
+    def setSeed(self, seed: int):
+        ''' Set random generator seed'''
         random.seed(seed)
 
-    def setRecurrentState(self, state):
-        if self._isRecurrentState(state):
-            self.recurrent_state = state
-        else:
-            self.recurrent_state = None
-
-    def _markovSimulation(self, actions):
-        # Set current state to None to indicate that the first state is not defined
-        current_state = None
-        stop = None
-
-        # list for stopcondition status
-        stop_conditions = [False] * len(actions)
-        action_conditions = [None] * len(actions)
-
-        # calculate random value for state transition using seed thats set in the beginning
+    def randomInitialState(self)->str:
+        '''Return random initial state according to initial state distribution''' 
         r = random.random()
+        p: float = 0.0
 
-        # Calculate random markov chain sequence
-        n = 0
-        # set probability count to zero
-        p = 0.0
-
-        # Determine initial state
         for s in self._initialProbabilities:
             p = p + self._initialProbabilities[s]
             if r < p:
-                for i, action in enumerate(actions):
-                    action_conditions[i] = action[0](n, s)
-                    stop_conditions[i] = action[1](action_conditions[i])
+                return s
+        # probability 0 of falling through to this point
+        return self._states[0]
 
-                current_state = s
-                n += 1
-
-                break
-
-        while not any(stop_conditions):
-            # calculate random value for state transition
-            r = random.random()
-            # set probability count to zero
-            p = 0.0
-            # Look through all transition probabilities of current state.
-            for s in self._transitions[current_state]:
-                p = p + self._transitions[current_state][s]
+    def randomTransition(self, s: str)->str:
+        '''Determine random transition.'''
+        # calculate random value for state transition
+        r = random.random()
+        # set probability count to zero
+        p = 0.0
+        # Look through all transition probabilities of current state.
+        for t in self._transitions[s]:
+                p = p + self._transitions[s][t]
                 if r < p:
-                    for i, action in enumerate(actions):
-                        action_conditions[i] = action[0](n, s)
-                        stop_conditions[i] = action[1](action_conditions[i])
-                    current_state = s
+                    return t
+        # probability 0 of falling through to this point
+        return s
 
-                    break
 
-            # next step in markovchain simulation
+    def setRecurrentState(self, state:str):
+        '''Set the recurrent state for simulation. If the given state is not a recurrent state. It is set to None.'''
+        # TODO: check. why is it set to None? Raise exception instead?
+        if self._isRecurrentState(state):
+            self._recurrent_state = state
+        else:
+            self._recurrent_state = None
+
+
+    TSimulationAction = Callable[[int,str],bool]
+    
+    def _markovSimulation(self, actions: List[Tuple[TSimulationAction,Optional[str]]])->Tuple[int,Optional[str]]:
+        '''Simulate Markov Chain. 
+        actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends. 
+        The callable should take two arguments: n: int, the number of performed simulation steps before this one, and state: str, the current state of the Markov Chain in the simulation. It should return a Boolean value indicating if the simulation should be ended.
+        Returns a pair n, stop, consisting of the total number of steps simulated and the optional string describing the reason for stopping.
+        '''
+        # Set current state to None to indicate that the first state is not defined
+        current_state: Optional[str] = None
+        stop = None
+
+        # list for stop condition status
+        stop_conditions:List[bool] = [False] * len(actions)
+
+        # Calculate random markov chain sequence
+        n: int = 0
+
+        # Determine the random initial state
+        current_state = self.randomInitialState()
+
+        while not any(stop_conditions):            
+            # perform simulation actions
+            for i, (action,_) in enumerate(actions):
+                stop_conditions[i] = action(n, current_state)
+
+            # next random step in Markov Chain simulation
+            current_state = self.randomTransition(current_state)
             n += 1
 
-        # Determine stop condition (if it is added)
-        for i, action in enumerate(actions):
-            if len(action) > 2:
-                if stop_conditions[i]:
-                    stop = action[2]
+        # Determine stop condition
+        for i, (_,st) in enumerate(actions):
+            if stop_conditions[i]:
+                stop = st
 
         return n, stop
 
-    def _cPointEstimate(self, confidence):
+    def _cPointEstimate(self, confidence: float)->float:
+        ''''''
         return NormalDist().inv_cdf((1+confidence)/2)
 
-    def _isRecurrentState(self, state):
+    def _isRecurrentState(self, state: str)->bool:
+        '''Check if state is a recurrent state.'''
         # recurrent state thats encountered in the random state_sequence dictionary
         _, rClasses = self.classifyTransientRecurrent()
+        return state in rClasses
 
-        for recurrent in rClasses:
-            if state == recurrent:
-                return True
-
-        return False
-
-    def _cycleUpdate(self, state):
+    def _cycleUpdate(self, state: str)->int:
+        '''Called during simulation. Update statistics. Returns current cycle count.'''
         # Find first recurrent state
-        if self.recurrent_state == None:
+        if self._recurrent_state is None:
             if self._isRecurrentState(state):
-                self.recurrent_state = state
+                self._recurrent_state = state
             else:
                 return -1 # To prevent the simulation from exiting
-
-        if self.recurrent_state == state:
+        if self._recurrent_state == state:
+            # TODO: check the use of these variables, make local, or group into object?
             self.Em += 1
             self.El += self.l
             self.Er += self.r
@@ -795,54 +878,59 @@ class MarkovChain(object):
             self.Er2 += pow(self.r, 2)
             self.Elr += self.l * self.r
             self.l = 0
-            self.r = 0
+            self.r = 0.0
 
         self.l += 1
         self.r += self._rewards[state]
 
         return self.Em
 
-    def _cycleUpdateCezaro(self, state):
+    def _cycleUpdateCezaro(self, state: str)->int:
+        '''Called during simulation. Update statistics. Returns current cycle count.'''
+
         # Find first recurrent state
-        if self.recurrent_state == None:
+        if self._recurrent_state is None:
             if self._isRecurrentState(state):
-                self.recurrent_state = state
+                self._recurrent_state = state
             else:
                 return -1 # To prevent the simulation from exiting
 
-        if self.recurrent_state == state:
-            self.Em += 1
-            self.El += self.l
-            self.El2 += pow(self.l, 2)
-            self.Er = np.add(self.Er, self.r)
-            self.Er2 = np.add(self.Er2, [pow(i, 2) for i in self.r])
-            self.Elr = np.add(self.Elr, [i*self.l for i in self.r])
-            self.r = [0.0] * len(self._states)
-            self.l = 0
+        if self._recurrent_state == state:
+            self.Dist_Em += 1
+            self.Dist_El += self.Dist_l
+            self.Dist_El2 += pow(self.Dist_l, 2)
+            self.Dist_Er = np.add(self.Dist_Er, self.Dist_rl)  # type: ignore numpy type issue
+            self.Dist_Er2 = np.add(self.Dist_Er2, [pow(r, 2) for r in self.Dist_rl])  # type: ignore numpy type issue
+            self.Dist_Elr = np.add(self.Dist_Elr, [r*self.Dist_l for r in self.Dist_rl])  # type: ignore numpy type issue
+            self.Dist_rl = [0.0] * len(self._states)
+            self.Dist_l = 0
 
-        self.l += 1
-        self.r[self._states.index(state)] += 1
+        self.Dist_l += 1
+        self.Dist_rl[self._states.index(state)] += 1.0
 
-        return self.Em
+        return self.Dist_Em
 
     def _pointEstU(self):
+        '''Update point estimate of mean.'''
         if self.El != 0:
             self.u = self.Er/self.El
  
     def _pointEstSm(self):
+        '''Update point estimate of variance.'''
         if (self.El != 0) and (self.Em != 0):
             self.Sm = math.sqrt(abs((self.Er2 - 2*self.u*self.Elr + pow(self.u,2)*self.El2)/self.Em))
 
     def _pointEstSmCezaro(self):
-        if (self.El != 0) and (self.Em != 0):
-            for i in range(len(self.Sm)):
-                self.Sm[i] = math.sqrt(abs((self.Er2[i] - 2*self.u[i]*self.Elr[i] + pow(self.u[i],2)*self.El2)/self.Em))
+        '''Update point estimates of variances.'''
+        if (self.Dist_El != 0) and (self.Dist_Em != 0):
+            for i in range(len(self.Dist_Sm)):
+                self.Dist_Sm[i] = math.sqrt(abs((self.Dist_Er2[i] - 2*self.Dist_u[i]*self.Dist_Elr[i] + pow(self.Dist_u[i],2)*self.Dist_El2)/self.Dist_Em))
 
-    def _abError(self, con, n):
+    def _abError(self, con: float, n: int)->float:
+        '''Return estimated absolute error'''
         # Run first MarkovChain._law times without checking abError
         if 0 <= n < MarkovChain._law:
             return -1.0
-
         if self.Em > 0:
             d = math.sqrt(self.Em) * (1/(self.Em)) * self.El
             if d != 0:
@@ -852,24 +940,26 @@ class MarkovChain(object):
         else:
             return -1.0
 
-    def _abErrorCezaro(self, con, n):
+    def _abErrorCezaro(self, con: float, n: int)->List[float]:
+        '''Return estimated absolute errors'''
         # Run first MarkovChain._law times without checking abError
         abError = [-1.0] * len(self._states)
 
         if 0 <= n < MarkovChain._law:
             return abError
 
-        if self.Em > 0:
-            d = math.sqrt(self.Em) * (1/(self.Em)) * self.El
+        if self.Dist_Em > 0:
+            d = math.sqrt(self.Dist_Em) * (1/(self.Dist_Em)) * self.Dist_El
             for i in range(len(abError)):
                 if d != 0:
-                    abError[i] = abs((con*self.Sm[i]) / d)
+                    abError[i] = abs((con*self.Dist_Sm[i]) / d)
                 else:
                     abError[i] = -1.0
   
         return abError
 
-    def _reError(self, con, n):
+    def _reError(self, con: float, n: int)->float:
+        '''Return estimated relative error'''
         # Run first 10 times without checking abError
         if 0 <= n < MarkovChain._law:
             return -1.0
@@ -883,7 +973,8 @@ class MarkovChain(object):
         else:
             return -1.0
 
-    def _reErrorCezaro(self, con, n):
+    def _reErrorCezaro(self, con: float, n: int)->List[float]:
+        '''Return estimated relative errors'''
         reError = [-1.0] * len(self._states)
 
         # Run first 10 times without checking abError
@@ -891,31 +982,33 @@ class MarkovChain(object):
             return reError
         
         for i in range(len(reError)):
-            if self.Em > 0:
-                d = (self.u[i] * np.sqrt(self.Em) * (1/(self.Em)) * self.El) - (con*self.Sm[i])
+            if self.Dist_Em > 0:
+                d = (self.Dist_u[i] * np.sqrt(self.Dist_Em) * (1/(self.Dist_Em)) * self.Dist_El) - (con*self.Dist_Sm[i])
                 if d != 0:
-                    reError[i] = abs((con*self.Sm[i]) / d)
+                    reError[i] = abs((con*self.Dist_Sm[i]) / d)
                 else:
                     reError[i] = -1.0
 
         return reError
 
-    def _lastStateReward(self, nr_of_steps, n, state):
+    def _lastStateReward(self, nr_of_steps: int, n: int, state: str):
+        '''Record the last state reward.'''
         if n == nr_of_steps:
+            # TODO: what is self.y? Where is it defined? Line 1233.
             self.y = self._rewards[state]
 
-    def _hittingStateCount(self, n, state, nr_of_steps):
+    def _hittingStateCount(self, n: int, state: str, nr_of_steps: int):
+        '''Update hitting state count if we are at step nr_of_steps.'''
         if n == nr_of_steps:
             for i in range(len(self.state_count)):
                 if state == self._states[i]:
                     self.state_count[i] += 1
 
-    def _traceReward(self, condition, state, goal_state):
-        # check state for goal state set or single goal state
-        if isinstance(goal_state, list):
-            valid = any(state == s for s in goal_state)
-        else:
-            valid = state == goal_state
+    def _traceReward(self, condition: bool, state: str, goal_state: Union[str,Iterable[str]])->bool:
+        '''Accumulate reward. If condition is False, return False, if condition is True return if goal state is reached.
+        Returns if goal state is reached.'''
+        # check state for goal state list or single goal state
+        valid = state in goal_state if isinstance(goal_state, list) else state == goal_state
 
         if condition:
             if valid:
@@ -930,17 +1023,41 @@ class MarkovChain(object):
             self.valid_trace = False
             return False
 
-    def markovTrace(self, rounds):
+    def markovTrace(self, rounds: int)->List[str]:
+        '''Simulate Markov Chain for the given number of rounds (steps).
+        Returns a list of length rounds+1 of the states visited in the simulation. '''
         # Declare empty list for states
-        state_list = []
+        state_list: List[str] = []
+
+        def _collect_List(_: int, state: str)->bool:
+            state_list.append(state)
+            return False
+
         self._markovSimulation([
-            [lambda n, state: n, lambda c : c >= rounds], # Exit when n is number of rounds
-            [lambda n, state: state_list.append(state), lambda c : False] # add state to list
+            (lambda n, _: n >= rounds, None), # Exit when n is number of rounds
+            (_collect_List, None) # add state to list
         ])
 
         return state_list
 
-    def longRunExpectedAverageReward(self, stop_conditions):
+    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Optional[Tuple[float,float]],Optional[float],Optional[float],Optional[float],Optional[float],Optional[str]]:
+        '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - confidence interval
+        - estimate of the absolute error
+        - estimate of the relative error
+        - point estimate of the mean
+        - point estimate of the variance
+        - the stop criterion applied as a string
+        '''
         # separate stop conditions
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
@@ -952,28 +1069,48 @@ class MarkovChain(object):
         # Calculate the confidence point estimate with inverse normal distribution
         con = self._cPointEstimate(confidence)
 
-        # Global variables
-        self.l = 0 # Current cycle length
-        self.r = 0 # Current cycle cumulative reward
-        self.Em = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self.El = 0 # Sum of cycle lengths
-        self.Er = 0 # Sum of cumulative rewards
-        self.El2 = 0 # Sum of cycle length squared
-        self.Er2 = 0 # Sum of cycle cumulative reward squared
-        self.Elr = 0 # Sum of cycle product length and cycle
-        self.u = 0 # Estimated mean
-        self.Sm = 0 # Estimated variance
+        # Global variables used during simulation
+        self.l:int = 0 # Current cycle length
+        self.r: float = 0.0 # Current cycle cumulative reward
+        self.Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
+        self.El: int = 0 # Sum of cycle lengths
+        self.Er: float = 0.0 # Sum of cumulative rewards
+        self.El2: int = 0 # Sum of cycle length squared
+        self.Er2: float = 0 # Sum of cycle cumulative reward squared
+        self.Elr: float = 0 # Sum of cycle product length and cycle
+        self.u: float = 0 # Estimated mean
+        self.Sm: float = 0 # Estimated variance
+
+        def _action_pointEstU(n:int, state:str)->bool:
+            self._pointEstU()
+            return False
+
+        def _action_pointEstSm(n:int, state:str)->bool:
+            self._pointEstSm()
+            return False
+
+        def _action_AbsErr(n:int, state:str)->bool:
+            c = self._abError(con, n)
+            return 0 <= c <= max_abError
+            
+        def _action_RelErr(n:int, state:str)->bool:
+            c = self._reError(con, n)
+            return 0 <= c <= max_reError
+
+        def _action_CycleUpdate(n:int, state:str)->bool:
+            c = self._cycleUpdate(state)
+            return 0 <= nr_of_cycles <= c
 
         # Save current time
         current_time = time.time()
         _, stop = self._markovSimulation([
-            [lambda n, state: n, lambda c : 0 <= max_path_length <= c, "Maximum path length"], # Run until max path length has been reached
-            [lambda n, state: time.time() - current_time, lambda c : 0 <= seconds <= c, "Timeout"], # Exit on time
-            [lambda n, state: self._cycleUpdate(state), lambda c : 0 <= nr_of_cycles <= c, "Number of cycles"], # find first recurrent state
-            [lambda n, state: self._pointEstU(), lambda c : False], # update point estimate of u
-            [lambda n, state: self._pointEstSm(), lambda c : False], # update point estimate of Sm
-            [lambda n, state: self._abError(con, n), lambda c : 0 <= c <= max_abError, "Absolute Error"], # update point estimate of Sm
-            [lambda n, state: self._reError(con, n), lambda c : 0 <= c <= max_reError, "Relative Error"]
+            (lambda n, _: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
+            (lambda _n, _state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
+            (_action_CycleUpdate, "Number of cycles"), # find first recurrent state
+            (_action_pointEstU,None), # update point estimate of u
+            (_action_pointEstSm,None), # update point estimate of Sm
+            (_action_AbsErr, "Absolute Error"), # update point estimate of Sm
+            (_action_RelErr, "Relative Error")
         ])
 
         # Compute absolute/relative error regardless of law of strong numbers
@@ -981,7 +1118,7 @@ class MarkovChain(object):
         reError = self._reError(con, MarkovChain._law)
 
         # Compute confidence interval
-        interval = [self.u - abError, self.u + abError]
+        interval = (self.u - abError, self.u + abError)
 
         # Check reError
         if (interval[0] < 0 and interval[1] >= 0) or reError < 0:
@@ -991,11 +1128,36 @@ class MarkovChain(object):
         if abError < 0: # Error value
             reError = None
             abError = None
-            interval = [None, None]
+            interval = None
 
         return interval, abError, reError, self.u, self.Em, stop
 
-    def cezaroLimitDistribution(self, stop_conditions):
+    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)->Tuple[
+        Optional[List[float]],
+        List[Optional[Tuple[float,float]]],
+        List[Optional[float]],
+        List[Optional[float]],
+        int,
+        Optional[str]]:
+        '''
+        Estimate the Cesaro limit distribution by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - List of point estimates of the probabilities of the limit distribution
+        - List of confidence intervals
+        - List of estimates of the absolute errors
+        - List of estimates of the relative errors
+        - number of cycles 
+        - the stop criterion applied as a string
+        '''
+
         # separate stop conditions
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
@@ -1011,56 +1173,110 @@ class MarkovChain(object):
         con = self._cPointEstimate(confidence)
 
         # Global variables
-        self.l = 0 # Current cycle length
-        self.Em = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self.El = 0 # Sum of cycle lengths
-        self.El2 = 0 # Sum of cycle length squared
-        self.r = [0.0] * nr_of_states # Current cycle cumulative reward
-        self.Er = [0.0] * nr_of_states # Sum of cumulative rewards
-        self.Er2 = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
-        self.Elr = [0.0] * nr_of_states # Sum of cycle product length and cycle
-        self.u = [0.0] * nr_of_states # Estimated mean
-        self.Sm = [0.0] * nr_of_states # Estimated variance
+        self.Dist_l: int = 0 # Current cycle length
+        self.Dist_Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
+        self.Dist_El: int = 0 # Sum of cycle lengths
+        self.Dist_El2: int = 0 # Sum of cycle length squared
+        self.Dist_rl: List[float] = [0.0] * nr_of_states # Current cycle cumulative reward
+        self.Dist_Er: List[float] = [0.0] * nr_of_states # Sum of cumulative rewards
+        self.Dist_Er2: List[float] = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
+        self.Dist_Elr: List[float] = [0.0] * nr_of_states # Sum of cycle product length and cycle
+        self.Dist_u: List[float] = [0.0] * nr_of_states # Estimated mean
+        self.Dist_Sm: List[float] = [0.0] * nr_of_states # Estimated variance
 
         state_list = []
+
+        def _action_number_of_cycles(n: int, state:str)->bool:
+            c = self._cycleUpdateCezaro(state)
+            return 0 <= nr_of_cycles <= c
+
+        def _action_pointEstU(n:int, state:str)->bool:
+            self._pointEstU()
+            return False
+
+        def _action_pointEstSmCezaro(n:int, state:str)->bool:
+            self._pointEstSmCezaro()
+            return False
+
+        def _action_appendState(n:int, state:str)->bool:
+            state_list.append(state)
+            return False
+
+        def _action_abErrorCezaro(n: int, state:str)->bool:
+            c = self._abErrorCezaro(con, n)
+            return 0 <= max(c) <= max_abError
+
+        def _action_reErrorCezaro(n: int, state:str)->bool:
+            c = self._reErrorCezaro(con, n)
+            return 0 <= max(c) <= max_reError
 
         # Save current time
         current_time = time.time()
         _, stop = self._markovSimulation([
-            [lambda n, state: n, lambda c : 0 <= max_path_length <= c, "Maximum path length"], # Run until max path length has been reached
-            [lambda n, state: time.time() - current_time, lambda c : 0 <= seconds <= c, "Timeout"], # Exit on time
-            [lambda n, state: self._cycleUpdateCezaro(state), lambda c : 0 <= nr_of_cycles <= c, "Number of cycles"], # find first recurrent state
-            [lambda n, state: self._pointEstU(), lambda c : False], # update point estimate of u
-            [lambda n, state: self._pointEstSmCezaro(), lambda c : False], # update point estimate of Sm
-            [lambda n, state: self._abErrorCezaro(con, n), lambda c : 0 <= max(c) <= max_abError, "Absolute Error"], # Calcute smallest absolute error
-            [lambda n, state: self._reErrorCezaro(con, n), lambda c : 0 <= max(c) <= max_reError, "Relative Error"], # Calcute smallest relative error
-            [lambda n, state: state_list.append(state), lambda c : False] # Calcute smallest relative error
+            (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
+            (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
+            (_action_number_of_cycles, "Number of cycles"), # find first recurrent state
+            (_action_pointEstU, None), # update point estimate of u
+            (_action_pointEstSmCezaro, None), # update point estimate of Sm
+            (_action_abErrorCezaro, "Absolute Error"), # Calculate smallest absolute error
+            (_action_reErrorCezaro, "Relative Error"), # Calculate smallest relative error
+            (_action_appendState, None) # Calculate smallest relative error
         ])
 
-        abError = self._abErrorCezaro(con, MarkovChain._law)
-        reError = self._reErrorCezaro(con, MarkovChain._law)
-        interval = []
+        abErrorVal: List[float] = self._abErrorCezaro(con, MarkovChain._law)
+        abError: List[Optional[float]] = [v for v in abErrorVal]
+
+        reErrorVal: List[float] = self._reErrorCezaro(con, MarkovChain._law)
+        reError: List[Optional[float]] = [v for v in reErrorVal]
+        
+        interval: List[Optional[Tuple[float,float]]] = []
         for i in range(nr_of_states):
             # Compute confidence interval
-            interval.append([self.u[i] - abError[i], self.u[i] + abError[i]])
+            iv = (self.Dist_u[i] - abErrorVal[i], self.Dist_u[i] + abErrorVal[i])
+            interval.append(iv)
 
             # Check reError
-            if (interval[i][0] < 0 and interval[i][1] >= 0) or reError[i] < 0:
+            if (iv[0] < 0 and iv[1] >= 0) or reErrorVal[i] < 0:
                 reError[i] = None
             
             # Check abError
-            if abError[i] < 0: # Error value
+            if abErrorVal[i] < 0: # Error value
                 reError[i] = None
                 abError[i] = None
-                interval[i] = [None, None]
+                interval[i] = None
 
         # Check if sum of distribution equals 1 with .4 float accuracy
-        if not 0.9999 < sum(self.u) < 1.0001:
-            self.u = None
+        pntEst: Optional[List[float]] = self.Dist_u
+        if not 0.9999 < sum(self.Dist_u) < 1.0001:
+            pntEst = None
 
-        return self.u, interval, abError, reError, self.Em, stop
+        return pntEst, interval, abError, reError, self.Dist_Em, stop
 
-    def estimationExpectedReward(self, stop_conditions, nr_of_steps):
+    def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
+        Optional[float],
+        Optional[Tuple[float,float]],
+        Optional[float],
+        Optional[float],
+        int,
+        Optional[str]]:
+        '''
+        Estimate the expected reward by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - point estimate of the expected reward
+        - confidence interval
+        - estimate of the absolute error
+        - estimate of the relative error
+        - number of rounds 
+        - the stop criterion applied as a string
+        '''
         # separate stop conditions
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
@@ -1071,26 +1287,32 @@ class MarkovChain(object):
         # confidence level
         c = self._cPointEstimate(confidence)
 
-        interval = [0, 0]
-        abError = -1.0
-        reError = -1.0
-        u = 0
-        m = 0
-        M2 = 0 # Welford's algorithm variable
+        interval: Tuple[float,float] = (0, 0)
+        abErrorVal: float = -1.0
+        reErrorVal: float = -1.0
+        u: float = 0.0
+        m: int = 0
+        M2: float = 0.0 # Welford's algorithm variable
 
         # There are in total four applicable stop conditions for this function
-        actions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        stop_conditions = [False] * 4
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions: List[bool] = [False] * 4
+
+        # define action to be performed during simulation
+        def _action_lastStateReward(n: int, state: str)->bool:
+            self._lastStateReward(nr_of_steps, n, state)
+            return False
 
         # Save current time
         current_time = time.time()
-        while not any(stop_conditions):
+        while not any(sim_stop_conditions):
             # Used in self_lastStateReward function to assign reward to y when hitting last state
-            self.y = 0 
+            self.y: float = 0.0
+
             self._markovSimulation([
-                [lambda n, state: n, lambda c : 0 <= nr_of_steps <= c], # Exit when n is number of rounds
-                [lambda n, state: time.time() - current_time, lambda c : 0 <= seconds <= c], # Exit on time
-                [lambda n, state: self._lastStateReward(nr_of_steps, n, state), lambda c : False]
+                (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
+                (lambda n, state: 0 <= seconds <= time.time() - current_time, None), # Exit on time
+                (_action_lastStateReward, None)
             ])
 
             # Execute Welford's algorithm to compute running standard derivation and mean
@@ -1102,73 +1324,108 @@ class MarkovChain(object):
             Sm = np.sqrt(M2/m)
 
             # Compute absolute and relative errors
-            abError = abs((c*Sm) / np.sqrt(m))
-            d = u-abError
+            abErrorVal = abs((c*Sm) / np.sqrt(m))
+            d = u-abErrorVal
             if d != 0.0:
-                reError = abs(abError/d)
+                reErrorVal = abs(abErrorVal/d)
 
             # interval calculation
-            interval = [u - abError, u + abError]
+            interval = (u - abErrorVal, u + abErrorVal)
 
             # Do not evaluate abError/reError in the first _law cycles:
             if m < MarkovChain._law and m != rounds: # (if rounds is less than 10 we still want an abError and reError)
-                abError = -1.0
-                reError = -1.0
+                abErrorVal = -1.0
+                reErrorVal = -1.0
 
             # Check stop conditions
-            stop_conditions[0] = (0.0 <= abError <= max_abError)
-            stop_conditions[1] = (0.0 <= reError <= max_reError)
-            stop_conditions[2] = (0 <= rounds <= m)
-            stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+            sim_stop_conditions[0] = (0.0 <= abErrorVal <= max_abError)
+            sim_stop_conditions[1] = (0.0 <= reErrorVal <= max_reError)
+            sim_stop_conditions[2] = (0 <= rounds <= m)
+            sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
 
         # Determine stop condition (if it is added)
-        for i, condition in enumerate(stop_conditions):
+        stop = None
+        for i, condition in enumerate(sim_stop_conditions):
             if condition: 
-                stop = actions[i]
+                stop = stopDescriptions[i]
 
         # Check reError
-        if (interval[0] < 0 and interval[1] >= 0) or reError < 0:
+        reError = reErrorVal
+        if (interval[0] < 0 and interval[1] >= 0) or reErrorVal < 0:
             reError = None
         
         # Check abError
-        if abError < 0: # Error value
+        abError = abErrorVal
+        intervalResult = interval
+        if abErrorVal < 0: # Error value
             reError = None
             abError = None
-            interval = [None, None]
+            intervalResult = None
 
-        return u, interval, abError, reError, m, stop
+        return u, intervalResult, abError, reError, m, stop
 
-    def estimationDistribution(self, stop_conditions, nr_of_steps):
+
+    def estimationDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
+        Optional[List[float]],
+        Optional[List[Tuple[float,float]]],
+        Optional[float],
+        Optional[float],
+        int,
+        Optional[str]]:
         # separate stop conditions
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
         max_reError = stop_conditions[2]
         rounds = stop_conditions[4]
         seconds = stop_conditions[5]
+        '''
+        Estimate the distribution after nr_of_steps by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        -absolute error
+        - relative error
+        - path length
+        - nr. rounds
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - List of point estimates of the probabilities of the distribution
+        - List of confidence intervals
+        - max of estimates of the absolute errors
+        - max of estimates of the relative errors
+        - number of cycles 
+        - the stop criterion applied as a string
+        '''
 
         # confidence level
         c = self._cPointEstimate(confidence)
 
         # global list counting final states of each trace
         self.state_count = [0] * len(self._states)
-        distribution = [0] * len(self._states)
-        interval = [[0, 0]] * len(self._states)
+        distribution: List[float] = [0.0] * len(self._states)
+        interval: List[Tuple[float,float]] = [(0.0,0.0)] * len(self._states)
         abError = [-1.0] * len(self._states)
         reError = [-1.0] * len(self._states)
         m = 0
 
         # There are in total four applicable stop conditions for this function
-        actions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        stop_conditions = [False] * 4
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions: List[bool] = [False] * 4
 
         # Save current time
-        current_time = time.time()
-        while not any(stop_conditions):
+        starting_time = time.time()
+        
+        # define action to be performed during simulation
+        def _action_hittingStateCount(n: int, state: str)->bool:
+            self._hittingStateCount(n, state, nr_of_steps)
+            return False
+
+        while not any(sim_stop_conditions):
 
             self._markovSimulation([
-                [lambda n, state: n, lambda c : 0 <= nr_of_steps <= c], # Exit when n is number of steps
-                [lambda n, state: time.time() - current_time, lambda c : 0 <= seconds <= c], # Exit on time
-                [lambda n, state: self._hittingStateCount(n, state, nr_of_steps), lambda c : False]
+                (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
+                (lambda n, state: 0 <= seconds <= time.time() - starting_time, None), # Exit on time
+                (_action_hittingStateCount, None)
             ])
 
             # update m
@@ -1187,7 +1444,7 @@ class MarkovChain(object):
                     reError[i] = abs(abError[i]/d)
 
                 # interval calculation
-                interval[i] = [distribution[i] - abError[i], distribution[i] + abError[i]]
+                interval[i] = (distribution[i] - abError[i], distribution[i] + abError[i])
 
             # Law of strong numbers is reliable after _law steps
             if m < MarkovChain._law and m != rounds: # (if rounds is less than 10 we still want an abError and reError)
@@ -1195,34 +1452,78 @@ class MarkovChain(object):
                 reError = [-1.0] * len(self._states)
 
             # Check stop conditions
-            stop_conditions[0] = (0 <= max(abError) <= max_abError)
-            stop_conditions[1] = (0 <= max(reError) <= max_reError)
-            stop_conditions[2] = (0 <= rounds <= m)
-            stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+            sim_stop_conditions[0] = (0 <= max(abError) <= max_abError)
+            sim_stop_conditions[1] = (0 <= max(reError) <= max_reError)
+            sim_stop_conditions[2] = (0 <= rounds <= m)
+            sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - starting_time)
 
         # Determine stop condition (if it is added)
-        for i, condition in enumerate(stop_conditions):
+        stop = None
+        for i, condition in enumerate(sim_stop_conditions):
             if condition: 
-                stop = actions[i]
+                stop = stopDescriptions[i]
 
         # maximum of all absolute and relative errors
-        max_abError = max(abError)
-        max_reError = max(reError)
+        max_abError: float = max(abError)
+        max_reError: float = max(reError)
 
+        distributionResult = distribution
         if not(sum(distribution) == 1.0):
-            distribution = None
+            distributionResult = None
 
+        max_reErrorResult = max_reError
         if max_reError < 0 or any(i[0] < 0 and i[1] >= 0 for i in interval):
-            max_reError = None
+            max_reErrorResult = None
         
+        intervalResult = interval
+        max_abErrorResult = max_abError
         if max_abError == -1.0:
-            max_abError = None
-            interval = None
+            max_abErrorResult = None
+            intervalResult = None
             
-        return distribution, interval, max_abError, max_reError, m, stop
+        return distributionResult, intervalResult, max_abErrorResult, max_reErrorResult, m, stop
 
-    def estimationHittingState(self, stop_conditions, hitting_state, mode, func, states):
-        # mode is used to check the hitting probability or the cumulative reward
+
+    def estimationHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: Union[str,List[str]], mode: bool, func: bool, states: List[str])->Tuple[
+        List[Optional[Union[float,str]]],
+        List[int],
+        list[Optional[float]],
+        list[Optional[float]],
+        List[Optional[Tuple[float,float]]],
+        List[Optional[str]]]:
+        '''
+        Estimate the hitting probability or expected reward until hitting either a single state, or the state set by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+
+        Parameter hitting_state is either a single state, or a set of states.
+        Mode is a Boolean the indicates if we are using a single state (True) or a set of states (False). Note that the definition of hitting probability is different for both cases.
+        Func is a Boolean that indicates if we determine hitting probability (True) or expected reward until hit (False).
+
+        return (
+            u_list, 
+            m_list,
+            abErrors,
+            reErrors,
+            intervals,
+            stop
+        )
+
+
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - point estimates of the requested metric
+        - confidence intervals
+        - estimates of the absolute error
+        - estimates of the relative error
+        - number of rounds for ech state
+        - the stop criteria applied as strings
+        '''
+
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
         max_reError = stop_conditions[2]
@@ -1234,11 +1535,11 @@ class MarkovChain(object):
         c = self._cPointEstimate(confidence)
 
         # storing confidence interval information
-        intervals = []
-        abErrors = []
-        reErrors = []
-        m_list = []
-        u_list = []
+        intervalResults:List[Optional[Tuple[float,float]]] = []
+        abErrorResults: List[Optional[float]] = []
+        reErrorResults = []
+        m_list:List[int] = []
+        u_listResults: List[Optional[Union[float,str]]] = []
 
         # Calculate the hitting probability of single state or set of states
         if mode:
@@ -1249,9 +1550,9 @@ class MarkovChain(object):
             compare = -1
 
         # There are in total four applicable stop conditions for this function
-        actions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        stop_conditions = [False] * 4
-        stop = []
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions = [False] * 4
+        stop: List[Optional[str]] = []
 
         # Save current time
         current_time = time.time()
@@ -1265,28 +1566,31 @@ class MarkovChain(object):
                     self._initialProbabilities[state] = 0.0
 
             nr_of_valid_traces = 0
-            sum_hitting_rewards = 0.0
             M2 = 0.0
             
-            interval = [0, 0]
+            interval = (0.0, 0.0)
             abError = -1.0
             reError = -1.0
-            samples = []
             m = 0
             u = 0
             Sm = 0
 
-            stop_conditions = [False] * 4
+            sim_stop_conditions = [False] * 4
 
-            while not any(stop_conditions):
+            # define action to be performed during simulation
+            def _action_traceReward(n: int, state: str)->bool:
+                return self._traceReward(n > compare, state, hitting_state)
 
-                self.sum_rewards = 0.0
-                self.valid_trace = False
+            while not any(sim_stop_conditions):
+
+                # TODO: these globals are a bit ugly, remove? group?
+                self.sum_rewards: float = 0.0
+                self.valid_trace: bool = False
 
                 self._markovSimulation([
-                    [lambda n, state : n, lambda c : 0 <= nr_of_steps <= c], # Exit when n is number of steps
-                    [lambda n, state: time.time() - current_time, lambda c : 0 <= seconds <= c], # Exit on time
-                    [lambda n, state : self._traceReward(n > compare, state, hitting_state), lambda c : c] # stop when hitting state is found
+                    (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
+                    (lambda n, state: 0 <= seconds <= time.time() - current_time, None), # Exit on time
+                    (_action_traceReward, None) # stop when hitting state is found
                 ])
                 
                 m += 1
@@ -1316,7 +1620,7 @@ class MarkovChain(object):
                     reError = abs(abError/d)
 
                 # interval calculation
-                interval = [u - abError, u + abError]
+                interval: Tuple[float,float] = (u - abError, u + abError)
 
                 # Law of strong numbers is reliable after _law steps
                 if m < MarkovChain._law and m != rounds: # (if rounds is less than 30 we still want an abError and reError)
@@ -1324,45 +1628,49 @@ class MarkovChain(object):
                     reError = -1.0
 
                 # Check stop conditions
-                stop_conditions[0] = (0 <= abError <= max_abError)
-                stop_conditions[1] = (0 <= reError <= max_reError)
-                stop_conditions[2] = (0 <= rounds <= m)
-                stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+                sim_stop_conditions[0] = (0 <= abError <= max_abError)
+                sim_stop_conditions[1] = (0 <= reError <= max_reError)
+                sim_stop_conditions[2] = (0 <= rounds <= m)
+                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
 
                 # Determine stop condition (if it is added)
-                for i, condition in enumerate(stop_conditions):
+                for i, condition in enumerate(sim_stop_conditions):
                     if condition: 
-                        stop.append(actions[i])
+                        stop.append(stopDescriptions[i])
 
+            reErrorResult = reError
             if reError < 0 or (interval[0] < 0 and interval [1] >= 0):
-                reError = None
-                
+                reErrorResult = None
+
+            uResult: Optional[float] = u    
+            abErrorResult = abError
+            intervalResult: Optional[Tuple[float,float]]  = interval
             if abError < 0:
-                abError = None
-                interval = [None, None]
-                u = None
+                abErrorResult = None
+                intervalResult = None
+                uResult = None
                 
 
             m_list.append(m)
-            u_list.append(u)
-            abErrors.append(abError)
-            reErrors.append(reError)
-            intervals.append(interval)
+            u_listResults.append(uResult)
+            abErrorResults.append(abErrorResult)
+            reErrorResults.append(reErrorResult)
+            intervalResults.append(intervalResult)
 
             # Check if last stop condition is time
-            if stop[-1] == actions[3]:
+            if stop[-1] == stopDescriptions[3]:
                 break 
 
         if not func:
-            for i in range(len(u_list)):
-                if (u_list[i] == None) or (u_list[i] == 0.0):
-                    u_list[i] = "Cannot be decided"
+            for i in range(len(u_listResults)):
+                if (u_listResults[i] == None) or (u_listResults[i] == 0.0):
+                    u_listResults[i] = "Cannot be decided"
 
         return (
-            u_list, 
+            u_listResults, 
             m_list,
-            abErrors,
-            reErrors,
-            intervals,
+            abErrorResults,
+            reErrorResults,
+            intervalResults,
             stop
         )

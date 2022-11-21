@@ -9,7 +9,7 @@
     "listOfOutputsStr": "",
     "listOfStateElementsStr": "P_P, F_P_0, F_P_1, C_F_0, C_F_1, C_C",
     "convertToSingleRate": {
-        "_actors": "[C, F, P]",
+        "_actorsAndIO": "[C, F, P]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5, ch6]",
         "_actorSpecs": {
             "P": {
@@ -22,12 +22,12 @@
                 "executionTime": "1"
             }
         },
-        "_outchannels": {
+        "_outChannels": {
             "P": "[ch1, ch2]",
             "F": "[ch3, ch4]",
             "C": "[ch5, ch6]"
         },
-        "_inchannels": {
+        "_inChannels": {
             "P": "[ch1, ch3]",
             "F": "[ch2, ch5]",
             "C": "[ch4, ch6]"
