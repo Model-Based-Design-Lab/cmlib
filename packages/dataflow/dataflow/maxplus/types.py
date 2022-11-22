@@ -3,6 +3,8 @@ from typing import List, Union
 
 TTimeStamp = Union[Fraction,None]
 TTimeStampList = List[TTimeStamp]
+TTimeStampFloat = Union[float,None]
+TTimeStampFloatList = List[TTimeStampFloat]
 TMPVector = TTimeStampList
 TMPVectorList = List[TMPVector]
 TMPMatrix = TMPVectorList

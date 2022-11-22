@@ -622,7 +622,7 @@ class DataflowGraph(object):
             return True
         return False
 
-    def latency(self, x0: Optional[TMPVector], mu: float)->TMPMatrix:
+    def latency(self, x0: Optional[TMPVector], mu: Fraction)->TMPMatrix:
         '''Determine the mu-periodic latency of the dataflow graph. If x0 is provided, it is considered the initial state of the initial tokens. If it is not provided, a zero vector is assumed. The latency matrix is returned. I.e., the matrix: Lambda = (C ( A-mu )^{*} ( x0 otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D, where A, B, C, D are the sate-space matrices of the dataflow graph.
         '''
 
@@ -895,8 +895,8 @@ class DataflowGraph(object):
         if len(self._inputSignals) > 0:
             output.write('\ninput signals\n\n')
             for inpSig in self._inputSignals:
-                inputsignalratiolist = "["+", ".join(["{}".format(i) for i in self._inputSignals[inpSig]])+"]"
-                output.write('{} = {}\n'.format(inpSig, inputsignalratiolist))
+                inputSignalRatioList = "["+", ".join(["{}".format(i) for i in self._inputSignals[inpSig]])+"]"
+                output.write('{} = {}\n'.format(inpSig, inputSignalRatioList))
 
         result = output.getvalue()
         output.close()

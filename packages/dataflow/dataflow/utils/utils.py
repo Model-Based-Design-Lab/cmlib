@@ -3,7 +3,8 @@
 import re
 from fractions import Fraction
 from typing import Any, Dict, Optional, Tuple, Union, List
-from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector, TTimeStamp, TTimeStampList, TMPVector, MP_MINUSINFINITY
+from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector, MP_MINUSINFINITY
+from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
 from dataflow.libmpm import EventSequenceModel, VectorSequenceModel, MaxPlusMatrixModel
 
 def warn(s: str):
@@ -19,7 +20,7 @@ def makeLabels(name: str, n: int):
     return ['{}{}'.format(name, k) for k in range(n)]
 
 
-def printXmlTrace(vt: List[TTimeStampList], labels: List[str]):
+def printXmlTrace(vt: List[TTimeStampFloatList], labels: List[str]):
     print('<?xml version="1.0"?>')
     print('<vectortrace>')
     print('    <vectors>')
@@ -38,7 +39,7 @@ def printXmlTrace(vt: List[TTimeStampList], labels: List[str]):
     print('</vectors>')
     print('</vectortrace>')
 
-def xmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampList], outputNames: List[str], outputTraces: List[TTimeStampList]):
+def xmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampFloatList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampFloatList], outputNames: List[str], outputTraces: List[TTimeStampFloatList]):
     xml = '<?xml version="1.0"?>\n'
     xml += '<trace>\n'
     xml += '    <firings>\n'
@@ -85,7 +86,7 @@ def xmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: Lis
     return xml
 
 
-def printXmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampList], outputNames: List[str], outputTraces: List[TTimeStampList]):
+def printXmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampFloatList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampFloatList], outputNames: List[str], outputTraces: List[TTimeStampFloatList]):
     print(xmlGanttChart(actorNames, repVec, firingStarts, firingDurations, inputNames, inputTraces, outputNames, outputTraces))
 
 
@@ -189,7 +190,7 @@ def parseInputTraces(eventsequences: Dict[str,Union[TTimeStampList,EventSequence
 
     return resNt, resUt
 
-def parsePeriod(args: Any)->Optional[float]:
+def parsePeriod(args: Any)->Optional[Fraction]:
     if not args.period:
         return None
     try:
@@ -197,7 +198,7 @@ def parsePeriod(args: Any)->Optional[float]:
     except Exception:
         raise Exception("Failed to parse period argument; period must be a floating point number.")
 
-def requirePeriod(args)->float:
+def requirePeriod(args)->Fraction:
     if not args.period:
         raise Exception("Operation requires period to be given.")
     val = parsePeriod(args)
@@ -220,7 +221,7 @@ def parseParameterMPValue(args: Any)->Tuple[bool, TTimeStamp]:
     if args.parameter == 'mininf':
         return True, MP_MINUSINFINITY
     try:
-        return True, float(args.parameter)
+        return True, Fraction(float(args.parameter))
     except Exception:
         raise Exception("Failed to parse parameter as a max-plus value.")
 
@@ -386,3 +387,15 @@ def determineStateSpaceLabels(matrices: Dict[str,MaxPlusMatrixModel])->Tuple[Lis
         # make default output labels
         outputLabels = makeLabels('o', outputSize)
     return inputLabels, stateLabels, outputLabels
+
+def fractionToFloatList(l: List[Fraction])->List[float]:
+    return [float(f) for f in l]
+
+def fractionToFloatOptionalList(l: List[Union[Fraction,None]])->List[Union[float,None]]:
+    return [None if f is None else float(f) for f in l]
+
+def fractionToFloatLList(l: List[List[Fraction]])->List[List[float]]:
+    return [fractionToFloatList(ll) for ll in l]
+
+def fractionToFloatOptionalLList(l: List[List[Union[Fraction,None]]])->List[List[Union[float,None]]]:
+    return [fractionToFloatOptionalList(ll) for ll in l]

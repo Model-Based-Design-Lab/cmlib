@@ -8,7 +8,7 @@ from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
 from fractions import Fraction
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MPAlgebraException
-from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
+from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList, TTimeStampFloat, TTimeStampFloatList
 
 class MPException(Exception):
     pass
