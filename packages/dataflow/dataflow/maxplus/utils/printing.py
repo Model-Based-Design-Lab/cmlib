@@ -1,4 +1,5 @@
 
+from typing import List
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 
@@ -27,3 +28,27 @@ def printMPVectorList(vl: TMPVectorList):
     print(']')
 
 # pretty printing, consider the maximum prime factor and the number of prime factors (use their product?) of th common denominator to determine the 'complexity' of fractions, before switching to decimal.
+
+def primeFactors(n: int)->List[int]:
+    i = 2
+    factors = []
+    while i * i <= n:
+        if n % i:
+            i += 1
+        else:
+            n //= i
+            factors.append(i)
+    if n > 1:
+        factors.append(n)
+    return factors
+
+COMPLEXITY_THRESHOLD: int = 42
+
+def complexity(n: int):
+    primeFactorList = primeFactors(n)
+    return len(primeFactorList)*max(primeFactorList)
+
+def isComplex(n: int)->bool:
+    if n>1024:
+        return True
+    return complexity(n)<=COMPLEXITY_THRESHOLD
