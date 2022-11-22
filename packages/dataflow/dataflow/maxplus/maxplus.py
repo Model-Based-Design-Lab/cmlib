@@ -8,12 +8,12 @@ from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
 from fractions import Fraction
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MPAlgebraException
-from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList, TTimeStampFloat, TTimeStampFloatList
+from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
 
 class MPException(Exception):
     pass
 
-def mpMatrixMinusScalar(M: TMPMatrix, c) -> TMPMatrix:
+def mpMatrixMinusScalar(M: TMPMatrix, c: TTimeStamp) -> TMPMatrix:
     '''Subtract scalar from matrix element-wise.'''
     if c == MP_MINUSINFINITY:
         raise MPAlgebraException('Cannot subtract minus infinity')
@@ -90,17 +90,6 @@ def mpMaxMatrices(A: TMPMatrix, B: TMPMatrix) -> TMPMatrix:
         res.append(rRes)
     return res
 
-def mpElementToString(x: TTimeStamp, miStr: str = '-inf')->str:
-    '''Return a 6-character wide string representation of the max-plus element x, using miStr, defaulting to '-inf' to represent minus infinity.'''
-    # TODO: make the width and formatting more flexible. Not even sure it is 6, based on miStr
-    if x is MP_MINUSINFINITY:
-        return '  '+miStr
-    return '{}'.format(x)
-
-def mpVectorToString(v: TMPVector)->str:
-    '''Return string representation of the vector v.'''
-    return '[ {} ]'.format(' '.join([mpElementToString(x) for x in v]))
-
 def mpParseNumber(e: str, miStr: str = '-inf') -> TTimeStamp:
     '''Parse string e as a max-plus value.'''
     if e.strip() == miStr:
@@ -131,18 +120,6 @@ def mpNumberOfColumns(M: TMPMatrix) -> int:
         return 0
     return len(M[0])
 
-def printMPMatrix(M: TMPMatrix):
-    '''Print matrix M to the console.'''
-    print('[', end="")
-    print('\n'.join([mpVectorToString(row) for row in M]), end="")
-    print(']')
-
-def printMPVectorList(vl: TMPVectorList):
-    '''Print list of vectors to the console.'''
-    print('[', end="")
-    print('\n'.join(mpVectorToString(v) for v in vl), end="")
-    print(']')
-
 def mpMatrixToPrecedenceGraph(M: TMPMatrix, labels: Optional[List[str]] = None)->pyg.digraph:
     '''Convert a square matrix M to precedence graph. Optionally specify labels for the vertices.'''
 
@@ -157,7 +134,6 @@ def mpMatrixToPrecedenceGraph(M: TMPMatrix, labels: Optional[List[str]] = None)-
     for i in range(N):
         for j in range(N):
             if M[i][j] is not None:
-                # print(j,i,M[i][j])
                 gr.add_edge(make_edge(j, i), M[i][j])  # type: ignore (edge weights are numbers, not int)
     return gr
 
