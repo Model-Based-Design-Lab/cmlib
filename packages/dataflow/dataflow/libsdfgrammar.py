@@ -183,7 +183,7 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
             factory['AddOutputPort'](sdf, o.name)
 
     if model.inputsignals:
-        for insig in model.inputsignals.signals:
-            factory['AddInputSignal'](sdf, insig.name, [_getNumber(ts) if ts!="-inf" else "-inf" for ts in insig.timestamps])
+        for inSig in model.inputsignals.signals:
+            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!="-inf" else "-inf" for ts in inSig.timestamps])
 
     return (model.name, sdf)

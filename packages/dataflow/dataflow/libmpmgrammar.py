@@ -96,8 +96,8 @@ def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,N
 
         factory['AddRow'](mpm, row)
 
-    def _parseLabels(lbls):
-        return lbls.label
+    def _parseLabels(labels):
+        return labels.label
 
     try:
         model =  MetaModelMPM.model_from_str(content)
