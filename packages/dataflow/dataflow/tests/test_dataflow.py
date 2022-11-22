@@ -1,3 +1,4 @@
+from fractions import Fraction
 import os
 import pytest
 import copy
@@ -47,7 +48,7 @@ class SDF_pytest(Model_pytest):
             if self.throughput != "infinite":
                 # Derive smallest period
                 if not self.deadlock:
-                    self.mu = 1/self.model.throughput()
+                    self.mu = 1/self.throughput
 
 
     def Correct_behaviour_tests(self):
@@ -61,16 +62,18 @@ class SDF_pytest(Model_pytest):
         if not self.deadlock:
             self.function_test(lambda: self.model.throughput(), "throughput")
             self.function_test(lambda: self.model.stateSpaceMatrices(), "stateSpaceMatrices")
-        if self.mu is not None:
+        mu = self.mu
+        if mu is not None:
             x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
-            self.function_test(lambda: self.model.latency(x0, self.mu), "latency")
-            self.function_test(lambda: self.model.generalizedLatency(self.mu), "generalizedLatency")
+            self.function_test(lambda: self.model.latency(x0, mu), "latency")
+            self.function_test(lambda: self.model.generalizedLatency(mu), "generalizedLatency")
 
     def Incorrect_behaviour_tests(self):
-        if self.mu is not None:
+        mu = self.mu
+        if mu is not None:
             x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
-            self.incorrect_test(lambda: self.model.latency(x0, self.mu-0.01), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
-            self.incorrect_test(lambda: self.model.generalizedLatency(self.mu-0.01), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
+            self.incorrect_test(lambda: self.model.latency(x0, mu-Fraction(0.01)), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
+            self.incorrect_test(lambda: self.model.generalizedLatency(mu-Fraction(0.01)), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
 
     # Class to create namespace args consisting of user input arguments 
     class Namespace:
@@ -129,13 +132,13 @@ class MPM_pytest(Model_pytest):
         self.function_test(lambda: self.Matrices[mat].starClosure(), "starClosure")
         
         # Only check convolution when sequence is available
-        if len(self.args.sequences) > 1:
+        if len(self.args.sequences) > 1:  # type: ignore
             sequences, res = _convolution(self.EventSequences, self.args)
             self.function_test(lambda: sequences, "convolution_sequences")
             self.function_test(lambda: vars(res)['_sequence'], "convolution_res")
-            res = self.EventSequences[list(self.EventSequences.keys())[0]].delay(self.args.numberofiterations)
+            res = self.EventSequences[list(self.EventSequences.keys())[0]].delay(self.args.numberofiterations)  # type: ignore
             self.function_test(lambda: vars(res)['_sequence'], "delay_sequence")
-            res = self.EventSequences[list(self.EventSequences.keys())[0]].scale(self.args.numberofiterations)
+            res = self.EventSequences[list(self.EventSequences.keys())[0]].scale(self.args.numberofiterations)  # type: ignore
             self.function_test(lambda: vars(res)['_sequence'], "scale_sequence")
             sequences, res = _maximum(self.EventSequences, self.args)
             self.function_test(lambda: sequences, "maximum_analysis_sequences")

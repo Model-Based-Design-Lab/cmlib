@@ -647,7 +647,7 @@ class DataflowGraph(object):
         CscAmux00Bmmu = mpMultiplyMatrices(CscAmu, x00Bmmu)
         return mpMaxMatrices(CscAmux00Bmmu, D)
 
-    def generalizedLatency(self, mu):
+    def generalizedLatency(self, mu: Fraction):
         '''Determine the mu-periodic latency of the dataflow graph in the form of separate IO-Latency and initial state latency matrices. I.e., the matrix: 
         Lambda_IO = (C ( A-mu )^{*} (B - mu)  oplus D,
         Lambda_x = (C ( A-mu )^{*}, where A, B, C, D are the sate-space matrices of the dataflow graph.

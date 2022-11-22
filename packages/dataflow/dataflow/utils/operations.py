@@ -79,5 +79,5 @@ OperationDescriptions = [
     OP_MPM_MAXIMUM + ' (compute the maximum of a series of event sequences)',
     OP_MPM_MAXIMUM_TRANSFORM + ' (compute the maximum of a series of event sequences as a new model)',
     OP_MPM_DELAY_SEQUENCE + ' (delay an event sequence by a number of event samples; requires sequence and parameter)',
-    OP_MPM_SCALE_SEQUENCE + ' (scale an event sequence, i.e., add a costant to all event time stamps; requires sequence and parameter)'
+    OP_MPM_SCALE_SEQUENCE + ' (scale an event sequence, i.e., add a constant to all event time stamps; requires sequence and parameter)'
 ]

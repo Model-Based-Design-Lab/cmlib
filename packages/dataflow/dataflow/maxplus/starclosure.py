@@ -31,7 +31,7 @@ def starClosure(M: TMPMatrix)->TMPMatrix:
                 res[v][u] = path_u2v
 
     for k in range(N):
-        if MP_LARGER(res[k][k], 0.0):
+        if MP_LARGER(res[k][k], Fraction(0.0)):
             raise PositiveCycleException("Star Closure does not exist")
 
     return res
