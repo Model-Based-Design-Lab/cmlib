@@ -1,13 +1,17 @@
 
 from fractions import Fraction
 from functools import reduce
-from math import floor, lcm, log
+from math import floor, gcd, log
 from typing import List, Optional
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 
 NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
+
+def lcm(a: int, b: int)->int:
+    '''Least common multiple (does not exist in math library python version <=3.8)'''
+    return abs(a*b) // gcd(a, b)
 
 def mpElementToString(x: TTimeStamp, w: Optional[int]=None, miStr: str = '-inf')->str:
     if x is MP_MINUSINFINITY:
