@@ -1,6 +1,7 @@
+from typing import Any
 import numpy as np
 
-def matPower(m, n):
+def matPower(m: Any, n: int)->Any:
     return np.linalg.matrix_power(m, n)
 
 def printMatrix(m):

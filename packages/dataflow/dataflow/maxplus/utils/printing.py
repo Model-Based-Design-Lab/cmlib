@@ -2,7 +2,7 @@
 from fractions import Fraction
 from functools import reduce
 from math import floor, gcd, log
-from typing import List, Optional
+from typing import Iterable, List, Optional
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 
@@ -211,6 +211,7 @@ def prettyPrintMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=
         printMPMatrix(M, nr, nc)
     else:
         printFractionMPMatrix(M, nr, nc)
+
 
 # pretty printing, consider the maximum prime factor and the number of prime factors (use their product?) of th common denominator to determine the 'complexity' of fractions, before switching to decimal.
 

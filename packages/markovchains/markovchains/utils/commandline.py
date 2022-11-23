@@ -6,8 +6,9 @@ from typing import Any, List, Optional
 
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
-from markovchains.utils.linalgebra import matPower, printMatrix
-from markovchains.utils.utils import sortNames, printList, print4F, printOptional4FOrString, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector, printListFrac, printDListFrac, Frac, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals
+from markovchains.utils.linalgebra import matPower
+from markovchains.utils.utils import sortNames, printList, printOptional4FOrString, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector, printListFrac, printDListFrac, Frac, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, matrixFloatToFraction, prettyPrintMatrix
+
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
 
@@ -224,7 +225,9 @@ def process(args, dsl):
         printVector(M.states())
         print("Transient analysis:\n")
         print("Matrix for {} steps:\n".format(N))
-        print(printDListFrac(matPower(mat, N)))
+        MF = matrixFloatToFraction(matPower(mat, N))
+        prettyPrintMatrix(MF)
+        # print(printDListFrac(MF))
 
     if operation == OP_DTMC_LIMITING_MATRIX:
         mat = M.limitingMatrix()
