@@ -2,7 +2,7 @@
 from fractions import Fraction
 from functools import reduce
 from math import floor, gcd, log
-from typing import Iterable, List, Optional
+from typing import List, Optional
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Make sure that you have python 3.x.x installed, including pip.
+Make sure that you have python 3.8.x installed or newer, including pip.
 
 ## Install
 

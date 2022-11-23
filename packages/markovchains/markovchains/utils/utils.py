@@ -1,9 +1,13 @@
 """ miscellaneous utility functions """
 
-from math import gcd
+from functools import reduce
+from math import floor, gcd, log
 from string import digits
 from fractions import Fraction
 import numpy as np
+
+NUM_FORMAT = '{:.5f}'
+NUM_SCIENTIFIC = '{:.5e}'
 
 Frac = lambda n : Fraction(n).limit_denominator(max_denominator=1000000) if not np.isnan(n) else n
 from typing import Iterable, List, Optional, Set, Tuple, Union
@@ -201,7 +205,7 @@ def nrOfSteps(ns: int)->int:
 
 
 def matrixFloatToFraction(M: Iterable[Iterable[float]])->List[List[Fraction]]:
-    return [[Fraction(e) for e in r] for r in M]
+    return [[Fraction(e).limit_denominator(10000) for e in r] for r in M]
 
 def lcm(a: int, b: int)->int:
     '''Least common multiple (does not exist in math library python version <=3.8)'''
@@ -242,31 +246,104 @@ def isComplex(n: int)->bool:
         return True
     return complexity(n)>COMPLEXITY_THRESHOLD
 
+def matrixFractionToFloat(M: List[List[Fraction]])->List[List[float]]:
+    return [[float(e) for e in r] for r in M]
+
 def prettyPrintMatrix(M: List[List[Fraction]]):
     '''Print matrix M to the console.'''
     # get common denominator
     den: int = 1
     for r in M:
         den = lcm(den, commonDenominatorList(r))
-
     if isComplex(den):
-        printMatrix(M)
+        printMatrix(matrixFractionToFloat(M))
     else:
         printFractionMatrix(M)
 
-def determineMaxExp(M):
+def maxOpt(l: List[Optional[int]])-> Optional[int]:
+    return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
+
+def minOpt(l: List[Optional[int]])-> Optional[int]:
+    return reduce(lambda m, v: v if m is None else (m if v is None else min(v,m)), l, None)
+
+def exponent(e: Optional[float])->Optional[int]:
+    if e is None:
+        return None
+    else:
+        if e==0.0:
+            return None
+        return floor(log(abs(e), 10.0))
+
+
+def determineMaxExp(M: List[List[float]]):
     mo = maxOpt([maxOpt([exponent(e) for e in r]) for r in M])
     if mo is None:
         return 0
     return mo
 
-def determineMinExp(M):
+def determineMinExp(M: List[List[float]]):
     mo = minOpt([minOpt([exponent(e) for e in r]) for r in M])
     if mo is None:
         return 0
     return mo
 
-def printMatrix(M: List[List[Fraction]]):
+def expMatrix(M: List[List[float]], ex: int) -> List[List[float]]:
+    f = pow(10,ex)
+    return [[e * f for e in r] for r in M]
+
+def elementToString(x: float, w: Optional[int]=None)->str:
+    ex = 0 if x==0.0 else log(abs(x),10)
+    fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC 
+    return rightAlign(fmt.format(float(x)),w) if w else fmt.format(float(x))
+
+def rightAlign(s: str, w: int)->str:
+    return (' '*(w-len(s)))+s
+
+def determineFractionWidth(e: Fraction)->int:
+    return len('{}'.format(e))
+
+def determineMaxFractionWidth(M: List[List[Fraction]])->Optional[int]:
+    return maxOpt([determineMaxFractionWidthVector(r) for r in M])
+
+def determineMaxFractionWidthVector(v: List[Fraction])->Optional[int]:
+    return maxOpt([determineFractionWidth(e) for e in v])
+
+def determineWidth(e: float)->int:
+    return len(elementToString(e))
+
+def determineMaxWidth(M: List[List[float]])->Optional[int]:
+    return maxOpt([determineMaxWidthVector(r) for r in M])
+
+def determineMaxWidthVector(v: List[float])->Optional[int]:
+    return maxOpt([determineWidth(e) for e in v])
+
+def vectorToString(v: List[float], w: Optional[int]=None)->str:
+    '''Return string representation of the vector v.'''
+    if w is None:
+        w = determineMaxWidthVector(v)
+    return '[ {} ]'.format(' '.join([elementToString(x,w) for x in v]))
+
+def printMatrixWithExponent(M: List[List[float]], ex: int):
+
+    M = expMatrix(M, -ex)
+
+    expPrefix = '10^{} x '.format(ex)
+    spcPrefix = ' ' * (len(expPrefix)+1)
+
+    w: Optional[int] = determineMaxWidth(M)
+    for i, v in enumerate(M):
+        if i == 0:
+            print(expPrefix+'[', end="")
+        else:
+            print(spcPrefix, end="")
+        print(vectorToString(v, w), end='')
+        if i < len(M)-1:
+            print('')
+        else:
+            print(']')
+
+
+def printMatrix(M: List[List[float]]):
     '''Print matrix M to the console.'''
     if len(M) == 0:
         print('[[]]')
@@ -284,6 +361,32 @@ def printMatrix(M: List[List[Fraction]]):
         else:
             print(' ', end="")
         print(vectorToString(v, w), end='')
+        if i < len(M)-1:
+            print('')
+        else:
+            print(']')
+
+def elementToFractionString(x: Fraction, w: Optional[int]=None)->str:
+    return rightAlign('{}'.format(x), w) if w else '{}'.format(x)
+
+def vectorToFractionString(v: List[Fraction], w: Optional[int]=None)->str:
+    '''Return string representation of the vector v.'''
+    if w is None:
+        w = determineMaxFractionWidthVector(v)
+    return '[ {} ]'.format('  '.join([elementToFractionString(x, w) for x in v]))
+
+def printFractionMatrix(M: List[List[Fraction]]):
+    '''Print matrix M to the console.'''
+    if len(M) == 0:
+        print('[[]]')
+        return
+    w: Optional[int] = determineMaxFractionWidth(M)
+    for i, v in enumerate(M):
+        if i == 0:
+            print('[', end="")
+        else:
+            print(' ', end="")
+        print(vectorToFractionString(v, w), end='')
         if i < len(M)-1:
             print('')
         else:
