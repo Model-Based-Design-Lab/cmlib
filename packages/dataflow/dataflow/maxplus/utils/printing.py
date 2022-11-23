@@ -32,11 +32,33 @@ def mpElementToFractionString(x: TTimeStamp, w: Optional[int]=None, miStr: str =
 
 def mpVectorToString(v: TMPVector, w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
+    if w is None:
+        w = determineMaxWidthVector(v)
     return '[ {} ]'.format(' '.join([mpElementToString(x,w) for x in v]))
 
 def mpVectorToFractionString(v: TMPVector, w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
+    if w is None:
+        w = determineMaxFractionWidthVector(v)
     return '[ {} ]'.format('  '.join([mpElementToFractionString(x, w) for x in v]))
+
+def mpPrettyVectorToString(v: TMPVector)->str:
+    # get common denominator
+    den = commonDenominatorList(v)
+    if isComplex(den):
+        return mpVectorToString(v)
+    else:
+        return mpVectorToFractionString(v)
+
+def mpPrettyValue(v: TTimeStamp)->str:
+    # get common denominator
+    den = 0
+    if v is not None:
+        den = v.denominator
+    if isComplex(den):
+        return mpElementToString(v)
+    else:
+        return mpElementToFractionString(v)
 
 def exponent(e: Optional[float])->Optional[int]:
     if e is None:
@@ -135,10 +157,17 @@ def printEmptyMatrix(nr: Optional[int]=None, nc: Optional[int]=None):
         print()
 
 def determineMaxFractionWidth(M: TMPMatrix)->Optional[int]:
-    return maxOpt([maxOpt([determineFractionWidth(e) for e in r]) for r in M])
+    return maxOpt([determineMaxFractionWidthVector(r) for r in M])
+
+def determineMaxFractionWidthVector(v: TMPVector)->Optional[int]:
+    return maxOpt([determineFractionWidth(e) for e in v])
 
 def determineMaxWidth(M: TMPMatrix)->Optional[int]:
-    return maxOpt([maxOpt([determineWidth(e) for e in r]) for r in M])
+    return maxOpt([determineMaxWidthVector(r) for r in M])
+
+def determineMaxWidthVector(v: TMPVector)->Optional[int]:
+    return maxOpt([determineWidth(e) for e in v])
+
 
 def printFractionMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
     '''Print matrix M to the console.'''
@@ -177,6 +206,7 @@ def prettyPrintMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=
     den: int = 1
     for r in M:
         den = lcm(den, commonDenominatorList(r))
+
     if isComplex(den):
         printMPMatrix(M, nr, nc)
     else:

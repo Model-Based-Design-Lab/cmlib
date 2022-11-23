@@ -1,3 +1,4 @@
+from fractions import Fraction
 from functools import reduce
 from io import StringIO
 from typing import List, Literal, Optional, Tuple, Union, Dict
@@ -222,7 +223,7 @@ class MaxPlusMatrixModel(object):
     def __str__(self) -> str:
         return "[" + '\n'.join(['['+(', '.join([str(e) for e in r]))+']' for r in self._rows]) + ']'
 
-    def eigenvectors(self) -> Tuple[List[Tuple[mp.TMPVector,float]],List[Tuple[mp.TMPVector,mp.TMPVector]]]:
+    def eigenvectors(self) -> Tuple[List[Tuple[mp.TMPVector,Fraction]],List[Tuple[mp.TMPVector,mp.TMPVector]]]:
         '''
         Compute eigenvectors and generalized eigenvector and corresponding (generalized) eigenvalues.
         Returns a pair with:

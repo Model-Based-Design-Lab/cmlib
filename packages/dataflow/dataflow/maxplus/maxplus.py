@@ -193,7 +193,7 @@ def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[
                 if maxVal is None:
                     maxVal = d[n]
                 else:
-                    if d[n] > maxVal: # type: ignore we know that d[n] is a float
+                    if d[n] > maxVal: # type: ignore we know that d[n] is a Fraction
                         maxVal = d[n]
         # if all values were None, nothing to be done.
         if maxVal is None:
@@ -205,7 +205,7 @@ def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[
             if d[n] is None:
                 res[n] = None
             else:
-                res[n] = d[n] - maxVal # type: ignore we know that d[n] is a float
+                res[n] = d[n] - maxVal # type: ignore we know that d[n] is a Fraction
 
         return res
 
@@ -227,7 +227,7 @@ def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[
                     trCycleMeansMap[e[1]] = trCycleMeansMap[e[0]]
                     change = True
                     if cycleMeansMap[e[1]] is not None:
-                        if cycleMeansMap[e[1]] > trCycleMeansMap[e[1]]: # type: ignore we know that both must be floats
+                        if cycleMeansMap[e[1]] > trCycleMeansMap[e[1]]: # type: ignore we know that both must be Fractions
                             trCycleMeansMap[e[1]] = cycleMeansMap[e[1]]
                             change = True
                 else:
@@ -261,7 +261,7 @@ def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[
 
 
 
-def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tuple[TMPVector,TMPVector]]]:
+def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]],List[Tuple[TMPVector,TMPVector]]]:
     '''
     Compute the eigenvectors of a square matrix.
     Return a pair of a list of eigenvector and a list of generalized eigenvectors.
@@ -275,7 +275,7 @@ def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tupl
         value = None
         for n in evv:
             if evv[n] is not None:
-                evv_n: float = evv[n]  # type: ignore
+                evv_n: Fraction = evv[n]  # type: ignore
                 if value is None:
                     value = evv[n]
                 else:
@@ -283,10 +283,10 @@ def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tupl
                         return False
         return True
 
-    def _asEigenValue(evv: Dict[Any,TTimeStamp])->float:
+    def _asEigenValue(evv: Dict[Any,TTimeStamp])->Fraction:
         for n in evv:
             if evv[n] is not None:
-                evv_n: float = evv[n]  # type: ignore
+                evv_n: Fraction = evv[n]  # type: ignore
                 return evv_n
         raise MPException("Eigenvalue cannot be minus infinity.")
 
@@ -355,7 +355,7 @@ def mpEigenVectors(M: TMPMatrix) -> Tuple[List[Tuple[TMPVector,float]],List[Tupl
                 trCycleMeans[sccMap[e[1]]] = trCycleMeans[sccMap[e[0]]]
 
     # two lists to keep the results
-    eigenVectors: List[Tuple[TMPVector,float]] = []
+    eigenVectors: List[Tuple[TMPVector,Fraction]] = []
     genEigenVectors: List[Tuple[TMPVector,TMPVector]] = []
     
     # for each of the SCC subgraphs that have a cycle mean that is not -inf

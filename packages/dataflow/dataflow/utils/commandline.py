@@ -8,7 +8,7 @@ from dataflow.libsdf import DataflowGraph
 from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.utils.utils import printXmlTrace, printXmlGanttChart, parseInputTraces, parseInitialState, requireNumberOfIterations, parseNumberOfIterations, requirePeriod, getSquareMatrix, requireSequenceOfMatricesAndPossiblyVectorSequence, determineStateSpaceLabels, parseSequences, validateEventSequences, requireParameterInteger, requireOneEventSequence, requireParameterMPValue, fractionToFloatList, fractionToFloatOptionalLList
 from dataflow.maxplus.maxplus import mpTransposeMatrix
-from dataflow.maxplus.utils.printing import printMPMatrix, printMPVectorList, mpVectorToString, mpElementToString, prettyPrintMPMatrix
+from dataflow.maxplus.utils.printing import printMPVectorList, mpPrettyVectorToString, mpPrettyValue, mpElementToString, prettyPrintMPMatrix
 from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_SPACE_MATRICES, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
 import sys
 
@@ -274,7 +274,7 @@ def processMaxPlusOperation(args, dsl):
     if args.operation == OP_MPM_EIGENVALUE:
         mat = getSquareMatrix(Matrices, args)
         print("The largest eigenvalue of matrix {} is:".format(mat))
-        print(Matrices[mat].eigenvalue())
+        print(mpPrettyValue(Matrices[mat].eigenvalue()))
 
     # eigenvectors
     if args.operation == OP_MPM_EIGENVECTORS:
@@ -285,11 +285,11 @@ def processMaxPlusOperation(args, dsl):
             print('None')
         else:
             for v in ev:
-                print('{}, with eigenvalue: {}'.format(mpVectorToString(v[0]), v[1]))
+                print('{}, with eigenvalue: {}'.format(mpPrettyVectorToString(v[0]), mpPrettyValue(v[1])))
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
-                print('{}, with generalized eigenvalue: {}'.format(mpVectorToString(v[0]), mpVectorToString(v[1])))
+                print('{}, with generalized eigenvalue: {}'.format(mpPrettyVectorToString(v[0]), mpPrettyVectorToString(v[1])))
 
     # precedence graph
     if args.operation == OP_MPM_PRECEDENCEGRAPH:
@@ -354,7 +354,7 @@ def processMaxPlusOperation(args, dsl):
         labels, vt = _makeVectorTrace(Matrices, VectorSequences, EventSequences, args)
         print('Vector elements: [{}]'.format(', '.join(labels)))
         print('Trace:')
-        print(', '.join([mpVectorToString(v) for v in vt]))
+        print(', '.join([mpPrettyVectorToString(v) for v in vt]))
     
     # vectortracetransform
     if args.operation == OP_MPM_VECTOR_TRACE_TRANSFORM:
