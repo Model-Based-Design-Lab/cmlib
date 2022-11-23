@@ -8,9 +8,10 @@ from dataflow.libsdf import DataflowGraph
 from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.utils.utils import printXmlTrace, printXmlGanttChart, parseInputTraces, parseInitialState, requireNumberOfIterations, parseNumberOfIterations, requirePeriod, getSquareMatrix, requireSequenceOfMatricesAndPossiblyVectorSequence, determineStateSpaceLabels, parseSequences, validateEventSequences, requireParameterInteger, requireOneEventSequence, requireParameterMPValue, fractionToFloatList, fractionToFloatOptionalLList
 from dataflow.maxplus.maxplus import mpTransposeMatrix
-from dataflow.maxplus.utils.printing import printMPMatrix, printMPVectorList, mpVectorToString, mpElementToString
+from dataflow.maxplus.utils.printing import printMPMatrix, printMPVectorList, mpVectorToString, mpElementToString, prettyPrintMPMatrix
 from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_SPACE_MATRICES, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
 import sys
+
 
 def main():
 
@@ -130,43 +131,52 @@ def processDataflowOperation(args, dsl):
         print(G.listOfInputsStr())
         print('Outputs:')
         print(G.listOfOutputsStr())
-        printMPMatrix(G.latency(x0, mu))
+        prettyPrintMPMatrix(G.latency(x0, mu))
 
     # generalized latency
     if args.operation == OP_SDF_GENERALIZED_LATENCY:
         mu = requirePeriod(args)
         print('Inputs:')
         print(G.listOfInputsStr())
+        ivs = len(G.inputs())
         print('Outputs:')
         print(G.listOfOutputsStr())
+        ovs = len(G.outputs())
         print('State vector:')
         print(G.listOfStateElementsStr())
+        svs = len(G.stateElementLabels())
         LambdaX, LambdaIO = G.generalizedLatency(mu)
         print('IO latency matrix:')
-        printMPMatrix(LambdaIO)
+        prettyPrintMPMatrix(LambdaIO, ovs, ivs)
         print('Initial state latency matrix:')
-        printMPMatrix(LambdaX)
+        prettyPrintMPMatrix(LambdaX, ovs, svs)
 
     if args.operation == OP_SDF_STATE_SPACE_REPRESENTATION:
         _, M = G.stateSpaceMatrices()
+        svl = G.listOfStateElementsStr()
+        svs = len(G.stateElementLabels())
+        ivl = G.listOfInputsStr()
+        ivs = len(G.inputs())
+        ovl = G.listOfOutputsStr()
+        ovs = len(G.outputs())
         print('Inputs:')
-        print(G.listOfInputsStr())
+        print(ivl)
         print('Outputs:')
-        print(G.listOfOutputsStr())
+        print(ovl)
         print('State vector:')
-        print(G.listOfStateElementsStr())
+        print(svl)
         print()
         print('State matrix A:')
-        printMPMatrix(M[0])
+        prettyPrintMPMatrix(M[0])
         print()
         print('Input matrix B:')
-        printMPMatrix(M[1])
+        prettyPrintMPMatrix(M[1], svs, ivs)
         print()
         print('Output matrix C:')
-        printMPMatrix(M[2])
+        prettyPrintMPMatrix(M[2], ovs, svs)
         print()
         print('Feed forward matrix D:')
-        printMPMatrix(M[3])
+        prettyPrintMPMatrix(M[3], ovs, ivs)
 
     if args.operation == OP_SDF_STATE_MATRIX:
         _, SSM = G.stateSpaceMatrices()
@@ -303,7 +313,7 @@ def processMaxPlusOperation(args, dsl):
         success, cl = Matrices[mat].starClosure()
         if success:
             m: MaxPlusMatrixModel = cl  # type: ignore
-            printMPMatrix(m.mpMatrix())
+            prettyPrintMPMatrix(m.mpMatrix())
         else:
             print("The matrix has no star closure.")
 
@@ -316,7 +326,7 @@ def processMaxPlusOperation(args, dsl):
         if isinstance(result, VectorSequenceModel):
             printMPVectorList(result.vectors())
         else:
-            printMPMatrix(result.mpMatrix())
+            prettyPrintMPMatrix(result.mpMatrix())
 
     # multiplytransform 
     if args.operation == OP_MPM_MULTIPLY_TRANSFORM:
