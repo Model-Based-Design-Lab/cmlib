@@ -21,6 +21,7 @@ class MPAlgebraException(Exception):
 # def approximatelyEqual(x: float, y: float)->bool:
 #     return (y-x < NumericalEpsilon) and (x-y < NumericalEpsilon)
 
+MP_MINUSINFINITY_STR = "-inf"
 MP_MINUSINFINITY = None
 
 def MP_MAX(x: TTimeStamp, y: TTimeStamp) -> TTimeStamp:

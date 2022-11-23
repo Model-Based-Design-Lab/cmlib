@@ -26,10 +26,9 @@ class EventSequenceModel(object):
         # no checks needed
         pass
 
-    def addRow(self, row: mp.TTimeStampList):
-        ''' bit of a hack for the parser to reuse code. Do not use. '''
-        # TODO: get rid of this method by making the parse call an appropriate function
-        self._sequence = row
+    def setSequence(self, seq: mp.TTimeStampList):
+        ''' Set the event sequence '''
+        self._sequence = seq
 
     def sequence(self):
         '''Get the time stamp sequence'''
@@ -90,11 +89,6 @@ class VectorSequenceModel(object):
     def addVector(self, v: mp.TMPVector):
         '''Add a vector to the vector sequence'''
         self._vectors.append(v)
-
-    def addRow(self, row: mp.TMPVector):
-        '''Cheat method to reuse matrix like methods. Do not use.'''
-        # TODO: remove method divert to calls to addVector
-        self._vectors.append(row)
 
     def setLabels(self, labels: List[str]):
         '''Set labels for the vector elements. The length of the list of labels should match the size of the vectors in the list'''
@@ -413,6 +407,8 @@ class MaxPlusMatrixModel(object):
         factory = dict()
         factory['Init'] = lambda : MaxPlusMatrixModel()
         factory['AddRow'] = lambda mpm, r: mpm.addRow(r)
+        factory['AddVector'] = lambda mpm, v: mpm.addVector(v)
+        factory['SetSequence'] = lambda mpm, s: mpm.setSequence(s)
         factory['InitVectorSequence'] = lambda : VectorSequenceModel()
         factory['InitEventSequence'] = lambda : EventSequenceModel()
         factory['AddLabels'] = lambda m, labels: m.setLabels(labels)

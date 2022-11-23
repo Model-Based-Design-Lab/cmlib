@@ -3,7 +3,8 @@
 import re
 from fractions import Fraction
 from typing import Any, Dict, Optional, Tuple, Union, List
-from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector, MP_MINUSINFINITY
+from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector
+from dataflow.maxplus.algebra import MP_MINUSINFINITY_STR, MP_MINUSINFINITY
 from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
 from dataflow.libmpm import EventSequenceModel, VectorSequenceModel, MaxPlusMatrixModel
 
@@ -30,7 +31,7 @@ def printXmlTrace(vt: List[TTimeStampFloatList], labels: List[str]):
         print('        <vector id="{}">'.format(k))
         for n in range(vSize):
             if v[n] is None:
-                timestamp  = '-inf'
+                timestamp  = MP_MINUSINFINITY_STR
             else:
                 timestamp = v[n]
             print('            <token name="{}" timestamp="{}"/>'.format(labels[n], timestamp))

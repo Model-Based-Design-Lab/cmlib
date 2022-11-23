@@ -9,6 +9,8 @@ import sys
 # repository:
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 
+MIN_INF_GRAMMAR_STRING = "-inf"
+
 MPMGrammar = """
 
 MaxPlusMatrixModel:
@@ -89,12 +91,32 @@ def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,N
     def _parseRow(r: Any, mpm: Any, factory: Dict[str,Any]):
         row = []
         for e in r.elements:
-            if e == "-inf":
+            if e == MIN_INF_GRAMMAR_STRING:
                 row.append(None)
             else:
                 row.append(_getNumber(e))
 
         factory['AddRow'](mpm, row)
+
+    def _parseVector(v: Any, mpm: Any, factory: Dict[str,Any]):
+        vc = []
+        for e in v.elements:
+            if e == MIN_INF_GRAMMAR_STRING:
+                vc.append(None)
+            else:
+                vc.append(_getNumber(e))
+
+        factory['AddVector'](mpm, vc)
+
+    def _setEventSequence(es: Any, mpm: Any, factory: Dict[str,Any]):
+        seq = []
+        for e in es.elements:
+            if e == MIN_INF_GRAMMAR_STRING:
+                seq.append(None)
+            else:
+                seq.append(_getNumber(e))
+
+        factory['SetSequence'](mpm, seq)
 
     def _parseLabels(labels):
         return labels.label
@@ -110,8 +132,8 @@ def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,N
         mpm = factory['Init']()
         if m.labels:
             factory['AddLabels'](mpm, _parseLabels(m.labels))
-        for r in m.rows:
-            _parseRow(r, mpm, factory)
+        for vc in m.rows:
+            _parseRow(vc, mpm, factory)
         resMatrices[m.name] = mpm
 
     resVectorSequences = {}
@@ -119,14 +141,14 @@ def parseMPMDSL(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,N
         vs = factory['InitVectorSequence']()
         if v.labels:
             factory['AddLabels'](vs, _parseLabels(v.labels))
-        for r in v.vectors:
-            _parseRow(r, vs, factory)
+        for vc in v.vectors:
+            _parseVector(vc, vs, factory)
         resVectorSequences[v.name] = vs
 
     resEventSequences = {}
     for e in model.eventsequences:
         es = factory['InitEventSequence']()
-        _parseRow(e.sequence, es, factory)
+        _setEventSequence(e.sequence, es, factory)
         resEventSequences[e.name] = es
 
     return model.name, resMatrices, resVectorSequences, resEventSequences

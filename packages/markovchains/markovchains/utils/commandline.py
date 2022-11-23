@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower
-from markovchains.utils.utils import sortNames, printList, printOptional4FOrString, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printVector, printListFrac, printDListFrac, Frac, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, matrixFloatToFraction, prettyPrintMatrix
+from markovchains.utils.utils import sortNames, printList, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, Frac, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, matrixFloatToFraction, vectorFloatToFraction, prettyPrintMatrix, prettyPrintVector, optionalFloatOrStringToString
 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
@@ -122,7 +122,7 @@ def process(args, dsl):
     M = None
 
     if operation in MarkovChainOperations:
-        name, M = MarkovChain.fromDSL(dsl)
+        _, M = MarkovChain.fromDSL(dsl)
         if M is None:
             exit(1)
 
@@ -200,11 +200,13 @@ def process(args, dsl):
 
         print("Transient analysis:\n")
         print ("State vector:")
-        printVector(states)
+        printListOfStrings(states)
 
         for k in range(N+1):
             print("Step {}:".format(k))
-            print("Distribution: " +  printListFrac(trace[k,:]) + "\n")
+            v = vectorFloatToFraction(trace[k,:])
+            print("Distribution: ", end="")
+            prettyPrintVector(v)
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_REWARDS:
@@ -222,7 +224,7 @@ def process(args, dsl):
         mat = M.transitionMatrix()
 
         print ("State vector:")
-        printVector(M.states())
+        printListOfStrings(M.states())
         print("Transient analysis:\n")
         print("Matrix for {} steps:\n".format(N))
         MF = matrixFloatToFraction(matPower(mat, N))
@@ -232,17 +234,19 @@ def process(args, dsl):
     if operation == OP_DTMC_LIMITING_MATRIX:
         mat = M.limitingMatrix()
         print ("State vector:")
-        printVector(M.states())
+        printListOfStrings(M.states())
         print ("Limiting Matrix:\n")
-        print(printDListFrac(mat))
+        MF = matrixFloatToFraction(mat)
+        prettyPrintMatrix(MF)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
         dist = M.limitingDistribution()
 
         print ("State vector:")
-        printVector(M.states())
+        printListOfStrings(M.states())
         print ("Limiting Distribution:")
-        print("{}\n".format(printListFrac(dist)))
+        v = vectorFloatToFraction(dist)
+        prettyPrintVector(v)
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
         mcType = M.determineMCType()
@@ -297,10 +301,10 @@ def process(args, dsl):
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(printOptional4FOrString(esMean)))
+            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(esMean)))
             print("\tConfidence interval: {}".format(printInterval(interval)))
-            print("\tAbsolute error bound: {}".format(printOptional4FOrString(abError)))
-            print("\tRelative error bound: {}".format(printOptional4FOrString(reError)))
+            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
+            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
             print("\tNumber of cycles: {}".format(n))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
@@ -317,8 +321,8 @@ def process(args, dsl):
             for i, l in enumerate(limit):
                 print("[{}]: {:.4f}".format(i, l))
                 print("\tConfidence interval: {}".format(printOptionalInterval(interval[i])))
-                print("\tAbsolute error bound: {}".format(printOptional4FOrString(abError[i])))
-                print("\tRelative error bound: {}".format(printOptional4FOrString(reError[i])))
+                print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
+                print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
                 print("\n")
 
     if operation == OP_DTMC_ESTIMATION_EXPECTED_REWARD:
@@ -329,8 +333,8 @@ def process(args, dsl):
         print("Simulation termination reason: {}".format(stop))
         print("\tExpected reward: {:.4f}".format(u))
         print("\tConfidence interval: {}".format(printOptionalInterval(interval)))
-        print("\tAbsolute error bound: {}".format(printOptional4FOrString(abError)))
-        print("\tRelative error bound: {}".format(printOptional4FOrString(reError)))
+        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
+        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
         print("\tNumber of paths: ", nr_of_paths)
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
@@ -343,8 +347,8 @@ def process(args, dsl):
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
         print("\tDistribution: {}".format(printOptionalList(distribution)))
         print("\tConfidence intervals: {}".format(printOptionalListOfIntervals(intervals)))
-        print("\tAbsolute error bound: {}".format(printOptional4FOrString(abError)))
-        print("\tRelative error bound: {}".format(printOptional4FOrString(reError)))
+        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
+        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
         print("\tNumber of paths: ", nr_of_paths)
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
@@ -356,8 +360,8 @@ def process(args, dsl):
         print("Estimated hitting probabilities for {} are:".format(s))
         for i in range(len(hitting_probability)):
             print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                S[i], s, printOptional4FOrString(hitting_probability[i]), printOptionalInterval(intervals[i]),
-                printOptional4FOrString(abErrors[i]), printOptional4FOrString(reErrors[i]), nr_of_paths[i], stop[i]
+                S[i], s, optionalFloatOrStringToString(hitting_probability[i]), printOptionalInterval(intervals[i]),
+                optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
             ))
                 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
@@ -372,8 +376,8 @@ def process(args, dsl):
                 print("From state {}: {}".format(S[i], cumulative_reward[i]))
             else:
                 print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    S[i], printOptional4FOrString(cumulative_reward[i]), printOptionalInterval(intervals[i]),   
-                    printOptional4FOrString(abErrors[i]), printOptional4FOrString(reErrors[i]), nr_of_paths[i], stop[i]
+                    S[i], optionalFloatOrStringToString(cumulative_reward[i]), printOptionalInterval(intervals[i]),   
+                    optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
                 ))
     
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
@@ -385,8 +389,8 @@ def process(args, dsl):
         print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
         for i in range(len(hitting_probability)):
             print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                S[i], ', '.join(s), printOptional4FOrString(hitting_probability[i]),
-                printOptionalInterval(intervals[i]), printOptional4FOrString(abErrors[i]), printOptional4FOrString(reErrors[i]), nr_of_paths[i], stop[i]
+                S[i], ', '.join(s), optionalFloatOrStringToString(hitting_probability[i]),
+                printOptionalInterval(intervals[i]), optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
             ))
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
@@ -401,8 +405,8 @@ def process(args, dsl):
                 print("From state {}: {}".format(S[i], cumulative_reward[i]))
             else:
                 print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    S[i], printOptional4FOrString(cumulative_reward[i]), printOptionalInterval(intervals[i]), 
-                    printOptional4FOrString(abErrors[i]), printOptional4FOrString(reErrors[i]), nr_of_paths[i], stop[i]
+                    S[i], optionalFloatOrStringToString(cumulative_reward[i]), printOptionalInterval(intervals[i]), 
+                    optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
                 ))
                 
 if __name__ == "__main__":

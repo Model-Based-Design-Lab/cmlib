@@ -5,12 +5,13 @@ from math import floor, gcd, log
 from string import digits
 from fractions import Fraction
 import numpy as np
+from typing import Iterable, List, Optional, Set, Tuple, Union
 
 NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
+COMPLEXITY_THRESHOLD: int = 50
 
 Frac = lambda n : Fraction(n).limit_denominator(max_denominator=1000000) if not np.isnan(n) else n
-from typing import Iterable, List, Optional, Set, Tuple, Union
 
 def warn(s: str):
     print("Warning: " + s)
@@ -57,7 +58,7 @@ def printList(l: List[float])->str:
     try:
         string = "["
         for item in l:
-            string += "{:.4f}, ".format(item)
+            string += NUM_FORMAT.format(item)+", "
         return string[:-2] + "]"
     except:
         return str(l)
@@ -93,54 +94,54 @@ def printOptionalListOfIntervals(l: Optional[List[Tuple[float,float]]])->str:
         return "--"
     return printListOfIntervals(l)
     
-def printListFrac(l):
-    try:
-        string = "[ "
-        for item in l:
-            string += "{} ".format(Frac(item))
-        return string + "]"
-    except:
-        return l
+# def printListFrac(l):
+#     try:
+#         string = "[ "
+#         for item in l:
+#             string += "{} ".format(Frac(item))
+#         return string + "]"
+#     except:
+#         return l
 
-def printDListFrac(dl):
-    try:
-        string = "[\n"
-        for l in dl:
-            string += "[ "
-            for item in l:
-                string += "{} ".format(Frac(item))
-            string = string + "] \n"
-        return string[:-2] + "\n]"
-    except:
-        return dl
+# def printDListFrac(dl):
+#     try:
+#         string = "[\n"
+#         for l in dl:
+#             string += "[ "
+#             for item in l:
+#                 string += "{} ".format(Frac(item))
+#             string = string + "] \n"
+#         return string[:-2] + "\n]"
+#     except:
+#         return dl
 
 
 
-def printDList(dl:List[List[float]]):
-    try:
-        string = "["
-        for l in dl:
-            string += "["
-            for item in l:
-                string += "{:.4f}, ".format(item)
-            string = string[:-2] + "], "
-        return string[:-2] + "]"
-    except:
-        return dl
+# def printDList(dl:List[List[float]]):
+#     try:
+#         string = "["
+#         for l in dl:
+#             string += "["
+#             for item in l:
+#                 string += "{:.4f}, ".format(item)
+#             string = string[:-2] + "], "
+#         return string[:-2] + "]"
+#     except:
+#         return dl
 
-def print4F(nr: float):
-    try:
-        return "{:.4f}".format(nr)
-    except:
-        return "{}".format(nr)
+# def print4F(nr: float):
+#     try:
+#         return "{:.4f}".format(nr)
+#     except:
+#         return "{}".format(nr)
 
-def printOptional4FOrString(nr: Optional[Union[str,float]]):
+def optionalFloatOrStringToString(nr: Optional[Union[str,float]]):
     if nr is None:
         return "--"
     if isinstance(nr, str):
         return nr
     try:
-        return "{:.4f}".format(nr)
+        return NUM_FORMAT.format(nr)
     except:
         return "{}".format(nr)
 
@@ -151,7 +152,7 @@ def printSortedSet(s: Iterable[str]):
 def printSortedList(s: Iterable[str]):
     print("{}".format(", ".join(sortNames(s))))
 
-def printVector(s: List[str]):
+def printListOfStrings(s: List[str]):
     print ("[{}]\n".format(", ".join(s)))
 
 
@@ -203,6 +204,8 @@ def nrOfSteps(ns: int)->int:
         error(s)
     return ns
 
+def vectorFloatToFraction(v: Iterable[float])->List[Fraction]:
+    return [Fraction(e).limit_denominator(10000) for e in v] 
 
 def matrixFloatToFraction(M: Iterable[Iterable[float]])->List[List[Fraction]]:
     return [[Fraction(e).limit_denominator(10000) for e in r] for r in M]
@@ -233,7 +236,6 @@ def primeFactors(n: int)->List[int]:
         factors.append(n)
     return factors
 
-COMPLEXITY_THRESHOLD: int = 42
 
 def complexity(n: int):
     primeFactorList = primeFactors(n)
@@ -242,9 +244,10 @@ def complexity(n: int):
     return len(primeFactorList)*max(primeFactorList)
 
 def isComplex(n: int)->bool:
-    if n>1024:
-        return True
     return complexity(n)>COMPLEXITY_THRESHOLD
+
+def vectorFractionToFloat(v: List[Fraction])->List[float]:
+    return [float(e) for e in v]
 
 def matrixFractionToFloat(M: List[List[Fraction]])->List[List[float]]:
     return [[float(e) for e in r] for r in M]
@@ -259,6 +262,14 @@ def prettyPrintMatrix(M: List[List[Fraction]]):
         printMatrix(matrixFractionToFloat(M))
     else:
         printFractionMatrix(M)
+
+def prettyPrintVector(v: List[Fraction]):
+    # get common denominator
+    den = commonDenominatorList(v)
+    if isComplex(den):
+        printVector(vectorFractionToFloat(v))
+    else:
+        printFractionVector(v)
 
 def maxOpt(l: List[Optional[int]])-> Optional[int]:
     return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
@@ -281,6 +292,12 @@ def determineMaxExp(M: List[List[float]]):
         return 0
     return mo
 
+def determineMaxExpVector(v: List[float]):
+    mo = maxOpt([exponent(e) for e in v])
+    if mo is None:
+        return 0
+    return mo
+
 def determineMinExp(M: List[List[float]]):
     mo = minOpt([minOpt([exponent(e) for e in r]) for r in M])
     if mo is None:
@@ -290,6 +307,10 @@ def determineMinExp(M: List[List[float]]):
 def expMatrix(M: List[List[float]], ex: int) -> List[List[float]]:
     f = pow(10,ex)
     return [[e * f for e in r] for r in M]
+
+def expVector(v: List[float], ex: int) -> List[float]:
+    f = pow(10,ex)
+    return [e * f for e in v]
 
 def elementToString(x: float, w: Optional[int]=None)->str:
     ex = 0 if x==0.0 else log(abs(x),10)
@@ -342,6 +363,28 @@ def printMatrixWithExponent(M: List[List[float]], ex: int):
         else:
             print(']')
 
+def printVectorWithExponent(v: List[float], ex: int):
+
+    v = expVector(v, -ex)
+
+    expPrefix = '10^{} x '.format(ex)
+    spcPrefix = ' ' * (len(expPrefix)+1)
+
+    w: Optional[int] = determineMaxWidthVector(v)
+    print(expPrefix, end="")
+    print(vectorToString(v, w), end='')
+
+def printVector(v: List[float]):
+    if len(v) == 0:
+        print('[]')
+        return
+    maxE: int = determineMaxExpVector(v)
+    if maxE > 3 or maxE < -2:
+        printVectorWithExponent(v, maxE)
+        return
+
+    w: Optional[int] = determineMaxWidthVector(v)
+    print(vectorToString(v, w))
 
 def printMatrix(M: List[List[float]]):
     '''Print matrix M to the console.'''
@@ -349,7 +392,6 @@ def printMatrix(M: List[List[float]]):
         print('[[]]')
         return
     maxE: int = determineMaxExp(M)
-    minE: int = determineMinExp(M)
     if maxE > 3 or maxE < -2:
         printMatrixWithExponent(M, maxE)
         return
@@ -391,3 +433,10 @@ def printFractionMatrix(M: List[List[Fraction]]):
             print('')
         else:
             print(']')
+
+def printFractionVector(v: List[Fraction]):
+    if len(v) == 0:
+        print('[]')
+        return
+    w: Optional[int] = determineMaxFractionWidthVector(v)
+    print(vectorToFractionString(v, w))

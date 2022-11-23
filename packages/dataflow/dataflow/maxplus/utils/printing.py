@@ -4,7 +4,8 @@ from functools import reduce
 from math import floor, gcd, log
 from typing import List, Optional
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
-from dataflow.maxplus.algebra import MP_MINUSINFINITY
+from dataflow.maxplus.algebra import MP_MINUSINFINITY, MP_MINUSINFINITY_STR
+
 
 NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
@@ -13,9 +14,9 @@ def lcm(a: int, b: int)->int:
     '''Least common multiple (does not exist in math library python version <=3.8)'''
     return abs(a*b) // gcd(a, b)
 
-def mpElementToString(x: TTimeStamp, w: Optional[int]=None, miStr: str = '-inf')->str:
+def mpElementToString(x: TTimeStamp, w: Optional[int]=None)->str:
     if x is MP_MINUSINFINITY:
-        return rightAlign(miStr,w) if w else miStr
+        return rightAlign(MP_MINUSINFINITY_STR,w) if w else MP_MINUSINFINITY_STR
     ex = 0 if x==0.0 else log(abs(x),10) # type: ignore
     fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC 
     return rightAlign(fmt.format(float(x)),w) if w else fmt.format(float(x))  # type: ignore
@@ -23,10 +24,9 @@ def mpElementToString(x: TTimeStamp, w: Optional[int]=None, miStr: str = '-inf')
 def rightAlign(s: str, w: int)->str:
     return (' '*(w-len(s)))+s
 
-def mpElementToFractionString(x: TTimeStamp, w: Optional[int]=None, miStr: str = '-inf')->str:
-    '''Return a 6-character wide string representation of the max-plus element x, using miStr, defaulting to '-inf' to represent minus infinity.'''
+def mpElementToFractionString(x: TTimeStamp, w: Optional[int]=None)->str:
     if x is MP_MINUSINFINITY:
-        return rightAlign(miStr, w) if w else miStr
+        return rightAlign(MP_MINUSINFINITY_STR, w) if w else MP_MINUSINFINITY_STR
     return rightAlign('{}'.format(x), w) if w else '{}'.format(x)
 
 
@@ -133,12 +133,12 @@ def printMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
         else:
             print(']')
 
-def determineFractionWidth(e: TTimeStamp, miStr: str = '-inf')->int:
+def determineFractionWidth(e: TTimeStamp)->int:
     if e is MP_MINUSINFINITY:
-        return len(miStr)
+        return len(MP_MINUSINFINITY_STR)
     return len('{}'.format(e))
 
-def determineWidth(e: TTimeStamp, miStr: str = '-inf')->int:
+def determineWidth(e: TTimeStamp)->int:
     return len(mpElementToString(e))
 
 def printEmptyMatrix(nr: Optional[int]=None, nc: Optional[int]=None):

@@ -7,7 +7,7 @@ from functools import reduce
 from dataflow.maxplus.cyclemean import maximumCycleMean
 from dataflow.maxplus.starclosure import starClosure
 from fractions import Fraction
-from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MPAlgebraException
+from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MP_MINUSINFINITY_STR, MPAlgebraException
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
 
 class MPException(Exception):
@@ -90,16 +90,16 @@ def mpMaxMatrices(A: TMPMatrix, B: TMPMatrix) -> TMPMatrix:
         res.append(rRes)
     return res
 
-def mpParseNumber(e: str, miStr: str = '-inf') -> TTimeStamp:
+def mpParseNumber(e: str) -> TTimeStamp:
     '''Parse string e as a max-plus value.'''
-    if e.strip() == miStr:
+    if e.strip() == MP_MINUSINFINITY_STR:
         return MP_MINUSINFINITY
     return Fraction(e).limit_denominator()
 
 def mpParseVector(v:str, miStr: str = '-inf')->TMPVector:
     '''Parse string v as a max-plus vector.'''
     lst = re.sub(r"[\[\]]", "", v)
-    return [mpParseNumber(e.strip(), miStr) for e in lst.split(',')]
+    return [mpParseNumber(e.strip()) for e in lst.split(',')]
 
 
 def mpParseTraces(tt: str, miStr: str = '-inf')->List[TTimeStampList]:

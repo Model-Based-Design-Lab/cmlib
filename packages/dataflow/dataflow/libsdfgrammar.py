@@ -9,6 +9,8 @@ import sys
 # repository:
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 
+MIN_INF_GRAMMAR_STRING = "-inf"
+
 SDFGrammar = """
 
 DataflowModel:
@@ -184,6 +186,6 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
 
     if model.inputsignals:
         for inSig in model.inputsignals.signals:
-            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!="-inf" else "-inf" for ts in inSig.timestamps])
+            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!=MIN_INF_GRAMMAR_STRING else MIN_INF_GRAMMAR_STRING for ts in inSig.timestamps])
 
     return (model.name, sdf)
