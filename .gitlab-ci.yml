@@ -1,7 +1,7 @@
 before_script:
     - apt-get update
     - apt-get install -y python3.9 python3.9-dev python3-pip
-    - python3.9 -m pip install pytest setuptools textx matplotlib statistics numpy
+    - python3.9 -m pip install pytest setuptools textx matplotlib statistics
     - python3.9 -m pip install pandas
     - git clone https://github.com/Shoobx/python-graph.git
     - cd "python-graph/core/" && python3.9 ./setup.py install

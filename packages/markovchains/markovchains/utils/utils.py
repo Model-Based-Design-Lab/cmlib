@@ -4,7 +4,6 @@ from functools import reduce
 from math import floor, gcd, log
 from string import digits
 from fractions import Fraction
-import numpy as np
 from typing import Iterable, List, Optional, Set, Tuple, Union
 
 NUM_FORMAT = '{:.5f}'

@@ -4,7 +4,7 @@ The CMWB is supported with a functional testing environment to support continues
 ## Prerequisites and intstallation
 Make sure that you have python 3.x.x installed, including pip. Also, install the three tools as explained in [packages/README.md](../README.md). Install the following packages for python.
 ```
-$ python3.x -m pip install pytest numpy
+$ python3.x -m pip install pytest
 ```
 Then, navigate to the folder containing this README.md file and install the package called modeltest.
 ```

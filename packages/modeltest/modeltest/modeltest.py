@@ -1,6 +1,5 @@
 import os
 import json
-import numpy as np
 import warnings
 from modeltest.utils.utils import sortNames, print4F
 
