@@ -114,14 +114,14 @@ class MarkovChain(object):
             raise DTMCException('Unknown state')
         self._initialProbabilities[s] = p
 
-    def setReward(self, s, r):
+    def setReward(self, s: str, r: Fraction):
         '''Set reward of state s to r.'''
         if not s in self._states:
             raise DTMCException('Unknown state')
         self._rewards[s] = r
 
     def getReward(self, s: str)->Fraction:
-        '''Get reward of state s. Defaults to 0.0 if undefined.'''
+        '''Get reward of state s. Defaults to 0 if undefined.'''
         if not s in self._rewards:
             return Fraction(0)
         return self._rewards[s]
@@ -152,13 +152,13 @@ class MarkovChain(object):
             si = self._states[i]
             for j in range(N):
                 sj = self._states[j]
-                if not M[i][j]==Fraction(0):
+                if not M[j][i]==Fraction(0):
                     # add the transition if it does not yet exist
                     if not si in self._transitions:
-                        self.setEdgeProbability(si, sj, M[i][j])
+                        self.setEdgeProbability(si, sj, M[j][i])
                     else:
                         if not sj in self._transitions[si]:
-                            self.setEdgeProbability(si, sj, M[i][j])
+                            self.setEdgeProbability(si, sj, M[j][i])
 
     def _completeTransitionMatrix(self):
         '''Complete the transition matrix with missing/implicit transitions.'''
@@ -245,7 +245,7 @@ class MarkovChain(object):
         # Initialize reward zero if not defined in dtmc model
         for s in self._states:
             if not self.rewardSpecified(s):
-                self.setReward(s, 0.0)
+                self.setReward(s, Fraction(0))
 
     def initialProbabilityVector(self)->linalg.TVector:
         '''Determine and return the initial probability vector.'''
@@ -467,14 +467,14 @@ class MarkovChain(object):
             # for all equations (rows of the matrix)
             for i in range(N):
                 ip = pIndex[rs[i]]
-                pj[i] = P[ip][jp]
+                pj[i] = P[jp][ip]
                 # for all variables in the summand
                 for k in range(N):
                     # note that the sum excludes the target state!
                     if rs[k] != targetState:
                         kp = pIndex[rs[k]]
                         # determine row i, column k
-                        ImEQ[i][k] -= P[ip][kp]
+                        ImEQ[k][i] -= P[kp][ip]
 
             # solve the equation x = inv(I-EQ)*Pj
             solX = linalg.solve(ImEQ, pj)
@@ -511,21 +511,18 @@ class MarkovChain(object):
 
             N = len(rs)
             fj = linalg.zeroVector(N)
-            jp = pIndex[targetState]
             for i in range(N):
                 si = rs[i]
-                ip = pIndex[si]
                 fj[i] = self.getReward(si) * f[si]
-
 
             # solve the equation x = inv(I-EQ)*Fj
             ImEQm: linalg.TMatrix = ImEQ  # type: ignore we know ImEQ is a matrix
             solX = linalg.solve(ImEQm, fj)
             
         # set fr to zero
-        fr = dict()
+        fr: Dict[str,Fraction] = dict()
         for s in self._states:
-            fr[s] = 0.0
+            fr[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
@@ -596,25 +593,25 @@ class MarkovChain(object):
             ip = pIndex[rs[i]]
             # compute the i-th element in vector SP
             for s in targetStates:
-                sp[i] += P[ip][pIndex[s]]
+                sp[i] += P[pIndex[s]][ip]
 
             # compute the i-th row in matrix ImEQ
             for k in range(N):
                 kp = pIndex[rs[k]]
                 # determine row i, column k
-                ImEQ[i][k] -= P[ip][kp]
+                ImEQ[k][i] -= P[kp][ip]
 
         # solve the equation x = inv(I-EQ)*SP
         solX = linalg.solve(ImEQ, sp)
 
         # set all hitting probabilities to zero
-        res = dict()
+        res: Dict[str,Fraction] = dict()
         for s in self._states:
-            res[s] = 0.0
+            res[s] = Fraction(0)
 
         # set all hitting probabilities in the target set to 1
         for s in targetStates:
-            res[s] = 1.0
+            res[s] = Fraction(1)
 
         # fill the solutions from the equation
         for s in rs:
@@ -653,18 +650,18 @@ class MarkovChain(object):
             solX = linalg.solve(ImEQm, hh)
 
         # set hr to zero
-        hr = dict()
+        hr: Dict[str,Fraction] = dict()
         for s in self._states:
-            hr[s] = 0.0
+            hr[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
             solXv: linalg.TVector = solX  # type: ignore we know that solX is a vector
             hr[s] = solXv[rIndex[s]]
 
-        res = dict()
+        res: Dict[str,Fraction] = dict()
         for s in targetStates:
-            res[s] = 0.0
+            res[s] = Fraction(0)
         for s in rs:
             res[s] = hr[s] / h[s]
 
@@ -715,9 +712,9 @@ class MarkovChain(object):
                 j = self._states.index(sj)
                 for i in range(N):
                     if self._states[i] in c:
-                        res[i][j] = pi[index[sj]]
+                        res[j][i] = pi[index[sj]]
                     else:
-                        res[i][j] = h[self._states[i]] * pi[index[sj]]
+                        res[j][i] = h[self._states[i]] * pi[index[sj]]
         return res
 
     def limitingDistribution(self)->linalg.TVector:

@@ -1,6 +1,6 @@
 from fractions import Fraction
 from functools import reduce
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List
 
 TVector = List[Fraction]
 TMatrix = List[TVector] # a list of column(!)-vectors 
@@ -23,6 +23,12 @@ def zeroMatrix(nr: int, nc: int)->TMatrix:
 def oneMatrix(nr: int, nc: int)->TMatrix:
     '''Generate a one-matrix'''
     return [oneVector(nr) for _ in range(nc)]
+
+def copyVector(v: TVector)->TVector:
+    return [x for x in v]
+
+def copyMatrix(A: TMatrix)->TMatrix:
+    return [copyVector(v) for v in A]
 
 def innerProduct(va: TVector, vb: TVector)->Fraction:
     '''compute inner product of vectors.'''
@@ -106,14 +112,17 @@ def matPower(A: TMatrix, n: int)->TMatrix:
 
 def solve(A: TMatrix, b: TVector)->TVector:
     '''Solve the linear equation Ax=b for a square and full rank matrix A'''
+    # copy matrix and vector as we are going to change them
+    A = copyMatrix(A)
+    b = copyVector(b)
+    
     # Gaussian elimination from the top of my head..."
     AS = len(A)
-    
     # map for indirect manipulation of A' w.r.t original A
     # A'[c][r] = A[c][rowIndex[r]]
-    rowIndex = dict()
+    rowIndex: Dict[int,int] = dict()
     for r in range(AS):
-        rowIndex[r]=[r] 
+        rowIndex[r]=r 
     for r in range(AS):
         # find a row k >= r s.t. A'[k][r] is not 0
         k = r
@@ -123,7 +132,7 @@ def solve(A: TMatrix, b: TVector)->TVector:
                 raise Exception("Matrix is not full rank.")
         # In A', swap rows r and k
         rowIndex[k], rowIndex[r] = rowIndex[r], rowIndex[k] 
-            
+
         for rp in range(AS):
             if r != rp:
                 # replace row rp by rp-(rp[r]/r[r])r
@@ -143,6 +152,9 @@ def solve(A: TMatrix, b: TVector)->TVector:
 
 def invertMatrix(A: TMatrix)->TMatrix:
     '''Return the inverse of the square and full rank matrix A'''
+    # copy matrix and vector as we are going to change them
+    A = copyMatrix(A)
+
     # Gaussian elimination from the top of my head..."
     AS = len(A)
     
@@ -152,7 +164,7 @@ def invertMatrix(A: TMatrix)->TMatrix:
     # A'[c][r] = A[c][rowIndex[r]]
     rowIndex = dict()
     for r in range(AS):
-        rowIndex[r]=[r] 
+        rowIndex[r]=r 
     for r in range(AS):
         # find a row k >= r s.t. A'[k][r] is not 0
         k = r

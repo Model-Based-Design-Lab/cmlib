@@ -5,6 +5,7 @@ from math import floor, gcd, log
 from string import digits
 from fractions import Fraction
 from typing import Iterable, List, Optional, Set, Tuple, Union
+import markovchains.utils.linalgebra as linalg
 
 NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
@@ -253,6 +254,10 @@ def matrixFractionToFloat(M: List[List[Fraction]])->List[List[float]]:
 
 def prettyPrintMatrix(M: List[List[Fraction]]):
     '''Print matrix M to the console.'''
+    
+    # transform to row major for easy printing
+    M = linalg.transpose(M)
+    
     # get common denominator
     den: int = 1
     for r in M:
@@ -269,6 +274,13 @@ def prettyPrintVector(v: List[Fraction]):
         printVector(vectorFractionToFloat(v))
     else:
         printFractionVector(v)
+
+def prettyPrintValue(x: Fraction, end=None):
+    if isComplex(x.denominator):
+        print(NUM_FORMAT.format(x), end=end)
+    else:
+        print(x, end=end)
+
 
 def maxOpt(l: List[Optional[int]])-> Optional[int]:
     return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
@@ -367,7 +379,6 @@ def printVectorWithExponent(v: List[float], ex: int):
     v = expVector(v, -ex)
 
     expPrefix = '10^{} x '.format(ex)
-    spcPrefix = ' ' * (len(expPrefix)+1)
 
     w: Optional[int] = determineMaxWidthVector(v)
     print(expPrefix, end="")

@@ -1,3 +1,4 @@
+from fractions import Fraction
 from typing import Any, Optional, Tuple
 from textx import metamodel_from_str, TextXSyntaxError
 import sys
@@ -66,14 +67,14 @@ MetaModelDTMC = metamodel_from_str(DTMCGrammar, classes=[])
 
 def parseDTMCDSL(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
 
-	def _getProbabilityOrReward(p: Any)->Optional[float]:
+	def _getProbabilityOrReward(p: Any)->Optional[Fraction]:
 		'''Parse probability.'''
 		if p.ratio != None:
-			return float(p.ratio.numerator) / float(p.ratio.denominator)
+			return Fraction(int(p.ratio.numerator), int(p.ratio.denominator))
 		if p.float != None:
-			return float(p.float)
+			return Fraction(p.float)
 		if p.int != None:
-			return float(p.int)
+			return Fraction(p.int)
 
 	def _parseState(s: Any)->Any:
 		'''Parse state with attributes.'''

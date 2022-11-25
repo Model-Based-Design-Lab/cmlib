@@ -7,7 +7,9 @@ from typing import Any, List, Optional
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower
-from markovchains.utils.utils import sortNames, printList, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, matrixFloatToFraction, vectorFloatToFraction, prettyPrintMatrix, prettyPrintVector, optionalFloatOrStringToString
+from markovchains.utils.utils import sortNames, printList, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
+import markovchains.utils.linalgebra as linalg
+
 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
@@ -75,25 +77,32 @@ def main():
 
 def requireNumberOfSteps(args: Any)->int:
     if args.numberOfSteps is None:
-        raise Exception("numberOfSteps must be specified.")
+        raise Exception("number of steps (-ns option) must be specified.")
     try:
         return nrOfSteps(int(args.numberOfSteps))
     except Exception as e:
         raise Exception("Failed to determine number of steps.\n")
 
-def requireTargetState(args: Any)->str:
+def requireTargetState(M: MarkovChain, args: Any)->str:
     if args.targetState is None:
-        raise Exception("A target state must be specified.")
+        raise Exception("A target state must be specified with the -s option.")
+    s: str = args.targetState
+    if not s in M.states():
+            raise(Exception("The specified target state {} does not exist.".format(s)))
     return args.targetState
 
-def requireTargetStateSet(args: Any)->List[str]:
+def requireTargetStateSet(M: MarkovChain, args: Any)->List[str]:
     if args.targetStateSet is None:
-        raise Exception("A target state set must be specified.")
-    return [s.strip() for s in args.targetStateSet.split(',')]
+        raise Exception("A target state set must be specified with the -ss option.")
+    stateSet = [s.strip() for s in args.targetStateSet.split(',')]
+    for s in stateSet:
+        if not s in M.states():
+            raise(Exception("State {} in specified state set does not exist.".format(s)))
+    return stateSet
 
 def requireStopCriteria(args: Any)->TStoppingCriteria:
     if args.Conditions is None:
-        raise Exception("Stop conditions must be specified.")
+        raise Exception("Stop conditions must be specified with the -c option.")
     cc = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
     return (cc[0], cc[1], cc[2], int(cc[3]), int(cc[4]), cc[5])
 
@@ -147,7 +156,7 @@ def process(args, dsl):
     # create graph for a number of steps
     if operation == OP_DTMC_EXECUTION_GRAPH:
         N = requireNumberOfSteps(args)
-        trace = M.executeSteps(N)
+        trace = linalg.transpose(M.executeSteps(N))
         states = M.states()
         data = dict()
         data['k'] = range(0,N+1)
@@ -212,10 +221,12 @@ def process(args, dsl):
         N = requireNumberOfSteps(args)
         trace = M.executeSteps(N)
 
-        print("Transient reward analysis:\n")
+        print("Transient reward analysis:")
         for k in range(N+1):
-            print("Step {}:".format(k))
-            print("Expected Reward: {}\n".format(M.rewardForDistribution(trace[k])))
+            print("\nStep {}:".format(k))
+            print("Expected Reward: ", end='')
+            prettyPrintValue(M.rewardForDistribution(trace[k]))
+
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_MATRIX:
@@ -252,21 +263,21 @@ def process(args, dsl):
             print("The long-run expected reward is: {}\n".format(r))
 
     if operation == OP_DTMC_HITTING_PROBABILITY:
-        s = requireTargetState(args)
+        s = requireTargetState(M, args)
         prob = M.hittingProbabilities(s)
         print("The hitting probabilities for {} are:".format(s))
         for t in sortNames(M.states()):
             print("f({}, {}) = {}".format(t, s, prob[t]))
 
     if operation == OP_DTMC_REWARD_TILL_HIT:
-        s = requireTargetState(args)
+        s = requireTargetState(M, args)
         res = M.rewardTillHit(s)
         print("The expected rewards until hitting {} are:".format(s))
         for s in sortNames(res.keys()):
             print("From state {}: {}".format(s, res[s]))
 
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
-        targetStateSet = requireTargetStateSet(args)
+        targetStateSet = requireTargetStateSet(M, args)
         prob = M.hittingProbabilitiesSet(targetStateSet)
         print("The hitting probabilities for {{{}}} are:".format(', '.join(prob)))
         ss = ', '.join(targetStateSet)
@@ -274,7 +285,7 @@ def process(args, dsl):
             print("f({}, {{{}}}) = {}".format(t, ss, prob[t]))
 
     if operation == OP_DTMC_REWARD_TILL_HIT_SET:
-        s = requireTargetStateSet(args)
+        s = requireTargetStateSet(M, args)
         res = M.rewardTillHitSet(s)
         print("The expected rewards until hitting {{{}}} are:".format(', '.join(s)))
         for t in sortNames(res.keys()):
@@ -349,7 +360,7 @@ def process(args, dsl):
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
-        s = requireTargetState(args)
+        s = requireTargetState(M, args)
         C = requireStopCriteria(args)
         hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, True, S)
         print("Estimated hitting probabilities for {} are:".format(s))
@@ -362,7 +373,7 @@ def process(args, dsl):
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
-        s = requireTargetState(args)
+        s = requireTargetState(M, args)
         C = requireStopCriteria(args)
         cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, False, S)
         print("Estimated cumulative reward until hitting {} are:".format(s))
@@ -378,7 +389,7 @@ def process(args, dsl):
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
-        s = requireTargetStateSet(args)
+        s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
         hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, True, S)
         print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
@@ -391,7 +402,7 @@ def process(args, dsl):
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
-        s = requireTargetStateSet(args)
+        s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
         cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, False, S)
         print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
