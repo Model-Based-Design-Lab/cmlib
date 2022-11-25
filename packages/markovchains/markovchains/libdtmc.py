@@ -1,5 +1,6 @@
+from fractions import Fraction
 from io import StringIO
-from typing import AbstractSet, Any, Callable, Dict, Iterable, List, Literal, Optional, Set, Tuple, Union
+from typing import AbstractSet, Callable, Dict, Iterable, List, Literal, Optional, Set, Tuple, Union
 
 # pygraph library from:
 # https://pypi.org/project/python-graph/
@@ -15,6 +16,7 @@ import os
 import time
 from statistics import NormalDist
 from markovchains.libdtmcgrammar import parseDTMCDSL
+import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sortNames
 
 TStoppingCriteria = Tuple[float,float,float,int,int,float]
@@ -22,9 +24,6 @@ TStoppingCriteria = Tuple[float,float,float,int,int,float]
 class DTMCException(Exception):
     pass
 class MarkovChain(object):
-
-    # for floating point comparisons
-    _epsilon = 1e-10
 
     # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
     # this variable determines the number of results that are required for the markov simulation before the stop conditions
@@ -34,15 +33,15 @@ class MarkovChain(object):
     # states is a list of strings
     _states: List[str]
     # transitions maps states to another dictionary that maps target states to the probability of reaching that target state
-    _transitions: Dict[str, Dict[str,float]]
+    _transitions: Dict[str, Dict[str,Fraction]]
     # initialProbabilities maps states to the probability of starting in a given state
-    _initialProbabilities: Dict[str,float]
+    _initialProbabilities: Dict[str,Fraction]
     # rewards is a dictionary that maps states to their rewards
-    _rewards: Dict[str,float]
+    _rewards: Dict[str,Fraction]
     # transitionMatrix holds the transition matrix of the Markov Chains if it is computed
-    _transitionMatrix: Optional[Any]
+    _transitionMatrix: Optional[linalg.TMatrix]
     # initialProbabilityVector holds the initial probabilities in the form of a vector
-    _initialProbabilityVector: Optional[Any]
+    _initialProbabilityVector: Optional[linalg.TVector]
     # Recurrent state for simulation run calibration
     _recurrent_state: Optional[str]
 
@@ -89,21 +88,6 @@ class MarkovChain(object):
         output.close()
         return result
 
-    @staticmethod
-    def _smaller(x: float, y: float)->bool:
-        '''Compare two floating point numbers allowing for rounding errors. x is smaller than y only if the difference is significant (more than epsilon)'''
-        return y-x > MarkovChain._epsilon
-
-    @staticmethod
-    def _larger(x: float, y: float)->bool:
-        '''Compare two floating point numbers allowing for rounding errors. x is larger than y only if the difference is significant (more than epsilon)'''
-        return x-y > MarkovChain._epsilon
-
-    @staticmethod
-    def _isZero(x: float)->bool:
-        '''Check if a floating point number is zero allowing for rounding errors. (x is considered zero if its absolute value is smaller than  epsilon)'''
-        return abs(x) < MarkovChain._epsilon
-
     def addState(self, s: str):
         '''Add a state named s to the MC'''
         # check if it already exists or not
@@ -124,7 +108,7 @@ class MarkovChain(object):
         self._initialProbabilityVector = None
         self._transitionMatrix = None
     
-    def setInitialProbability(self, s: str, p: float):
+    def setInitialProbability(self, s: str, p: Fraction):
         '''Set initial probability of state s to p.'''
         if not s in self._states:
             raise DTMCException('Unknown state')
@@ -136,13 +120,13 @@ class MarkovChain(object):
             raise DTMCException('Unknown state')
         self._rewards[s] = r
 
-    def getReward(self, s: str)->float:
+    def getReward(self, s: str)->Fraction:
         '''Get reward of state s. Defaults to 0.0 if undefined.'''
         if not s in self._rewards:
-            return 0.0
+            return Fraction(0)
         return self._rewards[s]
 
-    def setEdgeProbability(self, s: str, d: str, p: float):
+    def setEdgeProbability(self, s: str, d: str, p: Fraction):
         '''Set the probability of the transition from s to d to p.'''
         if not s in self._states or not d in self._states:
             raise DTMCException('Unknown state')
@@ -150,7 +134,7 @@ class MarkovChain(object):
             self._transitions[s] = dict()
         self._transitions[s][d] = p
     
-    def transitions(self)->Set[Tuple[str,float,str]]:
+    def transitions(self)->Set[Tuple[str,Fraction,str]]:
         '''Get the transitions of the dtmc as tuples (s, p, d). With source state s, destination state d and probability p.'''
         result = set()
         for i, srcstate in enumerate(self._transitions):
@@ -161,14 +145,14 @@ class MarkovChain(object):
     def addImplicitTransitions(self):
         '''Add the implicit transitions when the outgoing probabilities do not add up to one.'''
         # compute the transition matrix, which will have the implicit transition probabilities
-        M: Any = self.transitionMatrix()
+        M: linalg.TMatrix = self.transitionMatrix()
         # set all transitions according to the non-zero elements in the matrix
         N = len(self._states)
         for i in range(N):
             si = self._states[i]
             for j in range(N):
                 sj = self._states[j]
-                if not MarkovChain._isZero(M[i][j]):
+                if not M[i][j]==Fraction(0):
                     # add the transition if it does not yet exist
                     if not si in self._transitions:
                         self.setEdgeProbability(si, sj, M[i][j])
@@ -182,31 +166,31 @@ class MarkovChain(object):
             raise DTMCException("Transition matrix is not yet initialized.")
         # ensure that all rows add up to 1.
         # compute the row sums
-        sums = np.sum(self._transitionMatrix, axis=1)
+        sums = linalg.rowSum(self._transitionMatrix)
         for n in range(len(self._states)):
             # if the row n sum is smaller than 1
-            if MarkovChain._smaller(sums.item(n), 1.0):
+            if sums[n] < Fraction(1):
                 # try to add the missing probability mass on a self-loop on n, if it is not specified (is zero)
-                if MarkovChain._isZero(self._transitionMatrix.item((n,n))):
-                    self._transitionMatrix.itemset((n,n), 1.0 - sums.item(n))
+                if self._transitionMatrix[n][n] == Fraction(0):
+                    self._transitionMatrix[n][n] = Fraction(1) - sums[n]
                 else:
                     # cannot interpret it as an implicit transition
                     raise DTMCException("probabilities do not add to one")
             else:
-                if MarkovChain._larger(sums.item(n), 1.0):
+                if sums[n] > Fraction(1):
                     raise DTMCException("probability mass is larger than one")
 
-    def transitionMatrix(self)->Any:
+    def transitionMatrix(self)->linalg.TMatrix:
         '''Computes and returns the transition matrix of the MC.'''
         N = len(self._states)
-        self._transitionMatrix = np.zeros([N, N])
+        self._transitionMatrix = linalg.zeroMatrix(N, N)
         row = 0
         for ss in self._states:
             if ss in self._transitions:
                 col = 0
                 for sd in self._states:
                     if sd in self._transitions[ss]:
-                        self._transitionMatrix.itemset((row, col), self._transitions[ss][sd])
+                        self._transitionMatrix[col][row] = self._transitions[ss][sd]
                     col += 1
             row += 1
         self._completeTransitionMatrix()
@@ -225,31 +209,31 @@ class MarkovChain(object):
         if self._initialProbabilityVector is None:
             raise DTMCException("Initial probability vector is not yet initialized.")
         # ensure that the initial probabilities add up to 1.
-        sum = np.sum(self._initialProbabilityVector, axis=0)
-        if MarkovChain._larger(sum, 1.0):
+        sum = linalg.vectorSum(self._initialProbabilityVector)
+        if sum > Fraction(1):
             raise DTMCException("probability is larger than one")
-        if MarkovChain._smaller(sum, 1.0):
+        if sum < Fraction(1):
             K = [self.initialProbabilitySpecified(s) for s in self._states].count(False)
             if K == 0:
                 raise DTMCException("probability mass is smaller than one")
-            remainder = (1.0 - sum) / K
+            remainder: Fraction = (Fraction(1) - sum) / Fraction(K)
             k = 0
             for s in self._states:
                 if not self.initialProbabilitySpecified(s):
-                    self._initialProbabilityVector.itemset(k, remainder)
+                    self._initialProbabilityVector[k] = remainder
                 k += 1
 
     def completeInitialProbabilities(self):
         '''Complete the initial probabilities.'''
         # ensure that the initial probabilities add up to 1.
-        sum = functools.reduce(lambda a,b : a+b, self._initialProbabilities.values(), 0.0)
-        if MarkovChain._larger(sum, 1.0):
+        sum = functools.reduce(lambda a,b : a+b, self._initialProbabilities.values(), Fraction(0))
+        if sum > Fraction(1):
             raise DTMCException("initial probability mass is larger than one")
-        if MarkovChain._smaller(sum, 1.0):
+        if sum < Fraction(1):
             K = [self.initialProbabilitySpecified(s) for s in self._states].count(False)
             if K == 0:
                 raise DTMCException("initial probability mass is smaller than one")
-            remainder = (1.0 - sum) / K
+            remainder: Fraction = (Fraction(1) - sum) / Fraction(K)
             k = 0
             for s in self._states:
                 if not self.initialProbabilitySpecified(s):
@@ -263,42 +247,37 @@ class MarkovChain(object):
             if not self.rewardSpecified(s):
                 self.setReward(s, 0.0)
 
-    def initialProbabilityVector(self)->Any:
+    def initialProbabilityVector(self)->linalg.TVector:
         '''Determine and return the initial probability vector.'''
         N = len(self._states)
-        self._initialProbabilityVector = np.zeros([N])
+        self._initialProbabilityVector = linalg.zeroVector(N)
         k = 0
         for s in self._states:
             if s in self._initialProbabilities:
-                self._initialProbabilityVector.itemset(k, self._initialProbabilities[s])
+                self._initialProbabilityVector[k] = self._initialProbabilities[s]
             k += 1
         self.completeInitialProbabilityVector()
         return self._initialProbabilityVector
 
-    def rewardVector(self)->Any:
+    def rewardVector(self)->linalg.TVector:
         '''Return reward vector.'''
-        res = np.empty(len(self._states))
-        k = 0
-        for s in self._states:
-            res[k] = self.getReward(s)
-            k += 1
-        return res
+        return [self.getReward(s) for s in self._states]
 
-    def rewardForDistribution(self, d: Any)->float:
+    def rewardForDistribution(self, d: linalg.TVector)->Fraction:
         '''Return expected reward for a given distribution.'''
-        result = 0.0
+        result = Fraction(0)
         for k in range(self.numberOfStates()):
             result += d[k] * self.getReward(self._states[k])
         return result
 
-    def executeSteps(self, N: int)->Any:
+    def executeSteps(self, N: int)->List[linalg.TVector]:
         '''Perform N steps of the chain, return array of N+1 distributions, starting with the initial distribution and distributions after N steps.'''
         P = self.transitionMatrix()
         pi = self.initialProbabilityVector()
-        result = np.empty([N+1, self.numberOfStates()])
-        for k in range(N+1):
-            result[k] = pi
-            pi = np.matmul(pi, P)
+        result = []
+        for _ in range(N+1):
+            result.append(pi)
+            pi = linalg.vectorMatrixProduct(pi, P)
         return result
 
 
@@ -308,7 +287,7 @@ class MarkovChain(object):
         gr.add_nodes(self._states)
         for s in self._transitions:
             for t in self._transitions[s]:
-                if not MarkovChain._isZero(self._transitions[s][t]):
+                if not self._transitions[s][t] == Fraction(0):
                     gr.add_edge((s, t))
         return gr
 
@@ -318,7 +297,7 @@ class MarkovChain(object):
         gr.add_nodes(self._states)
         for s in self._transitions:
             for t in self._transitions[s]:
-                if not MarkovChain._isZero(self._transitions[s][t]):
+                if not self._transitions[s][t]==Fraction(0):
                     gr.add_edge((t, s))
         return gr
 
@@ -440,7 +419,7 @@ class MarkovChain(object):
 
         return 'non-ergodic non-unichain'
 
-    def _hittingProbabilities(self, targetState: str)->Tuple[List[str],Optional[Any],Dict[str,int],Dict[str,int],Dict[str,float]]:
+    def _hittingProbabilities(self, targetState: str)->Tuple[List[str],Optional[linalg.TMatrix],Dict[str,int],Dict[str,int],Dict[str,Fraction]]:
         '''Determine the hitting probabilities to hit targetState. Returns a tuple with:
         - rs: the list of states from which the target state is reachable
         - ImEQ: the matrix of the matrix equation
@@ -471,7 +450,7 @@ class MarkovChain(object):
         jp = pIndex[targetState]
 
         ImEQ = None
-        solX = None
+        solX: Optional[linalg.TVector] = None
 
         if  len(rs) > 0:
 
@@ -483,8 +462,8 @@ class MarkovChain(object):
 
             N = len(rs)
             # initialize matrix I-EQ from the equation, and vector Pj
-            ImEQ = np.identity(N)
-            pj = np.zeros([N])
+            ImEQ = linalg.identityMatrix(N)
+            pj = linalg.zeroVector(N)
             # for all equations (rows of the matrix)
             for i in range(N):
                 ip = pIndex[rs[i]]
@@ -498,28 +477,28 @@ class MarkovChain(object):
                         ImEQ[i][k] -= P[ip][kp]
 
             # solve the equation x = inv(I-EQ)*Pj
-            solX = np.matmul(np.linalg.inv(ImEQ), pj)
+            solX = linalg.solve(ImEQ, pj)
 
         # set all hitting probabilities to zero
-        res: Dict[str,float] = dict()
+        res: Dict[str,Fraction] = dict()
         for s in self._states:
-            res[s] = 0.0
+            res[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
-            solX: Any
-            res[s] = solX[rIndex[s]]
+            solXv: linalg.TVector = solX  # type: ignore we know solX is a vector
+            res[s] = solXv[rIndex[s]]
 
         return rs, ImEQ, rIndex, pIndex, res
 
 
-    def hittingProbabilities(self, targetState: str)->Dict[str,float]:
+    def hittingProbabilities(self, targetState: str)->Dict[str,Fraction]:
         '''Determine the hitting probabilities to hit targetState.'''
 
         _, _, _, _, res = self._hittingProbabilities(targetState)
         return res
 
-    def rewardTillHit(self, targetState: str)->Dict[str,float]:
+    def rewardTillHit(self, targetState: str)->Dict[str,Fraction]:
         '''Determine the expected reward until hitting targetState'''
 
         rs, ImEQ, rIndex, pIndex, f = self._hittingProbabilities(targetState)
@@ -531,7 +510,7 @@ class MarkovChain(object):
             # solve the equation: (I-EQ) x = Fj
 
             N = len(rs)
-            fj = np.zeros([N])
+            fj = linalg.zeroVector(N)
             jp = pIndex[targetState]
             for i in range(N):
                 si = rs[i]
@@ -540,9 +519,9 @@ class MarkovChain(object):
 
 
             # solve the equation x = inv(I-EQ)*Fj
-            ImEQ: Any # is not None
-            solX = np.matmul(np.linalg.inv(ImEQ), fj)
-
+            ImEQm: linalg.TMatrix = ImEQ  # type: ignore we know ImEQ is a matrix
+            solX = linalg.solve(ImEQm, fj)
+            
         # set fr to zero
         fr = dict()
         for s in self._states:
@@ -550,8 +529,8 @@ class MarkovChain(object):
 
         # fill the solutions from the equation
         for s in rs:
-            solX: Any # is not None
-            fr[s] = solX[rIndex[s]]
+            solXv: linalg.TVector = solX  # type: ignore we know solX is a vector
+            fr[s] = solXv[rIndex[s]]
 
         res = dict()
         for s in rs:
@@ -560,7 +539,7 @@ class MarkovChain(object):
         return res
 
 
-    def _hittingProbabilitiesSet(self, targetStates: List[str])->Tuple[Any,List[str],Optional[Any],Dict[str,int],Dict[str,int],Dict[str,float]]:
+    def _hittingProbabilitiesSet(self, targetStates: List[str])->Tuple[linalg.TMatrix,List[str],Optional[linalg.TMatrix],Dict[str,int],Dict[str,int],Dict[str,Fraction]]:
         '''Determine the hitting probabilities to hit a set targetStates. Returns a tuple with:
         
         - P: the transition matrix
@@ -611,8 +590,8 @@ class MarkovChain(object):
         # solve the equation: (I-EQ) x = Pj
 
         N = len(rs)
-        ImEQ = np.identity(N)
-        sp = np.zeros([N])
+        ImEQ = linalg.identityMatrix(N)
+        sp = linalg.zeroVector(N)
         for i in range(N):
             ip = pIndex[rs[i]]
             # compute the i-th element in vector SP
@@ -626,7 +605,7 @@ class MarkovChain(object):
                 ImEQ[i][k] -= P[ip][kp]
 
         # solve the equation x = inv(I-EQ)*SP
-        solX = np.matmul(np.linalg.inv(ImEQ), sp)
+        solX = linalg.solve(ImEQ, sp)
 
         # set all hitting probabilities to zero
         res = dict()
@@ -643,7 +622,7 @@ class MarkovChain(object):
 
         return P, rs, ImEQ, rIndex, pIndex, res
 
-    def hittingProbabilitiesSet(self, targetStates: List[str])->Dict[str,float]:
+    def hittingProbabilitiesSet(self, targetStates: List[str])->Dict[str,Fraction]:
         '''Determine the hitting probabilities to hit a set targetStates.'''
         _, _, _, _, _, res = self._hittingProbabilitiesSet(targetStates)
         return res
@@ -663,15 +642,15 @@ class MarkovChain(object):
             # solve the equation: (I-EQ) x = H
 
             N = len(rs)
-            hh = np.zeros([N])
+            hh = linalg.zeroVector(N)
             for i in range(N):
                 # compute the i-th element in vector H
                 si = rs[i]
                 hh[i] = self.getReward(si) * h[si]
 
             # solve the equation x = inv(I-EQ)*H
-            ImEQ: Any
-            solX = np.matmul(np.linalg.inv(ImEQ), hh)
+            ImEQm: linalg.TMatrix = ImEQ  # type: ignore we know that ImEQ is a matrix
+            solX = linalg.solve(ImEQm, hh)
 
         # set hr to zero
         hr = dict()
@@ -680,8 +659,8 @@ class MarkovChain(object):
 
         # fill the solutions from the equation
         for s in rs:
-            solX: Any
-            hr[s] = solX[rIndex[s]]
+            solXv: linalg.TVector = solX  # type: ignore we know that solX is a vector
+            hr[s] = solXv[rIndex[s]]
 
         res = dict()
         for s in targetStates:
@@ -691,32 +670,32 @@ class MarkovChain(object):
 
         return res
 
-    def _getSubTransitionMatrixIndices(self, indices: List[int])->Any:
+    def _getSubTransitionMatrixIndices(self, indices: List[int])->linalg.TMatrix:
         '''Return sub transition matrix consisting of the given list of indices.'''
         if self._transitionMatrix is None:
             raise DTMCException("Transition matrix has not been determined.")
         N = len(indices)
-        res = np.zeros([N, N])
+        res = linalg.zeroMatrix(N, N)
         for k in range(N):
             for m in range(N):
                 res[k][m] = self._transitionMatrix[indices[k]][indices[m]]
         return res
 
-    def _getSubTransitionMatrixClass(self, C: AbstractSet[str])->Tuple[Dict[str,int],Any]:
+    def _getSubTransitionMatrixClass(self, C: AbstractSet[str])->Tuple[Dict[str,int],linalg.TMatrix]:
         '''Return an index for the states in C and a sub transition matrix for the class C.'''
         # get submatrix for a class C of states
         indices = sorted([self._states.index(s) for s in C])
         index = dict([(c, indices.index(self._states.index(c))) for c in C])
         return index, self._getSubTransitionMatrixIndices(indices)
 
-    def limitingMatrix(self)->Any:
+    def limitingMatrix(self)->linalg.TMatrix:
         '''Determine the limiting matrix of the dtmc.'''
         # formulate and solve balance equations for each of the  recurrent classes
         # determine the recurrent classes
         self.transitionMatrix()
 
         N = len(self._states)
-        res = np.zeros([N, N])
+        res = linalg.zeroMatrix(N, N)
 
         _, rClasses =  self.classifyTransientRecurrentClasses()
 
@@ -726,10 +705,10 @@ class MarkovChain(object):
             # a) solve the balance equations, pi P = pi I , pi.1 = 1
             #       pi (P-I); 1 = [0 1],
             M = len(c)
-            PmI = np.subtract(Pc, np.eye(M))
-            Q = np.matmul(PmI, np.matrix.transpose(PmI)) + np.ones([M,M])  # type: ignore numpy internal type issue
-            QInv = np.linalg.inv(Q)
-            pi = np.sum(QInv, 0)
+            PmI = linalg.subtractMatrix(Pc, linalg.identityMatrix(M))
+            Q = linalg.addMatrix(linalg.matrixMatrixProduct(PmI, linalg.transpose(PmI)), linalg.oneMatrix(M,M))
+            QInv = linalg.invertMatrix(Q)
+            pi = linalg.columnSum(QInv)
             h = self.hittingProbabilitiesSet(list(c))
             # P(i,j) = h_i * pi j
             for sj in c:
@@ -741,17 +720,17 @@ class MarkovChain(object):
                         res[i][j] = h[self._states[i]] * pi[index[sj]]
         return res
 
-    def limitingDistribution(self)->Any:
+    def limitingDistribution(self)->linalg.TVector:
         '''Determine the limiting distribution.'''
         P = self.limitingMatrix()
         pi0 = self.initialProbabilityVector()
-        return np.dot(pi0, P)
+        return linalg.vectorMatrixProduct(pi0, P)
 
-    def longRunReward(self)-> float:
+    def longRunReward(self)-> Fraction:
         '''Determine the long-run expected reward.'''
         pi = self.limitingDistribution()
         r = self.rewardVector()
-        return np.dot(pi, r)
+        return linalg.innerProduct(pi, r)
 
     @staticmethod
     def fromDSL(dslString: str)->Tuple[Optional[str],Optional['MarkovChain']]:
@@ -804,13 +783,15 @@ class MarkovChain(object):
         return s
 
 
-    def setRecurrentState(self, state:str):
+    def setRecurrentState(self, state:Optional[str]):
         '''Set the recurrent state for simulation. If the given state is not a recurrent state. It is set to None.'''
-        # TODO: check. why is it set to None? Raise exception instead?
-        if self._isRecurrentState(state):
-            self._recurrent_state = state
-        else:
+        if state is None:
             self._recurrent_state = None
+        else:
+            if self._isRecurrentState(state):
+                self._recurrent_state = state
+            else:
+                self._recurrent_state = None
 
 
     TSimulationAction = Callable[[int,str],bool]
@@ -898,9 +879,9 @@ class MarkovChain(object):
             self.Dist_Em += 1
             self.Dist_El += self.Dist_l
             self.Dist_El2 += pow(self.Dist_l, 2)
-            self.Dist_Er = np.add(self.Dist_Er, self.Dist_rl)  # type: ignore numpy type issue
-            self.Dist_Er2 = np.add(self.Dist_Er2, [pow(r, 2) for r in self.Dist_rl])  # type: ignore numpy type issue
-            self.Dist_Elr = np.add(self.Dist_Elr, [r*self.Dist_l for r in self.Dist_rl])  # type: ignore numpy type issue
+            self.Dist_Er = linalg.flAddVector(self.Dist_Er, self.Dist_rl)
+            self.Dist_Er2 = linalg.flAddVector(self.Dist_Er2, [pow(r, 2) for r in self.Dist_rl])
+            self.Dist_Elr = linalg.flAddVector(self.Dist_Elr, [r*self.Dist_l for r in self.Dist_rl])
             self.Dist_rl = [0.0] * len(self._states)
             self.Dist_l = 0
 
@@ -948,7 +929,7 @@ class MarkovChain(object):
             return abError
 
         if self.Dist_Em > 0:
-            d = math.sqrt(self.Dist_Em) * (1/(self.Dist_Em)) * self.Dist_El
+            d = math.sqrt(float(self.Dist_Em)) * (1.0/float(self.Dist_Em)) * float(self.Dist_El)
             for i in range(len(abError)):
                 if d != 0:
                     abError[i] = abs((con*self.Dist_Sm[i]) / d)
@@ -964,7 +945,7 @@ class MarkovChain(object):
             return -1.0
 
         if self.Em > 0:
-            d = (self.u * np.sqrt(self.Em) * (1/(self.Em)) * self.El) - (con*self.Sm)
+            d = (self.u * math.sqrt(self.Em) * (1/(self.Em)) * self.El) - (con*self.Sm)
             if d != 0:
                 return abs((con*self.Sm) / d)
             else:
@@ -982,7 +963,7 @@ class MarkovChain(object):
         
         for i in range(len(reError)):
             if self.Dist_Em > 0:
-                d = (self.Dist_u[i] * np.sqrt(self.Dist_Em) * (1/(self.Dist_Em)) * self.Dist_El) - (con*self.Dist_Sm[i])
+                d = (self.Dist_u[i] * math.sqrt(float(self.Dist_Em)) * (1.0/float(self.Dist_Em)) * self.Dist_El) - (con*self.Dist_Sm[i])
                 if d != 0:
                     reError[i] = abs((con*self.Dist_Sm[i]) / d)
                 else:
@@ -994,7 +975,7 @@ class MarkovChain(object):
         '''Record the last state reward.'''
         if n == nr_of_steps:
             # TODO: what is self.y? Where is it defined? Line 1233.
-            self.y = self._rewards[state]
+            self.y = float(self._rewards[state])
 
     def _hittingStateCount(self, n: int, state: str, nr_of_steps: int):
         '''Update hitting state count if we are at step nr_of_steps.'''
@@ -1320,10 +1301,10 @@ class MarkovChain(object):
             u += d1/m
             d2 = self.y - u
             M2 += d1 * d2
-            Sm = np.sqrt(M2/m)
+            Sm = math.sqrt(M2/float(m))
 
             # Compute absolute and relative errors
-            abErrorVal = abs((c*Sm) / np.sqrt(m))
+            abErrorVal = abs((c*Sm) / math.sqrt(float(m)))
             d = u-abErrorVal
             if d != 0.0:
                 reErrorVal = abs(abErrorVal/d)
@@ -1434,10 +1415,10 @@ class MarkovChain(object):
             for i in range(len(distribution)):
                 distribution[i] = self.state_count[i] / m
                 nr_of_zeros = m - self.state_count[i]     
-                Sm = np.sqrt((1/m)*( self.state_count[i]*pow(1 - distribution[i],2) + nr_of_zeros*pow(0 - distribution[i],2) ))
+                Sm = math.sqrt((1/float(m))*( self.state_count[i]*pow(1 - distribution[i],2) + nr_of_zeros*pow(0 - distribution[i],2) ))
 
                 # absolute error calculation
-                abError[i] = abs((c*Sm) / np.sqrt(m))
+                abError[i] = abs((c*Sm) / math.sqrt(float(m)))
                 d = distribution[i]-abError[i]
                 if d != 0.0:
                     reError[i] = abs(abError[i]/d)
@@ -1560,9 +1541,9 @@ class MarkovChain(object):
             # manipulate the initial probabilities to start the markov chain in the required state i
             for state in self.states():
                 if state == initial_state:
-                    self._initialProbabilities[state] = 1.0
+                    self._initialProbabilities[state] = Fraction(1)
                 else:
-                    self._initialProbabilities[state] = 0.0
+                    self._initialProbabilities[state] = Fraction(0)
 
             nr_of_valid_traces = 0
             M2 = 0.0
@@ -1601,8 +1582,8 @@ class MarkovChain(object):
                 if func:
                     u = nr_of_valid_traces / m
                     nr_of_zeros = m - nr_of_valid_traces    
-                    Sm = np.sqrt((1/m)*( nr_of_valid_traces*pow(1 - u,2) + nr_of_zeros*pow(0 - u,2) ))
-                    abError = abs((c*Sm) / np.sqrt(m))
+                    Sm = math.sqrt((1/float(m))*( nr_of_valid_traces*pow(1 - u,2) + nr_of_zeros*pow(0 - u,2) ))
+                    abError = abs((c*Sm) / math.sqrt(float(m)))
                 
                 # - Reward confidence
                 else:
@@ -1611,8 +1592,8 @@ class MarkovChain(object):
                         u += d1/nr_of_valid_traces
                         d2 = self.sum_rewards - u
                         M2 += d1 * d2
-                        Sm = np.sqrt(M2/nr_of_valid_traces)
-                        abError = abs((c*Sm) / np.sqrt(nr_of_valid_traces))
+                        Sm = math.sqrt(M2/float(nr_of_valid_traces))
+                        abError = abs((c*Sm) / math.sqrt(float(nr_of_valid_traces)))
 
                 d = u-abError
                 if d != 0.0:
