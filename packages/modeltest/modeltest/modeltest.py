@@ -15,14 +15,6 @@ class Model_pytest(object):
     def _change_type_of_data(self, data, sort, quotes):
         input_type = type(data)
 
-        # First translate all numpy types to normal types
-        if input_type.__module__ == np.__name__:
-            if input_type == np.ndarray: # arrays/matrices
-                data = data.tolist()
-            else:
-                data = data.item()    # Single data types (int/float...)
-            input_type = type(data)
-
         if quotes and isinstance(data, str):
             return '\"' + data + '\"'
 
