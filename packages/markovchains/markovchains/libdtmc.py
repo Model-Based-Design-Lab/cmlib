@@ -272,6 +272,8 @@ class MarkovChain(object):
 
     def executeSteps(self, N: int)->List[linalg.TVector]:
         '''Perform N steps of the chain, return array of N+1 distributions, starting with the initial distribution and distributions after N steps.'''
+        if N<0:
+            raise(DTMCException("Number of steps must be non-negative."))
         P = self.transitionMatrix()
         pi = self.initialProbabilityVector()
         result = []
@@ -704,6 +706,7 @@ class MarkovChain(object):
             M = len(c)
             PmI = linalg.subtractMatrix(Pc, linalg.identityMatrix(M))
             Q = linalg.addMatrix(linalg.matrixMatrixProduct(PmI, linalg.transpose(PmI)), linalg.oneMatrix(M,M))
+
             QInv = linalg.invertMatrix(Q)
             pi = linalg.columnSum(QInv)
             h = self.hittingProbabilitiesSet(list(c))

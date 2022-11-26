@@ -109,6 +109,8 @@ class Model_pytest(object):
             func()
             assert False
         except Exception as e:
+            print("Expected result: " + expected_result)
+            print("Actual result: " + str(e))
             assert str(e) == expected_result
     
     def function_test(self, func, expected_result, deterministic = True, sort = False, quotes = False):

@@ -1,0 +1,4 @@
+
+markov chain Model {
+        A [p: 1; r: 1] -- 1 -> A
+}

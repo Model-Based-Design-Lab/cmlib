@@ -79,9 +79,12 @@ def requireNumberOfSteps(args: Any)->int:
     if args.numberOfSteps is None:
         raise Exception("number of steps (-ns option) must be specified.")
     try:
-        return nrOfSteps(int(args.numberOfSteps))
+        ns: int = nrOfSteps(int(args.numberOfSteps))
     except Exception as e:
-        raise Exception("Failed to determine number of steps.\n")
+        raise Exception("Failed to determine number of steps.")
+    if ns < 0:
+        raise Exception("Number of steps must be a non-negative number.")
+    return ns
 
 def requireTargetState(M: MarkovChain, args: Any)->str:
     if args.targetState is None:

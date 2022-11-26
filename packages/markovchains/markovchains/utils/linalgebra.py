@@ -54,7 +54,7 @@ def rowSum(A: TMatrix)-> TVector:
     '''Sum matrix A along its rows'''
     if len(A)==0:
         return []
-    return [reduce(lambda sum, c: sum+A[c][r], range(len(A)) , Fraction(0)) for r in range(len(A[1]))]
+    return [reduce(lambda sum, c: sum+A[c][r], range(len(A)) , Fraction(0)) for r in range(len(A[0]))]
 
 def columnSum(A: TMatrix)-> TVector:
     '''Sum matrix A along its columns'''
@@ -84,10 +84,10 @@ def subtractMatrix(Aa: TMatrix, Ab: TMatrix)->TMatrix:
 def addMatrix(Aa: TMatrix, Ab: TMatrix)->TMatrix:
     return [addVector(Aa[k], Ab[k]) for k in range(len(Aa))]
 
-def transpose(A: TMatrix) -> TMatrix:
+def transpose(A: TMatrix) -> TMatrix:    
     if len(A)==0:
         return [[]]
-    nRowsA = len(A[1])
+    nRowsA = len(A[0])
     nColsA = len(A)
     return [[A[c][r] for c in range(nColsA)] for r in range(nRowsA)]
 

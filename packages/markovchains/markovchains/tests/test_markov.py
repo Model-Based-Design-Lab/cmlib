@@ -105,7 +105,7 @@ class Markov_pytest(Model_pytest):
         self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, True, True, self.model.states()), "estimationHittingRewardSet")
 
     def Incorrect_behaviour_tests(self):
-        self.incorrect_test(lambda: self.model.executeSteps(-2), 'negative dimensions are not allowed')
+        self.incorrect_test(lambda: self.model.executeSteps(-2), 'Number of steps must be non-negative.')
         self.incorrect_test(lambda: self.model.hittingProbabilities('NOT_A_STATE'), "'NOT_A_STATE'")
         self.incorrect_test(lambda: self.model.longRunExpectedAverageReward((-1.00,0,0,1000,0,-1)), "p must be in the range 0.0 < p < 1.0")
         self.incorrect_test(lambda: self.model.cezaroLimitDistribution((-1.00,0,0,1000,0,-1.-1)), "p must be in the range 0.0 < p < 1.0")
