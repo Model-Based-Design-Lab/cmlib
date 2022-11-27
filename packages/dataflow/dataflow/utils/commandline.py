@@ -9,14 +9,29 @@ from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.utils.utils import printXmlTrace, printXmlGanttChart, parseInputTraces, parseInitialState, requireNumberOfIterations, parseNumberOfIterations, requirePeriod, getSquareMatrix, requireSequenceOfMatricesAndPossiblyVectorSequence, determineStateSpaceLabels, parseSequences, validateEventSequences, requireParameterInteger, requireOneEventSequence, requireParameterMPValue, fractionToFloatList, fractionToFloatOptionalLList
 from dataflow.maxplus.maxplus import mpTransposeMatrix
 from dataflow.maxplus.utils.printing import printMPVectorList, mpPrettyVectorToString, mpPrettyValue, mpElementToString, prettyPrintMPMatrix
-from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_SPACE_MATRICES, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
+from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_MATRIX_MODEL, OP_SDF_STATE_SPACE_MATRICES_MODEL, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
 import sys
 
 
 def main():
 
-    parser = argparse.ArgumentParser(
-        description='Perform operations on dataflow graphs.\nhttps://computationalmodeling.info')
+    # optional help flag explaining usage of each individual operation
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument('-oh', '--operationhelp', dest='opHelp', nargs="?", const=" ")
+    options, remainder = parser.parse_known_args() # Only use options of parser above
+
+
+    if options.opHelp: # Check if -oh has been called
+        if options.opHelp not in DataflowOperations:
+            if options.opHelp.strip() != '':
+                print("Operation '{}' does not exist. List of operations:\n\t- {}".format(options.opHelp, "\n\t- ".join(Operations)))
+            else:
+                print("List of operations:\n\t- {}".format("\n\t- ".join(Operations)))
+        else:
+            print("{}: {}".format(options.opHelp, OperationDescriptions[Operations.index(options.opHelp)]))        
+        exit(1)
+
+    parser = argparse.ArgumentParser(description='Perform operations on dataflow graphs.\nhttps://computationalmodeling.info')
     parser.add_argument('dataflow_graph_or_mpmatrix', help="the dataflow graph or max-plus matrix to analyze")
     parser.add_argument('-op', '--operation', dest='operation',
                         help="the operation or analysis to perform, one of : {}".format("; \n".join(OperationDescriptions)))
@@ -37,7 +52,7 @@ def main():
     parser.add_argument('-og', '--outputgraph', dest='outputGraph',
                         help="the outputfile to write output graph to")
 
-    args = parser.parse_args()
+    args = parser.parse_args(remainder)
 
     if args.operation not in Operations:
         sys.stderr.write("Unknown operation: {}\n".format(args.operation))
@@ -151,6 +166,16 @@ def processDataflowOperation(args, dsl):
         print('Initial state latency matrix:')
         prettyPrintMPMatrix(LambdaX, ovs, svs)
 
+    if args.operation == OP_SDF_STATE_MATRIX:
+        _, M = G.stateSpaceMatrices()
+        svl = G.listOfStateElementsStr()
+        print('State vector:')
+        print(svl)
+        print()
+        print('State matrix A:')
+        prettyPrintMPMatrix(M[0])
+        print()
+
     if args.operation == OP_SDF_STATE_SPACE_REPRESENTATION:
         _, M = G.stateSpaceMatrices()
         svl = G.listOfStateElementsStr()
@@ -178,7 +203,8 @@ def processDataflowOperation(args, dsl):
         print('Feed forward matrix D:')
         prettyPrintMPMatrix(M[3], ovs, ivs)
 
-    if args.operation == OP_SDF_STATE_MATRIX:
+
+    if args.operation == OP_SDF_STATE_MATRIX_MODEL:
         _, SSM = G.stateSpaceMatrices()
         mpm = MaxPlusMatrixModel()
         mpm.setMatrix(SSM[0])
@@ -187,7 +213,7 @@ def processDataflowOperation(args, dsl):
         matrices['A'].setLabels(G.stateElementLabels())
         print(mpm.asDSL(name+"_MPM", matrices))
 
-    if args.operation == OP_SDF_STATE_SPACE_MATRICES:
+    if args.operation == OP_SDF_STATE_SPACE_MATRICES_MODEL:
         _, SSM = G.stateSpaceMatrices()
         mpm = MaxPlusMatrixModel()
         mpm.setMatrix(SSM[0])

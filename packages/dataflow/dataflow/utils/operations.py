@@ -8,13 +8,14 @@ OP_SDF_LATENCY = 'latency'
 OP_SDF_DEADLOCK = 'deadlock'
 OP_SDF_GENERALIZED_LATENCY = 'generalizedlatency'
 OP_SDF_STATE_MATRIX = 'statematrix'
-OP_SDF_STATE_SPACE_REPRESENTATION = 'statespacerepresentation'
-OP_SDF_STATE_SPACE_MATRICES = 'statespacematrices'
+OP_SDF_STATE_SPACE_REPRESENTATION = 'statespacematrices'
+OP_SDF_STATE_MATRIX_MODEL = 'statematrixmodel'
+OP_SDF_STATE_SPACE_MATRICES_MODEL = 'statespacematricesmodel'
 OP_SDF_GANTT_CHART = 'ganttchart'
 OP_SDF_GANTT_CHART_ZERO_BASED = 'ganttchart-zero-based'
 OP_SDF_CONVERT_TO_SINGLE_RATE = 'converttosinglerate'
 
-DataflowOperations = [OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS, OP_SDF_REP_VECTOR, OP_SDF_DEADLOCK, OP_SDF_THROUGHPUT, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_STATE_SPACE_MATRICES, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_SDF_CONVERT_TO_SINGLE_RATE]
+DataflowOperations = [OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS, OP_SDF_REP_VECTOR, OP_SDF_DEADLOCK, OP_SDF_THROUGHPUT, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_STATE_SPACE_MATRICES_MODEL, OP_SDF_STATE_MATRIX_MODEL, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_SDF_CONVERT_TO_SINGLE_RATE]
 
 
 # operations on max-plus models
@@ -47,37 +48,38 @@ OtherOperations = []
 Operations = DataflowOperations + MPMatrixOperations + OtherOperations
 
 OperationDescriptions = [
-    OP_SDF_INPUT_LABELS + ' (determines inputs of the graph)',
-    OP_SDF_STATE_LABELS + ' (determine the labels of the elements of the state vector)',
-    OP_SDF_THROUGHPUT + ' (computes throughput)' ,
-    OP_SDF_LATENCY + ' (requires period and optional initial state)',
-    OP_SDF_REP_VECTOR + ' (computes repetition vector)',
-    OP_SDF_DEADLOCK + ' (checks graph for deadlock)',
-    OP_SDF_GENERALIZED_LATENCY + ' (compute generalized latency, requires period)',
-    OP_SDF_STATE_MATRIX + ' (compute the state matrix of the graph',
-    OP_SDF_STATE_SPACE_REPRESENTATION + ' (compute state space representation of the graph)',
-    OP_SDF_STATE_SPACE_MATRICES + ' (compute state space representation of the graph as a new model)',
-    OP_SDF_GANTT_CHART + ' (make a Gantt chart of the graph as an XML file for the sdf3trace2svg tool)',
-    OP_SDF_GANTT_CHART_ZERO_BASED + ' (make a Gantt chart of the graph as an XML file for the sdf3trace2svg tool) assuming actor firings cannot start before time 0',
-    OP_SDF_CONVERT_TO_SINGLE_RATE + ' (convert to a single rate graph)', 
-    OP_MPM_VECTOR_TRACE + ' (compute a vector trace for a state matrix or a set of state-space matrices; optional numberofiterations, optional initialstate, optional sequences)',
-    OP_MPM_VECTOR_TRACE_TRANSFORM + ' (compute a vector trace for a state matrix or a set of state-space matrices as a new max-plus model; optional numberofiterations, optional initialstate, optional sequences)',
-    OP_MPM_VECTOR_TRACE_XML + ' (compute a vector trace for a state matrix or a set of state-space matrices as an XML file for the sdf3trace2svg tool; optional numberofiterations, optional initialstate, optional sequences)',
-    OP_MPM_MATRICES+ ' (list matrices defined in the model)',
-    OP_MPM_VECTOR_SEQUENCES+ ' (list vector sequences defined in the model)',
-    OP_MPM_EVENT_SEQUENCES + ' (list event sequences defined in the model)',
-    OP_MPM_INPUT_LABELS + ' (determine the inputs of the model)',
-    OP_MPM_EIGENVALUE + ' (compute the largest eigenvalue of a matrix)',
-    OP_MPM_EIGENVECTORS + ' (compute the eigenvectors of a matrix)',
-    OP_MPM_PRECEDENCEGRAPH + ' (compute the precedence graph of a matrix)',
-    OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ + ' (compute the precedence graph of a matrix as a Graphviz model)',
-    OP_MPM_STAR_CLOSURE + ' (compute the star closure of a matrix)',
-    OP_MPM_MULTIPLY + ' (multiply matrices and / or vector sequence; requires matrices possible a vector sequence)',
-    OP_MPM_MULTIPLY_TRANSFORM + ' (multiply matrices and / or vector sequence and make a new model with the result, requires matrices possible a vector sequence)',
-    OP_MPM_CONVOLUTION + ' (compute the convolution of a series of event sequences)',
-    OP_MPM_CONVOLUTION_TRANSFORM + ' (compute the convolution of a series of event sequences as a new model)',
-    OP_MPM_MAXIMUM + ' (compute the maximum of a series of event sequences)',
-    OP_MPM_MAXIMUM_TRANSFORM + ' (compute the maximum of a series of event sequences as a new model)',
-    OP_MPM_DELAY_SEQUENCE + ' (delay an event sequence by a number of event samples; requires sequence and parameter)',
-    OP_MPM_SCALE_SEQUENCE + ' (scale an event sequence, i.e., add a constant to all event time stamps; requires sequence and parameter)'
+    'determines inputs of the graph',
+    'determine the labels of the elements of the state vector',
+    'computes repetition vector',
+    'checks graph for deadlock',
+    'computes throughput' ,
+    'compute latency, requires period and optional initial state',
+    'compute generalized latency, requires period',
+    'compute state space representation of the graph',
+    'compute the state matrix of the graph',
+    'compute state space representation of the graph as a new model',
+    'compute the state matrix of the graph as a new model',
+    'make a Gantt chart of the graph as an XML file for the cmtrace tool (https://github.com/Model-Based-Design-Lab/cmtrace)',
+    'make a Gantt chart of the graph as an XML file for the cmtrace tool (https://github.com/Model-Based-Design-Lab/cmtrace) assuming actor firings cannot start before time 0',
+    'convert to a single rate graph', 
+    'compute the largest eigenvalue of a matrix',
+    'list event sequences defined in the model',
+    'list vector sequences defined in the model',
+    'determine the inputs of the model',
+    'list matrices defined in the model',
+    'compute the eigenvectors of a matrix',
+    'compute the precedence graph of a matrix',
+    'compute the precedence graph of a matrix as a Graphviz model',
+    'compute the star closure of a matrix',
+    'multiply matrices and / or vector sequence; requires matrices possible a vector sequence',
+    'multiply matrices and / or vector sequence and make a new model with the result, requires matrices possible a vector sequence',
+    'compute a vector trace for a state matrix or a set of state-space matrices; optional numberofiterations, optional initialstate, optional sequences',
+    'compute a vector trace for a state matrix or a set of state-space matrices as a new max-plus model; optional numberofiterations, optional initialstate, optional sequences',
+    'compute a vector trace for a state matrix or a set of state-space matrices as an XML file for the cmtrace tool (https://github.com/Model-Based-Design-Lab/cmtrace); optional numberofiterations, optional initialstate, optional sequences)',
+    'compute the convolution of a series of event sequences',
+    'compute the convolution of a series of event sequences as a new model',
+    'compute the maximum of a series of event sequences',
+    'compute the maximum of a series of event sequences as a new model',
+    'delay an event sequence by a number of event samples; requires sequence and parameter',
+    'scale an event sequence, i.e., add a constant to all event time stamps; requires sequence and parameter'
 ]

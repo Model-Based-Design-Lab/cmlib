@@ -3,7 +3,7 @@ from functools import reduce
 from io import StringIO
 from typing import List, Literal, Optional, Tuple, Union, Dict
 import dataflow.maxplus.maxplus as mp
-from dataflow.maxplus.utils.printing import mpVectorToString
+from dataflow.maxplus.utils.printing import mpPrettyVectorToString, mpVectorToFractionString, commonDenominatorMatrix, isComplex, mpVectorToString
 from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
 import pygraph.classes.digraph  as pyg
@@ -72,7 +72,7 @@ class EventSequenceModel(object):
 
     def __str__(self)->str:
         '''Return a string representation.'''
-        return mpVectorToString(self._sequence)
+        return mpPrettyVectorToString(self._sequence)
 
 class VectorSequenceModel(object):
 
@@ -142,7 +142,7 @@ class VectorSequenceModel(object):
         raise MPMException("Cannot multiply vector sequence on the left-hand side.")
 
     def __str__(self)->str:
-        return '[\n'+'\n'.join([mpVectorToString(v) for v in self._vectors])+'\n]'
+        return '[\n'+'\n'.join([mpPrettyVectorToString(v) for v in self._vectors])+'\n]'
 
 class MaxPlusMatrixModel(object):
     '''Model of a max-plus matrix'''
@@ -425,12 +425,16 @@ class MaxPlusMatrixModel(object):
         Convert the receiver and all entities in optional allInstances to a string in the MPM Domain Specific Language using the provided name as the name for the model.
         '''
 
+        # check if we want to output fractions or floats
+        den = commonDenominatorMatrix(self._rows)
+        pv = mpVectorToString if isComplex(den) else mpVectorToFractionString
+
         # create string writer for the output
         output = StringIO()
         if allInstances is None:
             output.write("max-plus model {} : \nmatrices\nA = [\n".format(name))
             for r in self._rows:
-                output.write("\t{}\n".format(mpVectorToString(r)))
+                output.write("\t{}\n".format(pv(r)))
             output.write("]\n")
         else:
             mats: List[str] = [i for i in allInstances if isinstance(allInstances[i], MaxPlusMatrixModel)]
@@ -449,7 +453,7 @@ class MaxPlusMatrixModel(object):
                         labels = ''
                     output.write("{} {} = [\n".format(mat, labels))
                     for r in mm.rows():
-                        output.write("\t{}\n".format(mpVectorToString(r)))
+                        output.write("\t{}\n".format(pv(r)))
                     output.write("]\n")
 
             if len(vSequences) > 0:
@@ -462,14 +466,14 @@ class MaxPlusMatrixModel(object):
                         labels=''
                     output.write("{} {} = [\n".format(vs, labels))
                     for v in vsm.vectors():
-                        output.write("\t{}\n".format(mpVectorToString(v)))
+                        output.write("\t{}\n".format(pv(v)))
                     output.write("]\n")
 
             if len(eSequences) > 0:
                 output.write("\nevent sequences\n")
                 for es in eSequences:
                     esm: EventSequenceModel = allInstances[es]  # type: ignore
-                    output.write("{} = {}".format(es, mpVectorToString(esm.sequence())))
+                    output.write("{} = {}".format(es, pv(esm.sequence())))
         
         result = output.getvalue()
         output.close()

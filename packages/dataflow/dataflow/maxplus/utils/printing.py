@@ -205,7 +205,7 @@ def prettyPrintMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=
     # get common denominator
     den: int = 1
     for r in M:
-        den = lcm(den, commonDenominatorList(r))
+        den = commonDenominatorList(r, den)
 
     if isComplex(den):
         printMPMatrix(M, nr, nc)
@@ -218,12 +218,18 @@ def prettyPrintMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=
 def commonDenominator(den: int, v: Fraction)->int:
     return lcm(den,v.denominator)
 
-def commonDenominatorList(l: List[Optional[Fraction]])->int:
-    den: int = 1
+def commonDenominatorList(l: List[Optional[Fraction]], den: int=1)->int:
     for v in l:
         if v is not None:
             den = commonDenominator(den, v)
     return den
+
+def commonDenominatorMatrix(l: List[List[Optional[Fraction]]])->int:
+    den: int = 1
+    for r in l:
+        den = commonDenominatorList(r, den)
+    return den
+
 
 def primeFactors(n: int)->List[int]:
     i = 2
