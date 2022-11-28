@@ -914,7 +914,7 @@ class MarkovChain(object):
 
         return state_list
 
-    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Optional[Tuple[float,float]],Optional[float],Optional[float],Optional[float],Optional[float],Optional[str]]:
+    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
         '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -925,11 +925,12 @@ class MarkovChain(object):
         - timeout in seconds
         
         Returns a tuple: each of the results can be None if they could not be determined.
-        - confidence interval
-        - estimate of the absolute error
-        - estimate of the relative error
-        - point estimate of the mean
-        - point estimate of the variance
+        - Statistics with:
+            - confidence interval
+            - estimate of the absolute error
+            - estimate of the relative error
+            - point estimate of the mean
+            - point estimate of the variance
         - the stop criterion applied as a string
         '''
         # separate stop conditions
@@ -993,6 +994,7 @@ class MarkovChain(object):
         # Compute confidence interval
         interval = self._statistics.confidenceInterval()
 
+        # TODO: move the following into statistics?
         # Check reError
         if (interval[0] < 0 and interval[1] >= 0) or reError < 0:
             reError = None
@@ -1003,15 +1005,10 @@ class MarkovChain(object):
             abError = None
             interval = None
 
-        return interval, abError, reError, self.u, self.Em, stop
+        return self._statistics, stop
+        # return interval, abError, reError, self.u, self.Em, stop
 
-    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)->Tuple[
-        Optional[List[float]],
-        List[Optional[Tuple[float,float]]],
-        List[Optional[float]],
-        List[Optional[float]],
-        int,
-        Optional[str]]:
+    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[DistributionStatistics, Optional[str]]:
         '''
         Estimate the Cesaro limit distribution by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1023,11 +1020,12 @@ class MarkovChain(object):
         - timeout in seconds
         
         Returns a tuple: each of the results can be None if they could not be determined.
-        - List of point estimates of the probabilities of the limit distribution
-        - List of confidence intervals
-        - List of estimates of the absolute errors
-        - List of estimates of the relative errors
-        - number of cycles 
+        - DistributionStatistics with:
+            - List of point estimates of the probabilities of the limit distribution
+            - List of confidence intervals
+            - List of estimates of the absolute errors
+            - List of estimates of the relative errors
+            - number of cycles 
         - the stop criterion applied as a string
         '''
 
@@ -1070,7 +1068,7 @@ class MarkovChain(object):
             c = self._cycleUpdateCezaro(state)
             return 0 <= nr_of_cycles <= c
 
-        def _action_pointEstCezaro(n:int, state:str)->bool:
+        def _action_pointEstUCezaro(n:int, state:str)->bool:
             self._distributionStatistics.pointEstUCezaro()
             return False
 
@@ -1083,11 +1081,11 @@ class MarkovChain(object):
             return False
 
         def _action_abErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.abErrorCezaro(con, n)
+            c = self._distributionStatistics.abErrorCezaro(n)
             return 0 <= max(c) <= max_abError
 
         def _action_reErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.reErrorCezaro(con, n)
+            c = self._distributionStatistics.reErrorCezaro(n)
             return 0 <= max(c) <= max_reError
 
         # Save current time
@@ -1096,24 +1094,26 @@ class MarkovChain(object):
             (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
             (_action_number_of_cycles, "Number of cycles"), # find first recurrent state
-            (_action_pointEstU, None), # update point estimate of u
+            (_action_pointEstUCezaro, None), # update point estimate of u
             (_action_pointEstSmCezaro, None), # update point estimate of Sm
             (_action_abErrorCezaro, "Absolute Error"), # Calculate smallest absolute error
             (_action_reErrorCezaro, "Relative Error"), # Calculate smallest relative error
             (_action_appendState, None) # Calculate smallest relative error
         ])
 
-        abErrorVal: List[float] = self._abErrorCezaro(con, MarkovChain._law)
+        abErrorVal: List[float] = self._distributionStatistics.abErrorCezaro(MarkovChain._law)
         abError: List[Optional[float]] = [v for v in abErrorVal]
 
-        reErrorVal: List[float] = self._reErrorCezaro(con, MarkovChain._law)
+        reErrorVal: List[float] = self._distributionStatistics.reErrorCezaro(MarkovChain._law)
         reError: List[Optional[float]] = [v for v in reErrorVal]
         
-        interval: List[Optional[Tuple[float,float]]] = []
-        for i in range(nr_of_states):
-            # Compute confidence interval
-            iv = (self.Dist_u[i] - abErrorVal[i], self.Dist_u[i] + abErrorVal[i])
-            interval.append(iv)
+
+        # TODO: move the following into statistics?
+
+        intervals = self._distributionStatistics.confidenceIntervals()
+        for i in range(self.numberOfStates()):
+
+            iv = intervals[i]
 
             # Check reError
             if (iv[0] < 0 and iv[1] >= 0) or reErrorVal[i] < 0:
@@ -1123,14 +1123,15 @@ class MarkovChain(object):
             if abErrorVal[i] < 0: # Error value
                 reError[i] = None
                 abError[i] = None
-                interval[i] = None
+                intervals[i] = None
 
         # Check if sum of distribution equals 1 with .4 float accuracy
         pntEst: Optional[List[float]] = self.Dist_u
-        if not 0.9999 < sum(self.Dist_u) < 1.0001:
+        if not 0.9999 < sum(self._distributionStatistics.pointEstimates()) < 1.0001:
             pntEst = None
 
-        return pntEst, interval, abError, reError, self.Dist_Em, stop
+        return self._distributionStatistics, stop
+        return pntEst, intervals, abError, reError, self.Dist_Em, stop
 
     def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
         Optional[float],

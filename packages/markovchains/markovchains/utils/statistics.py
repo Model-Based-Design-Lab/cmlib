@@ -152,6 +152,14 @@ class DistributionStatistics(object):
     def cycleCount(self)->int:
         return self._Em
 
+    def pointEstUCezaro(self):
+        '''Update point estimates of means.'''
+        if self._El != 0:
+            self._u = [er/self._El for er in self._Er]
+
+    def pointEstimates(self)->List[float]:
+        return self._u
+
     def pointEstSmCezaro(self):
         '''Update point estimates of variances.'''
         if (self._El != 0) and (self._Em != 0):
@@ -193,3 +201,8 @@ class DistributionStatistics(object):
                     reError[i] = -1.0
 
         return reError
+
+    def confidenceIntervals(self)->List[Tuple[float,float]]:
+        # Compute confidence interval
+        abError = self.abErrorCezaro(_law)
+        return [(self._u[i] - abError[i], self._u[i] + abError[i]) for i in range(self._number_of_states)]
