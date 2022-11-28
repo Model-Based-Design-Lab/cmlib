@@ -18,17 +18,13 @@ from statistics import NormalDist
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sortNames
+from markovchains.utils.statistics import Statistics, DistributionStatistics
 
 TStoppingCriteria = Tuple[float,float,float,int,int,float]
 
 class DTMCException(Exception):
     pass
 class MarkovChain(object):
-
-    # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
-    # this variable determines the number of results that are required for the markov simulation before the stop conditions
-    # are checked. (Based on the law of strong numbers)
-    _law: int = 30
 
     # states is a list of strings
     _states: List[str]
@@ -831,10 +827,6 @@ class MarkovChain(object):
 
         return n, stop
 
-    def _cPointEstimate(self, confidence: float)->float:
-        ''''''
-        return NormalDist().inv_cdf((1+confidence)/2)
-
     def _isRecurrentState(self, state: str)->bool:
         '''Check if state is a recurrent state.'''
         # recurrent state thats encountered in the random state_sequence dictionary
@@ -849,21 +841,12 @@ class MarkovChain(object):
                 self._recurrent_state = state
             else:
                 return -1 # To prevent the simulation from exiting
+        
         if self._recurrent_state == state:
-            # TODO: check the use of these variables, make local, or group into object?
-            self.Em += 1
-            self.El += self.l
-            self.Er += self.r
-            self.El2 += pow(self.l, 2)
-            self.Er2 += pow(self.r, 2)
-            self.Elr += self.l * self.r
-            self.l = 0
-            self.r = 0.0
+            self._statistics.visitRecurrentState()
 
-        self.l += 1
-        self.r += self._rewards[state]
-
-        return self.Em
+        self._statistics.addReward(float(self._rewards[state]))
+        return self._statistics.cycleCount()
 
     def _cycleUpdateCezaro(self, state: str)->int:
         '''Called during simulation. Update statistics. Returns current cycle count.'''
@@ -876,100 +859,11 @@ class MarkovChain(object):
                 return -1 # To prevent the simulation from exiting
 
         if self._recurrent_state == state:
-            self.Dist_Em += 1
-            self.Dist_El += self.Dist_l
-            self.Dist_El2 += pow(self.Dist_l, 2)
-            self.Dist_Er = linalg.flAddVector(self.Dist_Er, self.Dist_rl)
-            self.Dist_Er2 = linalg.flAddVector(self.Dist_Er2, [pow(r, 2) for r in self.Dist_rl])
-            self.Dist_Elr = linalg.flAddVector(self.Dist_Elr, [r*self.Dist_l for r in self.Dist_rl])
-            self.Dist_rl = [0.0] * len(self._states)
-            self.Dist_l = 0
+            self._distributionStatistics.visitRecurrentState()
 
-        self.Dist_l += 1
-        self.Dist_rl[self._states.index(state)] += 1.0
+        self._distributionStatistics.addReward(self._states.index(state))
 
-        return self.Dist_Em
-
-    def _pointEstU(self):
-        '''Update point estimate of mean.'''
-        if self.El != 0:
-            self.u = self.Er/self.El
- 
-    def _pointEstSm(self):
-        '''Update point estimate of variance.'''
-        if (self.El != 0) and (self.Em != 0):
-            self.Sm = math.sqrt(abs((self.Er2 - 2*self.u*self.Elr + pow(self.u,2)*self.El2)/self.Em))
-
-    def _pointEstSmCezaro(self):
-        '''Update point estimates of variances.'''
-        if (self.Dist_El != 0) and (self.Dist_Em != 0):
-            for i in range(len(self.Dist_Sm)):
-                self.Dist_Sm[i] = math.sqrt(abs((self.Dist_Er2[i] - 2*self.Dist_u[i]*self.Dist_Elr[i] + pow(self.Dist_u[i],2)*self.Dist_El2)/self.Dist_Em))
-
-    def _abError(self, con: float, n: int)->float:
-        '''Return estimated absolute error'''
-        # Run first MarkovChain._law times without checking abError
-        if 0 <= n < MarkovChain._law:
-            return -1.0
-        if self.Em > 0:
-            d = math.sqrt(self.Em) * (1/(self.Em)) * self.El
-            if d != 0:
-                return abs((con*self.Sm) / d)
-            else:
-                return -1.0
-        else:
-            return -1.0
-
-    def _abErrorCezaro(self, con: float, n: int)->List[float]:
-        '''Return estimated absolute errors'''
-        # Run first MarkovChain._law times without checking abError
-        abError = [-1.0] * len(self._states)
-
-        if 0 <= n < MarkovChain._law:
-            return abError
-
-        if self.Dist_Em > 0:
-            d = math.sqrt(float(self.Dist_Em)) * (1.0/float(self.Dist_Em)) * float(self.Dist_El)
-            for i in range(len(abError)):
-                if d != 0:
-                    abError[i] = abs((con*self.Dist_Sm[i]) / d)
-                else:
-                    abError[i] = -1.0
-  
-        return abError
-
-    def _reError(self, con: float, n: int)->float:
-        '''Return estimated relative error'''
-        # Run first 10 times without checking abError
-        if 0 <= n < MarkovChain._law:
-            return -1.0
-
-        if self.Em > 0:
-            d = (self.u * math.sqrt(self.Em) * (1/(self.Em)) * self.El) - (con*self.Sm)
-            if d != 0:
-                return abs((con*self.Sm) / d)
-            else:
-                return -1.0
-        else:
-            return -1.0
-
-    def _reErrorCezaro(self, con: float, n: int)->List[float]:
-        '''Return estimated relative errors'''
-        reError = [-1.0] * len(self._states)
-
-        # Run first 10 times without checking abError
-        if 0 <= n < MarkovChain._law:
-            return reError
-        
-        for i in range(len(reError)):
-            if self.Dist_Em > 0:
-                d = (self.Dist_u[i] * math.sqrt(float(self.Dist_Em)) * (1.0/float(self.Dist_Em)) * self.Dist_El) - (con*self.Dist_Sm[i])
-                if d != 0:
-                    reError[i] = abs((con*self.Dist_Sm[i]) / d)
-                else:
-                    reError[i] = -1.0
-
-        return reError
+        return self._distributionStatistics.cycleCount()
 
     def _lastStateReward(self, nr_of_steps: int, n: int, state: str):
         '''Record the last state reward.'''
@@ -1046,35 +940,34 @@ class MarkovChain(object):
         nr_of_cycles = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        # Calculate the confidence point estimate with inverse normal distribution
-        con = self._cPointEstimate(confidence)
-
         # Global variables used during simulation
-        self.l:int = 0 # Current cycle length
-        self.r: float = 0.0 # Current cycle cumulative reward
-        self.Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self.El: int = 0 # Sum of cycle lengths
-        self.Er: float = 0.0 # Sum of cumulative rewards
-        self.El2: int = 0 # Sum of cycle length squared
-        self.Er2: float = 0 # Sum of cycle cumulative reward squared
-        self.Elr: float = 0 # Sum of cycle product length and cycle
-        self.u: float = 0 # Estimated mean
-        self.Sm: float = 0 # Estimated variance
+        self._statistics = Statistics(confidence)
+        # TODO: remove the following variables
+        self.l:None  # Current cycle length
+        self.r: None  # Current cycle cumulative reward
+        self.Em: None  # Cycle count (-1 to subtract unfinished cycle beforehand)
+        self.El: None # Sum of cycle lengths
+        self.Er: None  # Sum of cumulative rewards
+        self.El2: None  # Sum of cycle length squared
+        self.Er2: None  # Sum of cycle cumulative reward squared
+        self.Elr: None  # Sum of cycle product length and cycle
+        self.u: None  # Estimated mean
+        self.Sm: None  # Estimated variance
 
         def _action_pointEstU(n:int, state:str)->bool:
-            self._pointEstU()
+            self._statistics.pointEstU()
             return False
 
         def _action_pointEstSm(n:int, state:str)->bool:
-            self._pointEstSm()
+            self._statistics.pointEstSm()
             return False
 
         def _action_AbsErr(n:int, state:str)->bool:
-            c = self._abError(con, n)
+            c = self._statistics.abError(n)
             return 0 <= c <= max_abError
             
         def _action_RelErr(n:int, state:str)->bool:
-            c = self._reError(con, n)
+            c = self._statistics.reError(n)
             return 0 <= c <= max_reError
 
         def _action_CycleUpdate(n:int, state:str)->bool:
@@ -1094,11 +987,11 @@ class MarkovChain(object):
         ])
 
         # Compute absolute/relative error regardless of law of strong numbers
-        abError = self._abError(con, MarkovChain._law)
-        reError = self._reError(con, MarkovChain._law)
+        abError = self._statistics.abError(MarkovChain._law)
+        reError = self._statistics.reError(MarkovChain._law)
 
         # Compute confidence interval
-        interval = (self.u - abError, self.u + abError)
+        interval = self._statistics.confidenceInterval()
 
         # Check reError
         if (interval[0] < 0 and interval[1] >= 0) or reError < 0:
@@ -1146,23 +1039,30 @@ class MarkovChain(object):
         nr_of_cycles = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        # Fetch number of states in Markov chain
-        nr_of_states = self.numberOfStates()
-
-        # Calculate the confidence point estimate with inverse normal distribution
-        con = self._cPointEstimate(confidence)
-
         # Global variables
-        self.Dist_l: int = 0 # Current cycle length
-        self.Dist_Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self.Dist_El: int = 0 # Sum of cycle lengths
-        self.Dist_El2: int = 0 # Sum of cycle length squared
-        self.Dist_rl: List[float] = [0.0] * nr_of_states # Current cycle cumulative reward
-        self.Dist_Er: List[float] = [0.0] * nr_of_states # Sum of cumulative rewards
-        self.Dist_Er2: List[float] = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
-        self.Dist_Elr: List[float] = [0.0] * nr_of_states # Sum of cycle product length and cycle
-        self.Dist_u: List[float] = [0.0] * nr_of_states # Estimated mean
-        self.Dist_Sm: List[float] = [0.0] * nr_of_states # Estimated variance
+        # TODO: remove the following variables:
+        self.Dist_l: None
+        self.Dist_Em: None
+        self.Dist_El: None
+        self.Dist_El2: None
+        self.Dist_rl: None
+        self.Dist_Er: None
+        self.Dist_Er2: None
+        self.Dist_Elr: None
+        self.Dist_u: None
+        self.Dist_Sm: None
+
+        self._distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
+        # self.Dist_l: int = 0 # Current cycle length
+        # self.Dist_Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
+        # self.Dist_El: int = 0 # Sum of cycle lengths
+        # self.Dist_El2: int = 0 # Sum of cycle length squared
+        # self.Dist_rl: List[float] = [0.0] * nr_of_states # Current cycle cumulative reward
+        # self.Dist_Er: List[float] = [0.0] * nr_of_states # Sum of cumulative rewards
+        # self.Dist_Er2: List[float] = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
+        # self.Dist_Elr: List[float] = [0.0] * nr_of_states # Sum of cycle product length and cycle
+        # self.Dist_u: List[float] = [0.0] * nr_of_states # Estimated mean
+        # self.Dist_Sm: List[float] = [0.0] * nr_of_states # Estimated variance
 
         state_list = []
 
@@ -1170,12 +1070,12 @@ class MarkovChain(object):
             c = self._cycleUpdateCezaro(state)
             return 0 <= nr_of_cycles <= c
 
-        def _action_pointEstU(n:int, state:str)->bool:
-            self._pointEstU()
+        def _action_pointEstCezaro(n:int, state:str)->bool:
+            self._distributionStatistics.pointEstUCezaro()
             return False
 
         def _action_pointEstSmCezaro(n:int, state:str)->bool:
-            self._pointEstSmCezaro()
+            self._distributionStatistics.pointEstSmCezaro()
             return False
 
         def _action_appendState(n:int, state:str)->bool:
@@ -1183,11 +1083,11 @@ class MarkovChain(object):
             return False
 
         def _action_abErrorCezaro(n: int, state:str)->bool:
-            c = self._abErrorCezaro(con, n)
+            c = self._distributionStatistics.abErrorCezaro(con, n)
             return 0 <= max(c) <= max_abError
 
         def _action_reErrorCezaro(n: int, state:str)->bool:
-            c = self._reErrorCezaro(con, n)
+            c = self._distributionStatistics.reErrorCezaro(con, n)
             return 0 <= max(c) <= max_reError
 
         # Save current time
