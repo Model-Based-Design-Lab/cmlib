@@ -18,7 +18,7 @@ from statistics import NormalDist
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sortNames
-from markovchains.utils.statistics import Statistics, DistributionStatistics
+from markovchains.utils.statistics import Statistics, DistributionStatistics, Welford
 
 TStoppingCriteria = Tuple[float,float,float,int,int,float]
 
@@ -865,12 +865,6 @@ class MarkovChain(object):
 
         return self._distributionStatistics.cycleCount()
 
-    def _lastStateReward(self, nr_of_steps: int, n: int, state: str):
-        '''Record the last state reward.'''
-        if n == nr_of_steps:
-            # TODO: what is self.y? Where is it defined? Line 1233.
-            self.y = float(self._rewards[state])
-
     def _hittingStateCount(self, n: int, state: str, nr_of_steps: int):
         '''Update hitting state count if we are at step nr_of_steps.'''
         if n == nr_of_steps:
@@ -964,11 +958,11 @@ class MarkovChain(object):
             return False
 
         def _action_AbsErr(n:int, state:str)->bool:
-            c = self._statistics.abError(n)
+            c = self._statistics.abError()
             return 0 <= c <= max_abError
             
         def _action_RelErr(n:int, state:str)->bool:
-            c = self._statistics.reError(n)
+            c = self._statistics.reError()
             return 0 <= c <= max_reError
 
         def _action_CycleUpdate(n:int, state:str)->bool:
@@ -986,29 +980,9 @@ class MarkovChain(object):
             (_action_AbsErr, "Absolute Error"), # update point estimate of Sm
             (_action_RelErr, "Relative Error")
         ])
-
-        # Compute absolute/relative error regardless of law of strong numbers
-        abError = self._statistics.abError(MarkovChain._law)
-        reError = self._statistics.reError(MarkovChain._law)
-
-        # Compute confidence interval
-        interval = self._statistics.confidenceInterval()
-
-        # TODO: move the following into statistics?
-        # Check reError
-        if (interval[0] < 0 and interval[1] >= 0) or reError < 0:
-            reError = None
-        
-        # Check abError
-        if abError < 0: # Error value
-            reError = None
-            abError = None
-            interval = None
-
         return self._statistics, stop
-        # return interval, abError, reError, self.u, self.Em, stop
 
-    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[DistributionStatistics, Optional[str]]:
+    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
         '''
         Estimate the Cesaro limit distribution by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1037,30 +1011,7 @@ class MarkovChain(object):
         nr_of_cycles = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        # Global variables
-        # TODO: remove the following variables:
-        self.Dist_l: None
-        self.Dist_Em: None
-        self.Dist_El: None
-        self.Dist_El2: None
-        self.Dist_rl: None
-        self.Dist_Er: None
-        self.Dist_Er2: None
-        self.Dist_Elr: None
-        self.Dist_u: None
-        self.Dist_Sm: None
-
         self._distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
-        # self.Dist_l: int = 0 # Current cycle length
-        # self.Dist_Em: int = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        # self.Dist_El: int = 0 # Sum of cycle lengths
-        # self.Dist_El2: int = 0 # Sum of cycle length squared
-        # self.Dist_rl: List[float] = [0.0] * nr_of_states # Current cycle cumulative reward
-        # self.Dist_Er: List[float] = [0.0] * nr_of_states # Sum of cumulative rewards
-        # self.Dist_Er2: List[float] = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
-        # self.Dist_Elr: List[float] = [0.0] * nr_of_states # Sum of cycle product length and cycle
-        # self.Dist_u: List[float] = [0.0] * nr_of_states # Estimated mean
-        # self.Dist_Sm: List[float] = [0.0] * nr_of_states # Estimated variance
 
         state_list = []
 
@@ -1081,11 +1032,11 @@ class MarkovChain(object):
             return False
 
         def _action_abErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.abErrorCezaro(n)
+            c = self._distributionStatistics.abErrorCezaro()
             return 0 <= max(c) <= max_abError
 
         def _action_reErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.reErrorCezaro(n)
+            c = self._distributionStatistics.reErrorCezaro()
             return 0 <= max(c) <= max_reError
 
         # Save current time
@@ -1100,38 +1051,8 @@ class MarkovChain(object):
             (_action_reErrorCezaro, "Relative Error"), # Calculate smallest relative error
             (_action_appendState, None) # Calculate smallest relative error
         ])
-
-        abErrorVal: List[float] = self._distributionStatistics.abErrorCezaro(MarkovChain._law)
-        abError: List[Optional[float]] = [v for v in abErrorVal]
-
-        reErrorVal: List[float] = self._distributionStatistics.reErrorCezaro(MarkovChain._law)
-        reError: List[Optional[float]] = [v for v in reErrorVal]
         
-
-        # TODO: move the following into statistics?
-
-        intervals = self._distributionStatistics.confidenceIntervals()
-        for i in range(self.numberOfStates()):
-
-            iv = intervals[i]
-
-            # Check reError
-            if (iv[0] < 0 and iv[1] >= 0) or reErrorVal[i] < 0:
-                reError[i] = None
-            
-            # Check abError
-            if abErrorVal[i] < 0: # Error value
-                reError[i] = None
-                abError[i] = None
-                intervals[i] = None
-
-        # Check if sum of distribution equals 1 with .4 float accuracy
-        pntEst: Optional[List[float]] = self.Dist_u
-        if not 0.9999 < sum(self._distributionStatistics.pointEstimates()) < 1.0001:
-            pntEst = None
-
         return self._distributionStatistics, stop
-        return pntEst, intervals, abError, reError, self.Dist_Em, stop
 
     def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
         Optional[float],
@@ -1165,30 +1086,22 @@ class MarkovChain(object):
         rounds = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        # confidence level
-        c = self._cPointEstimate(confidence)
-
-        interval: Tuple[float,float] = (0, 0)
-        abErrorVal: float = -1.0
-        reErrorVal: float = -1.0
-        u: float = 0.0
-        m: int = 0
-        M2: float = 0.0 # Welford's algorithm variable
-
-        # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        sim_stop_conditions: List[bool] = [False] * 4
+        W = Welford(confidence, stopDescriptions)
 
-        # define action to be performed during simulation
         def _action_lastStateReward(n: int, state: str)->bool:
-            self._lastStateReward(nr_of_steps, n, state)
+            if n == nr_of_steps:
+                W.sample(float(self._rewards[state]))
             return False
+
+        sim_stop_conditions: List[bool] = [False] * 4
 
         # Save current time
         current_time = time.time()
+        abErrorVal: float
+        reErrorVal: float
         while not any(sim_stop_conditions):
             # Used in self_lastStateReward function to assign reward to y when hitting last state
-            self.y: float = 0.0
 
             self._markovSimulation([
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
@@ -1196,32 +1109,12 @@ class MarkovChain(object):
                 (_action_lastStateReward, None)
             ])
 
-            # Execute Welford's algorithm to compute running standard derivation and mean
-            m += 1
-            d1 = self.y - u
-            u += d1/m
-            d2 = self.y - u
-            M2 += d1 * d2
-            Sm = math.sqrt(M2/float(m))
-
-            # Compute absolute and relative errors
-            abErrorVal = abs((c*Sm) / math.sqrt(float(m)))
-            d = u-abErrorVal
-            if d != 0.0:
-                reErrorVal = abs(abErrorVal/d)
-
-            # interval calculation
-            interval = (u - abErrorVal, u + abErrorVal)
-
-            # Do not evaluate abError/reError in the first _law cycles:
-            if m < MarkovChain._law and m != rounds: # (if rounds is less than 10 we still want an abError and reError)
-                abErrorVal = -1.0
-                reErrorVal = -1.0
+            abErrorVal, reErrorVal = W.getErrorVals()
 
             # Check stop conditions
             sim_stop_conditions[0] = (0.0 <= abErrorVal <= max_abError)
             sim_stop_conditions[1] = (0.0 <= reErrorVal <= max_reError)
-            sim_stop_conditions[2] = (0 <= rounds <= m)
+            sim_stop_conditions[2] = (0 <= rounds <= W.getNumberOfSamples())
             sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
 
         # Determine stop condition (if it is added)
@@ -1243,6 +1136,7 @@ class MarkovChain(object):
             abError = None
             intervalResult = None
 
+       
         return u, intervalResult, abError, reError, m, stop
 
 

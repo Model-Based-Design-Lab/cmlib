@@ -320,7 +320,8 @@ def process(args, dsl):
         setSeed(args, M)
         M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
-        limit, interval, abError, reError, n, stop = M.cezaroLimitDistribution(C)
+        distributionStatistics, stop = M.cezaroLimitDistribution(C)
+        
         if limit is None:
             print("Recurrent state has not been reached, no realizations found")
         else:
