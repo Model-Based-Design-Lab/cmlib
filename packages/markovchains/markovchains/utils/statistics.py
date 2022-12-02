@@ -11,6 +11,7 @@ _law: int = 30
 
 # TODO: modify terminology: reward to sample ?
 class Statistics(object):
+    '''Determine estimated long-run-average cumulative reward'''
 
     _l:int      # Current cycle length
     _r: float   # Current cycle cumulative reward
@@ -51,6 +52,15 @@ class Statistics(object):
         self._l = 0
         self._r = 0.0
 
+        # Update point estimate of mean.
+        if self._El != 0:
+            self._u = self._Er/self._El
+
+        # Update point estimate of variance.
+        if (self._El != 0) and (self._Em != 0):
+            self._Sm = math.sqrt(abs((self._Er2 - 2*self._u*self._Elr + pow(self._u,2)*self._El2)/self._Em))
+
+
     def addReward(self, r: float)->None:
         self._l += 1
         self._r += r
@@ -58,47 +68,45 @@ class Statistics(object):
     def cycleCount(self)->int:
         return self._Em
 
-    def pointEstU(self):
-        '''Update point estimate of mean.'''
-        if self._El != 0:
-            self._u = self._Er/self._El
-
-    def pointEstSm(self):
-        '''Update point estimate of variance.'''
-        if (self._El != 0) and (self._Em != 0):
-            self._Sm = math.sqrt(abs((self._Er2 - 2*self._u*self._Elr + pow(self._u,2)*self._El2)/self._Em))
-
-    # TODO: why parameter n? Make internal counter?
-    def abError(self, noWarmup: bool = False)->float:
+    def abError(self, noWarmup: bool = False)->Optional[float]:
         '''Return estimated absolute error'''
 
         # Run first _law times without checking abError
         if not noWarmup and (0 <= self._Em < _law):
-            return -1.0
+            return None
         if self._Em > 0:
             d = math.sqrt(self._Em) * (1/(self._Em)) * self._El
             if d != 0:
                 return abs((self._con*self._Sm) / d)
             else:
-                return -1.0
+                return None
         else:
-            return -1.0
+            return None
 
-    # TODO: why parameter n?
-    def reError(self, noWarmup: bool = False)->float:
+    def reError(self, noWarmup: bool = False)->Optional[float]:
         '''Return estimated relative error'''
         # Run first 10 times without checking abError
         if not noWarmup and (0 <= self._Em < _law):
-            return -1.0
+            return None
 
         if self._Em > 0:
             d = (self._u * math.sqrt(self._Em) * (1/(self._Em)) * self._El) - (self._con*self._Sm)
             if d != 0:
                 return abs((self._con*self._Sm) / d)
             else:
-                return -1.0
+                return None
         else:
-            return -1.0
+            return None
+
+    def sanitizedRelativeError(self)->Optional[float]:
+        '''Return estimated relative error'''
+        if 0 <= self._Em < _law:
+            return None
+
+        reError = self.reError(noWarmup=True)
+        if invalid:
+            return None
+        return reError
 
     def confidenceInterval(self)->Tuple[float,float]:
         # Compute confidence interval
@@ -107,6 +115,7 @@ class Statistics(object):
 
 
 class DistributionStatistics(object):
+    '''Determine Cesaro limit distribution'''
 
     _l: int                 # Current cycle length
     _Em: int                # Cycle count (-1 to subtract unfinished cycle beforehand)
@@ -146,6 +155,15 @@ class DistributionStatistics(object):
         self._rl = [0.0] * self._number_of_states
         self._l = 0
 
+        # Update point estimates of means.
+        if self._El != 0:
+            self._u = [er/self._El for er in self._Er]
+
+        # Update point estimates of variances.
+        if (self._El != 0) and (self._Em != 0):
+            for i in range(len(self._Sm)):
+                self._Sm[i] = math.sqrt(abs((self._Er2[i] - 2*self._u[i]*self._Elr[i] + pow(self._u[i],2)*self._El2)/self._Em))
+
     def addReward(self, n: int)->None:
         self._l += 1
         self._rl[n] += 1.0
@@ -153,24 +171,13 @@ class DistributionStatistics(object):
     def cycleCount(self)->int:
         return self._Em
 
-    def pointEstUCezaro(self):
-        '''Update point estimates of means.'''
-        if self._El != 0:
-            self._u = [er/self._El for er in self._Er]
-
     def pointEstimates(self)->List[float]:
         return self._u
 
-    def pointEstSmCezaro(self):
-        '''Update point estimates of variances.'''
-        if (self._El != 0) and (self._Em != 0):
-            for i in range(len(self._Sm)):
-                self._Sm[i] = math.sqrt(abs((self._Er2[i] - 2*self._u[i]*self._Elr[i] + pow(self._u[i],2)*self._El2)/self._Em))
-
-    def abErrorCezaro(self, noWarmup: bool = False)->List[float]:
+    def abErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated absolute errors'''
         # Run first _law times without checking abError
-        abError = [-1.0] * self._number_of_states
+        abError: List[Optional[float]] = [None] * self._number_of_states
 
         if not noWarmup and (0 <= self._Em < _law):
             return abError
@@ -181,13 +188,13 @@ class DistributionStatistics(object):
                 if d != 0:
                     abError[i] = abs((self._con*self._Sm[i]) / d)
                 else:
-                    abError[i] = -1.0
+                    abError[i] = None
   
         return abError
 
-    def reErrorCezaro(self, noWarmup: bool = False)->List[float]:
+    def reErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated relative errors'''
-        reError = [-1.0] * self._number_of_states
+        reError: List[Optional[float]] = [None] * self._number_of_states
 
         # Run first .. times without checking abError
         if not noWarmup and (0 <= self._Em < _law):
@@ -199,7 +206,7 @@ class DistributionStatistics(object):
                 if d != 0:
                     reError[i] = abs((self._con*self._Sm[i]) / d)
                 else:
-                    reError[i] = -1.0
+                    reError[i] = None
 
         return reError
 

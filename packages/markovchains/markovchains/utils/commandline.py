@@ -304,17 +304,17 @@ def process(args, dsl):
         setSeed(args, M)
         M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
-        interval, abError, reError, esMean, n, stop = M.longRunExpectedAverageReward(C)
-        if interval is None:
+        statistics, stop = M.longRunExpectedAverageReward(C)
+        if statistics.cycleCount() == 0:
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(esMean)))
-            print("\tConfidence interval: {}".format(printInterval(interval)))
-            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
-            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
-            print("\tNumber of cycles: {}".format(n))
+            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.sanitizedEstimatedMean())))
+            print("\tConfidence interval: {}".format(printInterval(statistics.sanitizedConfidenceInterval())))
+            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedAbsoluteError())))
+            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedRelativeError())))
+            print("\tNumber of cycles: {}".format(statistics.cycleCount()))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         setSeed(args, M)

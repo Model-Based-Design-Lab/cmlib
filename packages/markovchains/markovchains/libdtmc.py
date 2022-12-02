@@ -937,37 +937,22 @@ class MarkovChain(object):
 
         # Global variables used during simulation
         self._statistics = Statistics(confidence)
-        # TODO: remove the following variables
-        self.l:None  # Current cycle length
-        self.r: None  # Current cycle cumulative reward
-        self.Em: None  # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self.El: None # Sum of cycle lengths
-        self.Er: None  # Sum of cumulative rewards
-        self.El2: None  # Sum of cycle length squared
-        self.Er2: None  # Sum of cycle cumulative reward squared
-        self.Elr: None  # Sum of cycle product length and cycle
-        self.u: None  # Estimated mean
-        self.Sm: None  # Estimated variance
-
-        def _action_pointEstU(n:int, state:str)->bool:
-            self._statistics.pointEstU()
-            return False
-
-        def _action_pointEstSm(n:int, state:str)->bool:
-            self._statistics.pointEstSm()
-            return False
 
         def _action_AbsErr(n:int, state:str)->bool:
             c = self._statistics.abError()
-            return 0 <= c <= max_abError
+            if c is None:
+                return True
+            return c <= max_abError
             
         def _action_RelErr(n:int, state:str)->bool:
             c = self._statistics.reError()
-            return 0 <= c <= max_reError
+            if c is None:
+                return True
+            return c <= max_reError
 
         def _action_CycleUpdate(n:int, state:str)->bool:
             c = self._cycleUpdate(state)
-            return 0 <= nr_of_cycles <= c
+            return nr_of_cycles <= c
 
         # Save current time
         current_time = time.time()
@@ -975,8 +960,6 @@ class MarkovChain(object):
             (lambda n, _: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda _n, _state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
             (_action_CycleUpdate, "Number of cycles"), # find first recurrent state
-            (_action_pointEstU,None), # update point estimate of u
-            (_action_pointEstSm,None), # update point estimate of Sm
             (_action_AbsErr, "Absolute Error"), # update point estimate of Sm
             (_action_RelErr, "Relative Error")
         ])
