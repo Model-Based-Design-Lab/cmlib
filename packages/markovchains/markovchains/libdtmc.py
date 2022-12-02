@@ -843,9 +843,9 @@ class MarkovChain(object):
                 return -1 # To prevent the simulation from exiting
         
         if self._recurrent_state == state:
-            self._statistics.visitRecurrentState()
+            self._statistics.completeCycle()
 
-        self._statistics.addReward(float(self._rewards[state]))
+        self._statistics.addSample(float(self._rewards[state]))
         return self._statistics.cycleCount()
 
     def _cycleUpdateCezaro(self, state: str)->int:
@@ -861,7 +861,7 @@ class MarkovChain(object):
         if self._recurrent_state == state:
             self._distributionStatistics.visitRecurrentState()
 
-        self._distributionStatistics.addReward(self._states.index(state))
+        self._distributionStatistics.visitState(self._states.index(state))
 
         return self._distributionStatistics.cycleCount()
 
@@ -1002,25 +1002,23 @@ class MarkovChain(object):
             c = self._cycleUpdateCezaro(state)
             return 0 <= nr_of_cycles <= c
 
-        def _action_pointEstUCezaro(n:int, state:str)->bool:
-            self._distributionStatistics.pointEstUCezaro()
-            return False
-
-        def _action_pointEstSmCezaro(n:int, state:str)->bool:
-            self._distributionStatistics.pointEstSmCezaro()
-            return False
-
         def _action_appendState(n:int, state:str)->bool:
             state_list.append(state)
             return False
 
         def _action_abErrorCezaro(n: int, state:str)->bool:
             c = self._distributionStatistics.abErrorCezaro()
-            return 0 <= max(c) <= max_abError
+            if c is None:
+                return False
+            vc : List[float] = c  # type: ignore
+            return max(vc) <= max_abError
 
         def _action_reErrorCezaro(n: int, state:str)->bool:
             c = self._distributionStatistics.reErrorCezaro()
-            return 0 <= max(c) <= max_reError
+            if c is None:
+                return False
+            vc : List[float] = c  # type: ignore
+            return max(vc) <= max_reError
 
         # Save current time
         current_time = time.time()
@@ -1028,8 +1026,6 @@ class MarkovChain(object):
             (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
             (_action_number_of_cycles, "Number of cycles"), # find first recurrent state
-            (_action_pointEstUCezaro, None), # update point estimate of u
-            (_action_pointEstSmCezaro, None), # update point estimate of Sm
             (_action_abErrorCezaro, "Absolute Error"), # Calculate smallest absolute error
             (_action_reErrorCezaro, "Relative Error"), # Calculate smallest relative error
             (_action_appendState, None) # Calculate smallest relative error

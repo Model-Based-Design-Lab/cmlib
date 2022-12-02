@@ -11,258 +11,176 @@ _law: int = 30
 
 # TODO: modify terminology: reward to sample ?
 class Statistics(object):
-    '''Determine estimated long-run-average cumulative reward'''
+    '''
+    Determine estimated long-run sample average, absolute error, relative error and confidence interval
+    Equations follow Section B.7.3. of the Reader 5xie0, Computational Modeling
+    '''
 
-    _l:int      # Current cycle length
-    _r: float   # Current cycle cumulative reward
-    _Em: int    # Cycle count (-1 to subtract unfinished cycle beforehand)
-    _El: int    # Sum of cycle lengths
-    _Er: float  # Sum of cumulative rewards
-    _El2: int   # Sum of cycle length squared
-    _Er2: float # Sum of cycle cumulative reward squared
-    _Elr: float # Sum of cycle product length and cycle
-    _u: float   # Estimated mean
-    _Sm: float  # Estimated variance
-    _con: float # confidence level
+    _cycleLength:int                            # Current cycle length Ln
+    _sumOfSamplesCycle: float                   # Current cycle, sum of samples
+    _cycleCount: int                            # Cycle count 
+    _cumulativeCycleLengths: int                # Sum of cycle lengths
+    _cumulativeSamples: float                   # Cumulative sum of samples
+    _cumulativeCycleLengthsSq: int              # Sum of cycle length squared
+    _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative reward squared
+    _cumulativeProdCycleLengthSumSamples: float # Sum of cycle product length and cycle
+    _meanEst: float                                # Estimated mean
+    _stdDevEst: float                            # Estimated variance
+    _confLevel: float                           # confidence level
 
     def __init__(self, confidence: float) -> None:
         '''confidence: confidence level'''
-        self._l = 0    # Current cycle length
-        self._r = 0.0  # Current cycle cumulative reward
-        self._Em = -1  # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self._El = 0   # Sum of cycle lengths
-        self._Er = 0.0 # Sum of cumulative rewards
-        self._El2 = 0  # Sum of cycle length squared
-        self._Er2 = 0  # Sum of cycle cumulative reward squared
-        self._Elr = 0  # Sum of cycle product length and cycle
-        self._u = 0    # Estimated mean
-        self._Sm = 0   # Estimated variance
+        self._cycleLength = 0                           # Current cycle length
+        self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative reward
+        self._cycleCount = 0                           # Cycle count (-1 to subtract unfinished cycle beforehand)
+        self._cumulativeCycleLengths = 0                # Sum of cycle lengths
+        self._cumulativeSamples = 0.0                   # Sum of cumulative rewards
+        self._cumulativeCycleLengthsSq = 0              # Sum of cycle length squared
+        self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative reward squared
+        self._cumulativeProdCycleLengthSumSamples = 0   # Sum of cycle product length and cycle
+        self._meanEst = 0                                  # Estimated mean
+        self._stdDevEst = 0                              # Estimated variance
 
         # Calculate the confidence point estimate with inverse normal distribution
-        self._con = NormalDist().inv_cdf((1+confidence)/2)
+        self._confLevel = NormalDist().inv_cdf((1+confidence)/2)
 
+    def updateMeanEstimate(self)->None:
+        # Update point estimate of mean, Eq. B.66.
+        if self._cumulativeCycleLengths != 0:
+            self._meanEst = self._cumulativeSamples/self._cumulativeCycleLengths
 
-    def visitRecurrentState(self)->None:
-        self._Em += 1
-        self._El += self._l
-        self._Er += self._r
-        self._El2 += pow(self._l, 2)
-        self._Er2 += pow(self._r, 2)
-        self._Elr += self._l * self._r
-        self._l = 0
-        self._r = 0.0
+    def meanEstimate(self)->Optional[float]:
+        if self._cycleCount < _law:
+            return None
+        return self._meanEst
 
-        # Update point estimate of mean.
-        if self._El != 0:
-            self._u = self._Er/self._El
+    def updateVarianceEstimate(self)->None:
+        # Compute S_M following the equation below Eq. B.67 of the reader
+        # Update point estimate of standard deviation.
+        # assumes mean estimate is up to date!
+        if (self._cumulativeCycleLengths != 0) and (self._cycleCount != 0):
+            self._stdDevEst = math.sqrt(abs(
+                self._cumulativeSamplesCycleSq 
+                - 2*self._meanEst*self._cumulativeProdCycleLengthSumSamples 
+                + pow(self._meanEst,2)*self._cumulativeCycleLengthsSq
+            )/self._cycleCount)
 
-        # Update point estimate of variance.
-        if (self._El != 0) and (self._Em != 0):
-            self._Sm = math.sqrt(abs((self._Er2 - 2*self._u*self._Elr + pow(self._u,2)*self._El2)/self._Em))
+    def completeCycle(self)->None:
+        self._cycleCount += 1
+        self._cumulativeCycleLengths += self._cycleLength
+        self._cumulativeSamples += self._sumOfSamplesCycle
+        self._cumulativeCycleLengthsSq += pow(self._cycleLength, 2)
+        self._cumulativeSamplesCycleSq += pow(self._sumOfSamplesCycle, 2)
+        self._cumulativeProdCycleLengthSumSamples += self._cycleLength * self._sumOfSamplesCycle
+        
+        # reset accumulators
+        self._cycleLength = 0
+        self._sumOfSamplesCycle = 0.0
 
+        self.updateMeanEstimate()
+        self.updateVarianceEstimate()
 
-    def addReward(self, r: float)->None:
-        self._l += 1
-        self._r += r
+    def addSample(self, s: float)->None:
+        self._cycleLength += 1
+        self._sumOfSamplesCycle += s
 
     def cycleCount(self)->int:
-        return self._Em
+        return self._cycleCount
 
     def abError(self, noWarmup: bool = False)->Optional[float]:
-        '''Return estimated absolute error'''
+        '''
+        Return estimated absolute error.
+        If no estimate can be given, None is returned
+        If noWarmup = True is provided, then an estimate is returned, even if the minimum number of cycles is not yet achieved.
+        '''
 
-        # Run first _law times without checking abError
-        if not noWarmup and (0 <= self._Em < _law):
+        # TODO: check if noWarmup is actually used
+
+        # check if we have collected sufficient cycles 
+        if not noWarmup and (self._cycleCount < _law):
             return None
-        if self._Em > 0:
-            d = math.sqrt(self._Em) * (1/(self._Em)) * self._El
-            if d != 0:
-                return abs((self._con*self._Sm) / d)
-            else:
-                return None
+        
+        if self._cycleCount == 0:
+            return None
+        
+        # denominator of the absolute error term in Eq. B.69
+        den = self._cumulativeCycleLengths/math.sqrt(self._cycleCount)
+        if den != 0.0:
+            return abs((self._confLevel*self._stdDevEst) / den)
         else:
             return None
 
     def reError(self, noWarmup: bool = False)->Optional[float]:
         '''Return estimated relative error'''
-        # Run first 10 times without checking abError
-        if not noWarmup and (0 <= self._Em < _law):
+
+        # check if we have collected sufficient cycles 
+        if not noWarmup and (0 <= self._cycleCount < _law):
             return None
 
-        if self._Em > 0:
-            d = (self._u * math.sqrt(self._Em) * (1/(self._Em)) * self._El) - (self._con*self._Sm)
-            if d != 0:
-                return abs((self._con*self._Sm) / d)
-            else:
-                return None
-        else:
+        if self._cycleCount == 0:
             return None
 
-    def sanitizedRelativeError(self)->Optional[float]:
-        '''Return estimated relative error'''
-        if 0 <= self._Em < _law:
+        absError = self.abError(noWarmup)
+        if absError is None:
             return None
 
-        reError = self.reError(noWarmup=True)
-        if invalid:
+        if absError >= abs(self._meanEst):
             return None
-        return reError
 
-    def confidenceInterval(self)->Tuple[float,float]:
+        return absError / (abs(self._meanEst) - absError)
+
+    def confidenceInterval(self)->Optional[Tuple[float,float]]:
         # Compute confidence interval
-        abError = self.abError(noWarmup=True)
-        return (self._u - abError, self._u + abError)
+        abError = self.abError()
+        if abError is None:
+            return None
+        return (self._meanEst - abError, self._meanEst + abError)
 
 
 class DistributionStatistics(object):
     '''Determine Cesaro limit distribution'''
 
-    _l: int                 # Current cycle length
-    _Em: int                # Cycle count (-1 to subtract unfinished cycle beforehand)
-    _El: int                # Sum of cycle lengths
-    _El2: int               # Sum of cycle length squared
-    _rl: List[float]        # Current cycle cumulative reward
-    _Er: List[float]        # Sum of cumulative rewards
-    _Er2: List[float]       # Sum of cycle cumulative reward squared
-    _Elr: List[float]       # Sum of cycle product length and cycle
-    _u: List[float]         # Estimated mean
-    _Sm: List[float]        # Estimated variance
     _number_of_states: int  # length of distribution 
+    _stateEstimators: List[Statistics]
 
     def __init__(self, nr_of_states: int, confidence: float) -> None:
         self._number_of_states = nr_of_states
-        self._l = 0 # Current cycle length
-        self._Em = -1 # Cycle count (-1 to subtract unfinished cycle beforehand)
-        self._El = 0 # Sum of cycle lengths
-        self._El2 = 0 # Sum of cycle length squared
-        self._rl = [0.0] * nr_of_states # Current cycle cumulative reward
-        self._Er = [0.0] * nr_of_states # Sum of cumulative rewards
-        self._Er2 = [0.0] * nr_of_states # Sum of cycle cumulative reward squared
-        self._Elr = [0.0] * nr_of_states # Sum of cycle product length and cycle
-        self._u = [0.0] * nr_of_states # Estimated mean
-        self._Sm = [0.0] * nr_of_states # Estimated variance
-
-        # Calculate the confidence point estimate with inverse normal distribution
-        self._con = NormalDist().inv_cdf((1+confidence)/2)
+        self._stateEstimators = [Statistics(confidence) for i in range(nr_of_states)]
 
     def visitRecurrentState(self)->None:
-        self._Em += 1
-        self._El += self._l
-        self._El2 += pow(self._l, 2)
-        self._Er = linalg.flAddVector(self._Er, self._rl)
-        self._Er2 = linalg.flAddVector(self._Er2, [pow(r, 2) for r in self._rl])
-        self._Elr = linalg.flAddVector(self._Elr, [r*self._l for r in self._rl])
-        self._rl = [0.0] * self._number_of_states
-        self._l = 0
+        for s in self._stateEstimators:
+            s.completeCycle()
 
-        # Update point estimates of means.
-        if self._El != 0:
-            self._u = [er/self._El for er in self._Er]
-
-        # Update point estimates of variances.
-        if (self._El != 0) and (self._Em != 0):
-            for i in range(len(self._Sm)):
-                self._Sm[i] = math.sqrt(abs((self._Er2[i] - 2*self._u[i]*self._Elr[i] + pow(self._u[i],2)*self._El2)/self._Em))
-
-    def addReward(self, n: int)->None:
-        self._l += 1
-        self._rl[n] += 1.0
+    def visitState(self, n: int)->None:
+        for i in range(self._number_of_states):
+            if i == n:
+                self._stateEstimators[i].addSample(1.0)
+            else:
+                self._stateEstimators[i].addSample(0.0)
 
     def cycleCount(self)->int:
-        return self._Em
+        return self._stateEstimators[0].cycleCount()
 
-    def pointEstimates(self)->List[float]:
-        return self._u
+    def pointEstimates(self)->Optional[List[float]]:
+        res = [s.meanEstimate() for s in self._stateEstimators]
+        if None in res:
+            return None
+        vRes: List[float] = res  # type: ignore
+        if not 0.9999 < sum(vRes) < 1.0001:
+            return None
+        
+        return vRes
 
     def abErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated absolute errors'''
-        # Run first _law times without checking abError
-        abError: List[Optional[float]] = [None] * self._number_of_states
-
-        if not noWarmup and (0 <= self._Em < _law):
-            return abError
-
-        if self._Em > 0:
-            d = math.sqrt(float(self._Em)) * (1.0/float(self._Em)) * float(self._El)
-            for i in range(len(abError)):
-                if d != 0:
-                    abError[i] = abs((self._con*self._Sm[i]) / d)
-                else:
-                    abError[i] = None
-  
-        return abError
+        return [s.abError(noWarmup) for s in self._stateEstimators]
 
     def reErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated relative errors'''
-        reError: List[Optional[float]] = [None] * self._number_of_states
+        return [s.reError(noWarmup) for s in self._stateEstimators]
 
-        # Run first .. times without checking abError
-        if not noWarmup and (0 <= self._Em < _law):
-            return reError
-        
-        for i in range(len(reError)):
-            if self._Em > 0:
-                d = (self._u[i] * math.sqrt(float(self._Em)) * (1.0/float(self._Em)) * self._El) - (self._con*self._Sm[i])
-                if d != 0:
-                    reError[i] = abs((self._con*self._Sm[i]) / d)
-                else:
-                    reError[i] = None
-
-        return reError
-
-    def confidenceIntervals(self)->List[Tuple[float,float]]:
-        # Compute confidence interval
-        abError = self.abErrorCezaro(noWarmup=True)
-        return [(self._u[i] - abError[i], self._u[i] + abError[i]) for i in range(self._number_of_states)]
-
-    def sanitizedReError(self)->List[Optional[float]]:
-        reErrorVal = self.reErrorCezaro(noWarmup=True)
-        abErrorVal = self.abErrorCezaro(noWarmup=True)
-        result: List[Optional[float]] = []
-        intervals = self.confidenceIntervals()
-        for i in range(self._number_of_states):
-            v: Optional[float] = reErrorVal[i]
-            iv = intervals[i]
-            # Check reError
-            if (iv[0] < 0 and iv[1] >= 0) or reErrorVal[i] < 0:
-                v = None
-            
-            # Check abError
-            if abErrorVal[i] < 0: # Error value
-                v = None
-            result.append(v)
-        return result
-
-    def sanitizedAbError(self)->List[Optional[float]]:
-        abErrorVal = self.abErrorCezaro(noWarmup=True)
-        result: List[Optional[float]] = []
-        for i in range(self._number_of_states):
-            v: Optional[float] = abErrorVal[i]
-            # Check abError
-            if abErrorVal[i] < 0: # Error value
-                v = None
-            result.append(v)
-        return result
-
-    def sanitizedConfidenceIntervals(self)->List[Optional[Tuple[float,float]]]:
-        abErrorVal = self.abErrorCezaro(noWarmup=True)
-        result: List[Optional[Tuple[float,float]]] = []
-        intervals = self.confidenceIntervals()
-        for i in range(self._number_of_states):
-            v: Optional[Tuple[float,float]] = intervals[i]          
-            # Check abError
-            if abErrorVal[i] < 0: # Error value
-                v = None
-            result.append(v)
-        return result
-
-    def sanitizedPointEstimates(self)->Optional[List[float]]:
-        # Check if sum of distribution equals 1 with .4 float accuracy
-
-        pntEst: List[float] = self.pointEstimates()
-        if not 0.9999 < sum(pntEst) < 1.0001:
-            return None
-        return pntEst
+    def confidenceIntervals(self)->List[Optional[Tuple[float,float]]]:
+        return [s.confidenceInterval() for s in self._stateEstimators]
 
 
 # what is this for?
