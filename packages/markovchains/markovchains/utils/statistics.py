@@ -147,7 +147,7 @@ class DistributionStatistics(object):
         self._number_of_states = nr_of_states
         self._stateEstimators = [Statistics(confidence) for i in range(nr_of_states)]
 
-    def visitRecurrentState(self)->None:
+    def completeCycle(self)->None:
         for s in self._stateEstimators:
             s.completeCycle()
 
@@ -171,11 +171,11 @@ class DistributionStatistics(object):
         
         return vRes
 
-    def abErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
+    def abError(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated absolute errors'''
         return [s.abError(noWarmup) for s in self._stateEstimators]
 
-    def reErrorCezaro(self, noWarmup: bool = False)->List[Optional[float]]:
+    def reError(self, noWarmup: bool = False)->List[Optional[float]]:
         '''Return estimated relative errors'''
         return [s.reError(noWarmup) for s in self._stateEstimators]
 

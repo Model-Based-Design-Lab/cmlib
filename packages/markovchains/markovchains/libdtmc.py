@@ -14,7 +14,6 @@ import math
 import random
 import os
 import time
-from statistics import NormalDist
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sortNames
@@ -745,7 +744,7 @@ class MarkovChain(object):
 
 
     # ---------------------------------------------------------------------------- #
-    # - Markov Chain simulation                                                   - #
+    # - Markov Chain simulation                                                  - #
     # ---------------------------------------------------------------------------- #
 
     def setSeed(self, seed: int):
@@ -790,26 +789,27 @@ class MarkovChain(object):
                 self._recurrent_state = None
 
 
+    # type for generic actions to be executed during a random simulation
     TSimulationAction = Callable[[int,str],bool]
     
-    def _markovSimulation(self, actions: List[Tuple[TSimulationAction,Optional[str]]])->Tuple[int,Optional[str]]:
-        '''Simulate Markov Chain. 
+    def _markovSimulation(self, actions: List[Tuple[TSimulationAction,Optional[str]]], initialState: Optional[str] = None)->Tuple[int,Optional[str]]:
+        '''
+        Simulate Markov Chain. 
         actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends. 
         The callable should take two arguments: n: int, the number of performed simulation steps before this one, and state: str, the current state of the Markov Chain in the simulation. It should return a Boolean value indicating if the simulation should be ended.
         Returns a pair n, stop, consisting of the total number of steps simulated and the optional string describing the reason for stopping.
         '''
-        # Set current state to None to indicate that the first state is not defined
-        current_state: Optional[str] = None
-        stop = None
-
         # list for stop condition status
         stop_conditions:List[bool] = [False] * len(actions)
 
-        # Calculate random markov chain sequence
+        # Step counter
         n: int = 0
 
-        # Determine the random initial state
-        current_state = self.randomInitialState()
+        # Determine current state as random initial state
+        if initialState is None:
+            current_state: Optional[str] = self.randomInitialState()
+        else:
+            current_state = initialState
 
         while not any(stop_conditions):            
             # perform simulation actions
@@ -821,6 +821,7 @@ class MarkovChain(object):
             n += 1
 
         # Determine stop condition
+        stop = None
         for i, (_,st) in enumerate(actions):
             if stop_conditions[i]:
                 stop = st
@@ -833,63 +834,16 @@ class MarkovChain(object):
         _, rClasses = self.classifyTransientRecurrent()
         return state in rClasses
 
-    def _cycleUpdate(self, state: str)->int:
-        '''Called during simulation. Update statistics. Returns current cycle count.'''
-        # Find first recurrent state
-        if self._recurrent_state is None:
-            if self._isRecurrentState(state):
-                self._recurrent_state = state
-            else:
-                return -1 # To prevent the simulation from exiting
-        
-        if self._recurrent_state == state:
-            self._statistics.completeCycle()
+    def _cycleUpdate(self, state: str, statistics: Statistics)->int:
+        '''Called during simulation on visiting the recurrent state. Update statistics. Returns current cycle count.'''        
+        statistics.completeCycle()
+        return statistics.cycleCount()
 
-        self._statistics.addSample(float(self._rewards[state]))
-        return self._statistics.cycleCount()
-
-    def _cycleUpdateCezaro(self, state: str)->int:
+    def _cycleUpdateCezaro(self, state: str, distributionStatistics: DistributionStatistics)->int:
         '''Called during simulation. Update statistics. Returns current cycle count.'''
 
-        # Find first recurrent state
-        if self._recurrent_state is None:
-            if self._isRecurrentState(state):
-                self._recurrent_state = state
-            else:
-                return -1 # To prevent the simulation from exiting
-
-        if self._recurrent_state == state:
-            self._distributionStatistics.visitRecurrentState()
-
-        self._distributionStatistics.visitState(self._states.index(state))
-
-        return self._distributionStatistics.cycleCount()
-
-    def _hittingStateCount(self, n: int, state: str, nr_of_steps: int):
-        '''Update hitting state count if we are at step nr_of_steps.'''
-        if n == nr_of_steps:
-            for i in range(len(self.state_count)):
-                if state == self._states[i]:
-                    self.state_count[i] += 1
-
-    def _traceReward(self, condition: bool, state: str, goal_state: Union[str,Iterable[str]])->bool:
-        '''Accumulate reward. If condition is False, return False, if condition is True return if goal state is reached.
-        Returns if goal state is reached.'''
-        # check state for goal state list or single goal state
-        valid = state in goal_state if isinstance(goal_state, list) else state == goal_state
-
-        if condition:
-            if valid:
-                self.valid_trace = True
-                return True
-            else:
-                self.sum_rewards += self._rewards[state]
-                self.valid_trace = False
-                return False
-        else: # In case initial state is goal_state
-            self.sum_rewards += self._rewards[state]
-            self.valid_trace = False
-            return False
+        distributionStatistics.completeCycle()
+        return distributionStatistics.cycleCount()
 
     def markovTrace(self, rounds: int)->List[str]:
         '''Simulate Markov Chain for the given number of rounds (steps).
@@ -936,34 +890,48 @@ class MarkovChain(object):
         seconds = stop_conditions[5]
 
         # Global variables used during simulation
-        self._statistics = Statistics(confidence)
+        statistics = Statistics(confidence)
+
+        recurrentState: Optional[str] = None
+        recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
 
         def _action_AbsErr(n:int, state:str)->bool:
-            c = self._statistics.abError()
+            c = statistics.abError()
             if c is None:
-                return True
-            return c <= max_abError
+                return False
+            return max_abError > 0 and c <= max_abError
             
         def _action_RelErr(n:int, state:str)->bool:
-            c = self._statistics.reError()
+            c = statistics.reError()
             if c is None:
-                return True
-            return c <= max_reError
+                return False
+            return max_reError > 0 and c <= max_reError
 
+        def _action_addSample(n:int, state:str)->bool:
+            statistics.addSample(float(self._rewards[state]))
+            return False
+            
         def _action_CycleUpdate(n:int, state:str)->bool:
-            c = self._cycleUpdate(state)
-            return nr_of_cycles <= c
+            nonlocal recurrentState, recurrentStates
+            if recurrentState is None:
+                if state in recurrentStates:
+                    recurrentState = state
+            if state != recurrentState:
+                return False
+            c = self._cycleUpdate(state, statistics)
+            return 0 <= nr_of_cycles <= c
 
         # Save current time
         current_time = time.time()
         _, stop = self._markovSimulation([
             (lambda n, _: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda _n, _state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
-            (_action_CycleUpdate, "Number of cycles"), # find first recurrent state
-            (_action_AbsErr, "Absolute Error"), # update point estimate of Sm
-            (_action_RelErr, "Relative Error")
+            (_action_addSample, ""),
+            (_action_CycleUpdate, "Number of cycles"), # check cycle completed
+            (_action_AbsErr, "Absolute Error"), # check absolute error
+            (_action_RelErr, "Relative Error") # check relative error
         ])
-        return self._statistics, stop
+        return statistics, stop
 
     def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
         '''
@@ -976,7 +944,7 @@ class MarkovChain(object):
         - nr. cycles
         - timeout in seconds
         
-        Returns a tuple: each of the results can be None if they could not be determined.
+        Returns a tuple:
         - DistributionStatistics with:
             - List of point estimates of the probabilities of the limit distribution
             - List of confidence intervals
@@ -994,51 +962,45 @@ class MarkovChain(object):
         nr_of_cycles = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        self._distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
-
-        state_list = []
+        distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
 
         def _action_number_of_cycles(n: int, state:str)->bool:
-            c = self._cycleUpdateCezaro(state)
+            c = self._cycleUpdateCezaro(state, distributionStatistics)
             return 0 <= nr_of_cycles <= c
 
-        def _action_appendState(n:int, state:str)->bool:
-            state_list.append(state)
+        def _action_visitState(n:int, state:str)->bool:
+            distributionStatistics.visitState(self._states.index(state))
             return False
 
-        def _action_abErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.abErrorCezaro()
+        def _action_abError(n: int, state:str)->bool:
+            c = distributionStatistics.abError()
             if c is None:
                 return False
             vc : List[float] = c  # type: ignore
-            return max(vc) <= max_abError
+            return max_abError > 0 and max(vc) <= max_abError
 
-        def _action_reErrorCezaro(n: int, state:str)->bool:
-            c = self._distributionStatistics.reErrorCezaro()
+        def _action_reError(n: int, state:str)->bool:
+            c = distributionStatistics.reError()
             if c is None:
                 return False
             vc : List[float] = c  # type: ignore
-            return max(vc) <= max_reError
+            return max_reError > 0 and max(vc) <= max_reError
 
         # Save current time
         current_time = time.time()
         _, stop = self._markovSimulation([
             (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
+            (_action_visitState, ""),
             (_action_number_of_cycles, "Number of cycles"), # find first recurrent state
-            (_action_abErrorCezaro, "Absolute Error"), # Calculate smallest absolute error
-            (_action_reErrorCezaro, "Relative Error"), # Calculate smallest relative error
-            (_action_appendState, None) # Calculate smallest relative error
+            (_action_abError, "Absolute Error"), # Calculate smallest absolute error
+            (_action_reError, "Relative Error") # Calculate smallest relative error
         ])
         
-        return self._distributionStatistics, stop
+        return distributionStatistics, stop
 
     def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
-        Optional[float],
-        Optional[Tuple[float,float]],
-        Optional[float],
-        Optional[float],
-        int,
+        Statistics,
         Optional[str]]:
         '''
         Estimate the expected reward by simulation using the provided stop_conditions.
@@ -1051,11 +1013,7 @@ class MarkovChain(object):
         - timeout in seconds
         
         Returns a tuple: each of the results can be None if they could not be determined.
-        - point estimate of the expected reward
-        - confidence interval
-        - estimate of the absolute error
-        - estimate of the relative error
-        - number of rounds 
+        - statistics of the expected reward 
         - the stop criterion applied as a string
         '''
         # separate stop conditions
@@ -1066,11 +1024,14 @@ class MarkovChain(object):
         seconds = stop_conditions[5]
 
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        W = Welford(confidence, stopDescriptions)
+        WW = Welford(confidence, stopDescriptions)
+
+        statistics = Statistics(confidence)
+
 
         def _action_lastStateReward(n: int, state: str)->bool:
             if n == nr_of_steps:
-                W.sample(float(self._rewards[state]))
+                statistics.addSample(float(self._rewards[state]))
             return False
 
         sim_stop_conditions: List[bool] = [False] * 4
@@ -1102,30 +1063,13 @@ class MarkovChain(object):
             if condition: 
                 stop = stopDescriptions[i]
 
-        # Check reError
-        reError = reErrorVal
-        if (interval[0] < 0 and interval[1] >= 0) or reErrorVal < 0:
-            reError = None
-        
-        # Check abError
-        abError = abErrorVal
-        intervalResult = interval
-        if abErrorVal < 0: # Error value
-            reError = None
-            abError = None
-            intervalResult = None
 
        
-        return u, intervalResult, abError, reError, m, stop
+        return W
 
 
-    def estimationDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
-        Optional[List[float]],
-        Optional[List[Tuple[float,float]]],
-        Optional[float],
-        Optional[float],
-        int,
-        Optional[str]]:
+    def estimationTransientDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
+        DistributionStatistics, Optional[str]]:
         # separate stop conditions
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
@@ -1142,25 +1086,12 @@ class MarkovChain(object):
         - nr. rounds
         - timeout in seconds
         
-        Returns a tuple: each of the results can be None if they could not be determined.
-        - List of point estimates of the probabilities of the distribution
-        - List of confidence intervals
-        - max of estimates of the absolute errors
-        - max of estimates of the relative errors
-        - number of cycles 
+        Returns a tuple:
+        - Statistics of the estimated distribution 
         - the stop criterion applied as a string
         '''
 
-        # confidence level
-        c = self._cPointEstimate(confidence)
-
-        # global list counting final states of each trace
-        self.state_count = [0] * len(self._states)
-        distribution: List[float] = [0.0] * len(self._states)
-        interval: List[Tuple[float,float]] = [(0.0,0.0)] * len(self._states)
-        abError = [-1.0] * len(self._states)
-        reError = [-1.0] * len(self._states)
-        m = 0
+        distributionStatistics = DistributionStatistics(len(self._states), confidence)
 
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
@@ -1169,46 +1100,36 @@ class MarkovChain(object):
         # Save current time
         starting_time = time.time()
         
-        # define action to be performed during simulation
-        def _action_hittingStateCount(n: int, state: str)->bool:
-            self._hittingStateCount(n, state, nr_of_steps)
-            return False
+        currentState: Optional[str] = None
 
+        def _action_trackState(n: int, state: str)-> bool:
+            nonlocal currentState
+            currentState = state
+            return True
+        
         while not any(sim_stop_conditions):
 
             self._markovSimulation([
+                (_action_trackState, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
-                (lambda n, state: 0 <= seconds <= time.time() - starting_time, None), # Exit on time
-                (_action_hittingStateCount, None)
+                (lambda n, state: 0 <= seconds <= time.time() - starting_time, None), # Exit on time out
             ])
 
-            # update m
-            m += 1
+            vCurrentState: str = currentState  # type: ignore
+            distributionStatistics.visitState(self._states.index(vCurrentState))
+            distributionStatistics.completeCycle()
 
-            # calculate distributions:
-            for i in range(len(distribution)):
-                distribution[i] = self.state_count[i] / m
-                nr_of_zeros = m - self.state_count[i]     
-                Sm = math.sqrt((1/float(m))*( self.state_count[i]*pow(1 - distribution[i],2) + nr_of_zeros*pow(0 - distribution[i],2) ))
-
-                # absolute error calculation
-                abError[i] = abs((c*Sm) / math.sqrt(float(m)))
-                d = distribution[i]-abError[i]
-                if d != 0.0:
-                    reError[i] = abs(abError[i]/d)
-
-                # interval calculation
-                interval[i] = (distribution[i] - abError[i], distribution[i] + abError[i])
-
-            # Law of strong numbers is reliable after _law steps
-            if m < MarkovChain._law and m != rounds: # (if rounds is less than 10 we still want an abError and reError)
-                abError = [-1.0] * len(self._states)
-                reError = [-1.0] * len(self._states)
+            abError = distributionStatistics.abError()
+            reError = distributionStatistics.reError()
 
             # Check stop conditions
-            sim_stop_conditions[0] = (0 <= max(abError) <= max_abError)
-            sim_stop_conditions[1] = (0 <= max(reError) <= max_reError)
-            sim_stop_conditions[2] = (0 <= rounds <= m)
+            if not (None in abError):
+                vAbError: List[float] = abError  # type: ignore
+                sim_stop_conditions[0] = (0 <= max(vAbError) <= max_abError)
+            if not (None in reError):
+                vReError: List[float] = reError  # type: ignore
+                sim_stop_conditions[1] = (0 <= max(vReError) <= max_reError)
+            sim_stop_conditions[2] = (0 <= rounds <= distributionStatistics.cycleCount())
             sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - starting_time)
 
         # Determine stop condition (if it is added)
@@ -1216,37 +1137,13 @@ class MarkovChain(object):
         for i, condition in enumerate(sim_stop_conditions):
             if condition: 
                 stop = stopDescriptions[i]
+           
+        return distributionStatistics, stop
 
-        # maximum of all absolute and relative errors
-        max_abError: float = max(abError)
-        max_reError: float = max(reError)
-
-        distributionResult = distribution
-        if not(sum(distribution) == 1.0):
-            distributionResult = None
-
-        max_reErrorResult = max_reError
-        if max_reError < 0 or any(i[0] < 0 and i[1] >= 0 for i in interval):
-            max_reErrorResult = None
+    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
         
-        intervalResult = interval
-        max_abErrorResult = max_abError
-        if max_abError == -1.0:
-            max_abErrorResult = None
-            intervalResult = None
-            
-        return distributionResult, intervalResult, max_abErrorResult, max_reErrorResult, m, stop
-
-
-    def estimationHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: Union[str,List[str]], mode: bool, func: bool, states: List[str])->Tuple[
-        List[Optional[Union[float,str]]],
-        List[int],
-        List[Optional[float]],
-        List[Optional[float]],
-        List[Optional[Tuple[float,float]]],
-        List[Optional[str]]]:
         '''
-        Estimate the hitting probability or expected reward until hitting either a single state, or the state set by simulation using the provided stop_conditions.
+        Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1255,26 +1152,12 @@ class MarkovChain(object):
         - nr. cycles
         - timeout in seconds
 
-        Parameter hitting_state is either a single state, or a set of states.
-        Mode is a Boolean the indicates if we are using a single state (True) or a set of states (False). Note that the definition of hitting probability is different for both cases.
-        Func is a Boolean that indicates if we determine hitting probability (True) or expected reward until hit (False).
+        Parameter hitting_state is a state to be hit
 
-        return (
-            u_list, 
-            m_list,
-            abErrors,
-            reErrors,
-            intervals,
-            stop
-        )
-
-
-        Returns a tuple: each of the results can be None if they could not be determined.
-        - point estimates of the requested metric
-        - confidence intervals
-        - estimates of the absolute error
-        - estimates of the relative error
-        - number of rounds for ech state
+        The analysis is performed for all initial states in analysisStates
+        
+        Returns a tuple:
+        - statistics of the estimated hitting probability
         - the stop criteria applied as strings
         '''
 
@@ -1285,146 +1168,329 @@ class MarkovChain(object):
         rounds = stop_conditions[4]
         seconds = stop_conditions[5]
 
-        # confidence level
-        c = self._cPointEstimate(confidence)
-
-        # storing confidence interval information
-        intervalResults:List[Optional[Tuple[float,float]]] = []
-        abErrorResults: List[Optional[float]] = []
-        reErrorResults = []
-        m_list:List[int] = []
-        u_listResults: List[Optional[Union[float,str]]] = []
-
-        # Calculate the hitting probability of single state or set of states
-        if mode:
-            # For single state hitting (we skip first state in trace simulation)
-            compare = 0
-        else:
-            # For set of state hitting (we take first state into account)
-            compare = -1
+        statistics: Dict[str,Statistics] = dict()
+        for s in analysisStates:
+            statistics[s] = Statistics(confidence)
 
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
-        stop: List[Optional[str]] = []
+        stop: List[str] = []
 
         # Save current time
         current_time = time.time()
-        for initial_state in states:
+        for initialState in analysisStates:
             
-            # manipulate the initial probabilities to start the markov chain in the required state i
-            for state in self.states():
-                if state == initial_state:
-                    self._initialProbabilities[state] = Fraction(1)
-                else:
-                    self._initialProbabilities[state] = Fraction(0)
-
-            nr_of_valid_traces = 0
-            M2 = 0.0
-            
-            interval = (0.0, 0.0)
-            abError = -1.0
-            reError = -1.0
-            m = 0
-            u = 0
-            Sm = 0
-
             sim_stop_conditions = [False] * 4
 
             # define action to be performed during simulation
-            def _action_traceReward(n: int, state: str)->bool:
-                return self._traceReward(n > compare, state, hitting_state)
+            def _action_hitting(n: int, state: str)->bool:
+                # suppress initial state for hitting
+                if n == 0:
+                    return False
+                return state == hitting_state
 
             while not any(sim_stop_conditions):
 
-                # TODO: these globals are a bit ugly, remove? group?
-                self.sum_rewards: float = 0.0
-                self.valid_trace: bool = False
+                _, simResult = self._markovSimulation([
+                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
+                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
+                    (_action_hitting, None) # stop when hitting state is found
+                ], initialState)
 
-                self._markovSimulation([
-                    (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
-                    (lambda n, state: 0 <= seconds <= time.time() - current_time, None), # Exit on time
-                    (_action_traceReward, None) # stop when hitting state is found
-                ])
-                
-                m += 1
-                if self.valid_trace:
-                    nr_of_valid_traces += 1
-                
-                # ---- Calculate the confidence interval and ab/re errors --- #
-                # - hitting probability confidence
-                if func:
-                    u = nr_of_valid_traces / m
-                    nr_of_zeros = m - nr_of_valid_traces    
-                    Sm = math.sqrt((1/float(m))*( nr_of_valid_traces*pow(1 - u,2) + nr_of_zeros*pow(0 - u,2) ))
-                    abError = abs((c*Sm) / math.sqrt(float(m)))
-                
-                # - Reward confidence
+                if simResult=="timeout":
+                   return None, "Timeout"
+
+                if simResult=="steps":
+                    # hitting state was not hit
+                    statistics[initialState].addSample(0.0)
                 else:
-                    if self.valid_trace:
-                        d1 = self.sum_rewards - u
-                        u += d1/nr_of_valid_traces
-                        d2 = self.sum_rewards - u
-                        M2 += d1 * d2
-                        Sm = math.sqrt(M2/float(nr_of_valid_traces))
-                        abError = abs((c*Sm) / math.sqrt(float(nr_of_valid_traces)))
-
-                d = u-abError
-                if d != 0.0:
-                    reError = abs(abError/d)
-
-                # interval calculation
-                interval: Tuple[float,float] = (u - abError, u + abError)
-
-                # Law of strong numbers is reliable after _law steps
-                if m < MarkovChain._law and m != rounds: # (if rounds is less than 30 we still want an abError and reError)
-                    abError = -1.0
-                    reError = -1.0
+                    # hitting state was hit
+                    statistics[initialState].addSample(1.0)
+                statistics[initialState].completeCycle()
 
                 # Check stop conditions
-                sim_stop_conditions[0] = (0 <= abError <= max_abError)
-                sim_stop_conditions[1] = (0 <= reError <= max_reError)
-                sim_stop_conditions[2] = (0 <= rounds <= m)
+                abError = statistics[initialState].abError()
+                if abError is not None:
+                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
+                reError = statistics[initialState].reError()
+                if reError is not None:
+                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
+                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
                 sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
 
-                # Determine stop condition (if it is added)
-                for i, condition in enumerate(sim_stop_conditions):
-                    if condition: 
-                        stop.append(stopDescriptions[i])
-
-            reErrorResult = reError
-            if reError < 0 or (interval[0] < 0 and interval [1] >= 0):
-                reErrorResult = None
-
-            uResult: Optional[float] = u    
-            abErrorResult = abError
-            intervalResult: Optional[Tuple[float,float]]  = interval
-            if abError < 0:
-                abErrorResult = None
-                intervalResult = None
-                uResult = None
+            # Determine stop condition (if it is added)
+            for i, condition in enumerate(sim_stop_conditions):
+                if condition: 
+                    stop.append(stopDescriptions[i])
                 
+        return statistics, stop
 
-            m_list.append(m)
-            u_listResults.append(uResult)
-            abErrorResults.append(abErrorResult)
-            reErrorResults.append(reErrorResult)
-            intervalResults.append(intervalResult)
+    # TODO: factor out common parts of the four hitting probability and accumulated reward simulations
+    def estimationRewardUntilHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+        
+        '''
+        Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
 
-            # Check if last stop condition is time
-            if stop[-1] == stopDescriptions[3]:
-                break 
+        Parameter hitting_state is a state to be hit
 
-        if not func:
-            for i in range(len(u_listResults)):
-                if (u_listResults[i] == None) or (u_listResults[i] == 0.0):
-                    u_listResults[i] = "Cannot be decided"
+        The analysis is performed for all initial states in analysisStates
+        
+        Returns a tuple:
+        - statistics of the cumulative reward
+        - the stop criteria applied as strings
+        '''
 
-        return (
-            u_listResults, 
-            m_list,
-            abErrorResults,
-            reErrorResults,
-            intervalResults,
-            stop
-        )
+        confidence = stop_conditions[0]
+        max_abError = stop_conditions[1]
+        max_reError = stop_conditions[2]
+        nr_of_steps = stop_conditions[3]
+        rounds = stop_conditions[4]
+        seconds = stop_conditions[5]
+
+        statistics: Dict[str,Statistics] = dict()
+        for s in analysisStates:
+            statistics[s] = Statistics(confidence)
+
+        # There are in total four applicable stop conditions for this function
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions = [False] * 4
+        stop: List[str] = []
+
+        # Save current time
+        current_time = time.time()
+        for initialState in analysisStates:
+            
+            sim_stop_conditions = [False] * 4
+
+            accumulatedReward = 0.0
+
+            # define action to be performed during simulation
+            def _action_hitting(n: int, state: str)->bool:
+                if n==0:
+                    nonlocal accumulatedReward
+                    accumulatedReward += float(self.getReward(state))
+                    # suppress initial state for hitting
+                    return False
+                if state == hitting_state:
+                    return True
+                # reward of hitting state is npt counted
+                accumulatedReward += float(self.getReward(state))
+                return False
+
+            while not any(sim_stop_conditions):
+
+                _, simResult = self._markovSimulation([
+                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
+                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
+                    (_action_hitting, None) # stop when hitting state is found
+                ], initialState)
+
+                if simResult=="timeout":
+                   return None, "Timeout"
+
+                if simResult!="steps":
+                    # hitting state was hit
+                    statistics[initialState].addSample(accumulatedReward)
+                statistics[initialState].completeCycle()
+
+                # Check stop conditions
+                abError = statistics[initialState].abError()
+                if abError is not None:
+                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
+                reError = statistics[initialState].reError()
+                if reError is not None:
+                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
+                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
+                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+
+            # Determine stop condition (if it is added)
+            for i, condition in enumerate(sim_stop_conditions):
+                if condition: 
+                    stop.append(stopDescriptions[i])
+                
+        return statistics, stop
+
+    def estimationHittingProbabilityStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+        
+        '''
+        Estimate the hitting probability until hitting a set of states by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+
+        Parameter hitting_states is a list of states to be hit
+
+        The analysis is performed for all initial states in analysisStates
+        
+        Returns a tuple:
+        - statistics of the estimated hitting probability
+        - the stop criteria applied as strings
+        '''
+
+        confidence = stop_conditions[0]
+        max_abError = stop_conditions[1]
+        max_reError = stop_conditions[2]
+        nr_of_steps = stop_conditions[3]
+        rounds = stop_conditions[4]
+        seconds = stop_conditions[5]
+
+        statistics: Dict[str,Statistics] = dict()
+        for s in analysisStates:
+            statistics[s] = Statistics(confidence)
+
+        # There are in total four applicable stop conditions for this function
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions = [False] * 4
+        stop: List[str] = []
+
+        # Save current time
+        current_time = time.time()
+        for initialState in analysisStates:
+            
+            sim_stop_conditions = [False] * 4
+
+            # define action to be performed during simulation
+            def _action_hitting(n: int, state: str)->bool:
+                # suppress initial state for hitting
+                if n == 0:
+                    return False
+                return state in hitting_states
+
+            while not any(sim_stop_conditions):
+
+                _, simResult = self._markovSimulation([
+                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
+                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
+                    (_action_hitting, None) # stop when hitting state is found
+                ], initialState)
+
+                if simResult=="timeout":
+                   return None, "Timeout"
+
+                if simResult=="steps":
+                    # hitting state was not hit
+                    statistics[initialState].addSample(0.0)
+                else:
+                    # hitting state was hit
+                    statistics[initialState].addSample(1.0)
+                statistics[initialState].completeCycle()
+
+                # Check stop conditions
+                abError = statistics[initialState].abError()
+                if abError is not None:
+                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
+                reError = statistics[initialState].reError()
+                if reError is not None:
+                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
+                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
+                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+
+            # Determine stop condition (if it is added)
+            for i, condition in enumerate(sim_stop_conditions):
+                if condition: 
+                    stop.append(stopDescriptions[i])
+                
+        return statistics, stop
+
+    def estimationRewardUntilHittingStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+        
+        '''
+        Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+
+        Parameter hitting_states is a list of states to be hit
+
+        The analysis is performed for all initial states in analysisStates
+        
+        Returns a tuple:
+        - statistics of the cumulative reward
+        - the stop criteria applied as strings
+        '''
+
+        confidence = stop_conditions[0]
+        max_abError = stop_conditions[1]
+        max_reError = stop_conditions[2]
+        nr_of_steps = stop_conditions[3]
+        rounds = stop_conditions[4]
+        seconds = stop_conditions[5]
+
+        statistics: Dict[str,Statistics] = dict()
+        for s in analysisStates:
+            statistics[s] = Statistics(confidence)
+
+        # There are in total four applicable stop conditions for this function
+        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
+        sim_stop_conditions = [False] * 4
+        stop: List[str] = []
+
+        # Save current time
+        current_time = time.time()
+        for initialState in analysisStates:
+            
+            sim_stop_conditions = [False] * 4
+
+            accumulatedReward = 0.0
+
+            # define action to be performed during simulation
+            def _action_hitting(n: int, state: str)->bool:
+                if n==0:
+                    nonlocal accumulatedReward
+                    accumulatedReward += float(self.getReward(state))
+                    # suppress initial state for hitting
+                    return False
+                if state in hitting_states:
+                    return True
+                # reward of hitting state is not counted
+                accumulatedReward += float(self.getReward(state))
+                return False
+
+            while not any(sim_stop_conditions):
+
+                _, simResult = self._markovSimulation([
+                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
+                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
+                    (_action_hitting, None) # stop when hitting state is found
+                ], initialState)
+
+                if simResult=="timeout":
+                   return None, "Timeout"
+
+                if simResult!="steps":
+                    # hitting state was hit
+                    statistics[initialState].addSample(accumulatedReward)
+                statistics[initialState].completeCycle()
+
+                # Check stop conditions
+                abError = statistics[initialState].abError()
+                if abError is not None:
+                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
+                reError = statistics[initialState].reError()
+                if reError is not None:
+                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
+                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
+                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+
+            # Determine stop condition (if it is added)
+            for i, condition in enumerate(sim_stop_conditions):
+                if condition: 
+                    stop.append(stopDescriptions[i])
+                
+        return statistics, stop

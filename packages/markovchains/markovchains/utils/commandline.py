@@ -352,7 +352,7 @@ def process(args, dsl):
         states = M.states()
         N = requireNumberOfSteps(args)
         C = requireStopCriteria(args)
-        distribution, intervals, abError, reError, nr_of_paths, stop = M.estimationDistribution(C, N)
+        distribution, intervals, abError, reError, nr_of_paths, stop = M.estimationTransientDistribution(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
         print("\tDistribution: {}".format(printOptionalList(distribution)))
@@ -361,12 +361,13 @@ def process(args, dsl):
         print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
         print("\tNumber of paths: ", nr_of_paths)
 
+    # TODO: for None use "Cannot be decided"
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
         s = requireTargetState(M, args)
         C = requireStopCriteria(args)
-        hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, True, S)
+        statistics, stop = M.estimationHittingProbabilityState(C, s, S)
         print("Estimated hitting probabilities for {} are:".format(s))
         for i in range(len(hitting_probability)):
             print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
@@ -379,7 +380,7 @@ def process(args, dsl):
         S = setStartingStateSet(args, M)
         s = requireTargetState(M, args)
         C = requireStopCriteria(args)
-        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, True, False, S)
+        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationRewardUntilHittingState(C, s, S)
         print("Estimated cumulative reward until hitting {} are:".format(s))
         for i in range(len(cumulative_reward)):
             if type(cumulative_reward[i]) is str:
@@ -395,7 +396,7 @@ def process(args, dsl):
         S = setStartingStateSet(args, M)
         s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
-        hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, True, S)
+        hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingProbabilityStateSet(C, s, S)
         print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
         for i in range(len(hitting_probability)):
             print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
@@ -408,7 +409,7 @@ def process(args, dsl):
         S = setStartingStateSet(args, M)
         s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
-        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingState(C, s, False, False, S)
+        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationRewardUntilHittingStateSet(C, s, S)
         print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
         for i in range(len(cumulative_reward)):
             if type(cumulative_reward[i]) is str:

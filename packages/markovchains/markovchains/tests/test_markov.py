@@ -94,7 +94,7 @@ class Markov_pytest(Model_pytest):
         self.model.setRecurrentState(None) # reset trace recurrent state
         self.function_test(lambda: self.model.estimationExpectedReward((0.95,-1,0.5,-1,1000,-1), 1), "estimationExpectedReward_rel")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.model.estimationDistribution((0.95,-1,-1,1,1,-1), 1), "estimationDistribution")
+        self.function_test(lambda: self.model.estimationTransientDistribution((0.95,-1,-1,1,1,-1), 1), "estimationDistribution")
         self.model.setRecurrentState(None) # reset trace recurrent state
         self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, False, False, self.model.states()), "estimationHittingState")
         self.model.setRecurrentState(None) # reset trace recurrent state
