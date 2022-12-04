@@ -1003,7 +1003,7 @@ class MarkovChain(object):
         Statistics,
         Optional[str]]:
         '''
-        Estimate the expected reward by simulation using the provided stop_conditions.
+        Estimate the long-run expected average reward by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
