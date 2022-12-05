@@ -1,6 +1,6 @@
 from fractions import Fraction
 from io import StringIO
-from typing import AbstractSet, Callable, Dict, Iterable, List, Literal, Optional, Set, Tuple, Union
+from typing import AbstractSet, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 # pygraph library from:
 # https://pypi.org/project/python-graph/
@@ -132,9 +132,9 @@ class MarkovChain(object):
     def transitions(self)->Set[Tuple[str,Fraction,str]]:
         '''Get the transitions of the dtmc as tuples (s, p, d). With source state s, destination state d and probability p.'''
         result = set()
-        for i, srcstate in enumerate(self._transitions):
-            for j, (dststate, p) in enumerate(self._transitions[srcstate].items()):
-                result.add((srcstate, p, dststate))
+        for srcState in self._transitions:
+            for (dstState, p) in self._transitions[srcState].items():
+                result.add((srcState, p, dstState))
         return result
 
     def addImplicitTransitions(self):
@@ -677,7 +677,7 @@ class MarkovChain(object):
 
     def _getSubTransitionMatrixClass(self, C: AbstractSet[str])->Tuple[Dict[str,int],linalg.TMatrix]:
         '''Return an index for the states in C and a sub transition matrix for the class C.'''
-        # get submatrix for a class C of states
+        # get sub-matrix for a class C of states
         indices = sorted([self._states.index(s) for s in C])
         index = dict([(c, indices.index(self._states.index(c))) for c in C])
         return index, self._getSubTransitionMatrixIndices(indices)
@@ -976,12 +976,16 @@ class MarkovChain(object):
             c = distributionStatistics.abError()
             if c is None:
                 return False
+            if any([v is None for v in c]):
+                return False
             vc : List[float] = c  # type: ignore
             return max_abError > 0 and max(vc) <= max_abError
 
         def _action_reError(n: int, state:str)->bool:
             c = distributionStatistics.reError()
             if c is None:
+                return False
+            if any([v is None for v in c]):
                 return False
             vc : List[float] = c  # type: ignore
             return max_reError > 0 and max(vc) <= max_reError
@@ -1135,7 +1139,7 @@ class MarkovChain(object):
            
         return distributionStatistics, stop
 
-    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
@@ -1170,7 +1174,7 @@ class MarkovChain(object):
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
-        stop: List[str] = []
+        stop: Dict[str,str] = dict()
 
         # Save current time
         current_time = time.time()
@@ -1217,12 +1221,12 @@ class MarkovChain(object):
             # Determine stop condition (if it is added)
             for i, condition in enumerate(sim_stop_conditions):
                 if condition: 
-                    stop.append(stopDescriptions[i])
+                    stop[initialState] = (stopDescriptions[i])
                 
         return statistics, stop
 
     # TODO: factor out common parts of the four hitting probability and accumulated reward simulations
-    def estimationRewardUntilHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+    def estimationRewardUntilHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
@@ -1257,7 +1261,7 @@ class MarkovChain(object):
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
-        stop: List[str] = []
+        stop: Dict[str,str] = dict()
 
         # Save current time
         current_time = time.time()
@@ -1309,11 +1313,11 @@ class MarkovChain(object):
             # Determine stop condition (if it is added)
             for i, condition in enumerate(sim_stop_conditions):
                 if condition: 
-                    stop.append(stopDescriptions[i])
+                    stop[initialState] = stopDescriptions[i]
                 
         return statistics, stop
 
-    def estimationHittingProbabilityStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+    def estimationHittingProbabilityStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the hitting probability until hitting a set of states by simulation using the provided stop_conditions.
@@ -1348,7 +1352,7 @@ class MarkovChain(object):
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
-        stop: List[str] = []
+        stop: Dict[str,str] = dict()
 
         # Save current time
         current_time = time.time()
@@ -1395,11 +1399,11 @@ class MarkovChain(object):
             # Determine stop condition (if it is added)
             for i, condition in enumerate(sim_stop_conditions):
                 if condition: 
-                    stop.append(stopDescriptions[i])
+                    stop[initialState] = stopDescriptions[i]
                 
         return statistics, stop
 
-    def estimationRewardUntilHittingStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,List[str]]]:
+    def estimationRewardUntilHittingStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
@@ -1434,7 +1438,7 @@ class MarkovChain(object):
         # There are in total four applicable stop conditions for this function
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
-        stop: List[str] = []
+        stop: Dict[str,str] = dict()
 
         # Save current time
         current_time = time.time()
@@ -1486,6 +1490,6 @@ class MarkovChain(object):
             # Determine stop condition (if it is added)
             for i, condition in enumerate(sim_stop_conditions):
                 if condition: 
-                    stop.append(stopDescriptions[i])
+                    stop[initialState] = stopDescriptions[i]
                 
         return statistics, stop

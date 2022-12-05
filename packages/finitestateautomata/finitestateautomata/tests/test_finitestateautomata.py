@@ -33,7 +33,7 @@ class Automaton_pytest(Model_pytest):
             dsl = fsaFile.read()
         self.name, self.model = Automaton.fromDSL(dsl)
 
-    def Correct_behaviour_tests(self):
+    def Correct_behavior_tests(self):
         self.function_test(lambda: self.model.alphabet(), "alphabet", sort = True, quotes = True)
         self.function_test(lambda: self.model.states(), "states", sort = True)
         self.function_test(lambda: self.model.isDeterministic(), "deterministic")
@@ -64,14 +64,14 @@ class Automaton_pytest(Model_pytest):
         self.function_test(lambda: vars(self.model.asRegularBuchiAutomaton().productBuchi(self.model.asRegularBuchiAutomaton())), "productBuchi", sort = True)
         self.function_test(lambda: vars(self.model.minimizeBuchi()), "minimizeBuchi", sort = True)
 
-    def Incorrect_behaviour_tests(self):
+    def Incorrect_behavior_tests(self):
         pass
 
 @pytest.mark.parametrize("test_model", MODEL_FSA_FILES)
 def test_automaton(test_model: str):
     m = Automaton_pytest(test_model)
-    m.Correct_behaviour_tests()
-    m.Incorrect_behaviour_tests()
+    m.Correct_behavior_tests()
+    m.Incorrect_behavior_tests()
     m.write_output_file()
 
 
@@ -96,17 +96,17 @@ class LTL_pytest(Model_pytest):
             dsl = ltlFile.read()
         self.name, self.model = LTLFormula.fromDSL(dsl)
 
-    def Correct_behaviour_tests(self):
+    def Correct_behavior_tests(self):
         self.function_test(lambda: vars(self.model.asFSA()), "convert_to_NBA", sort = True)
 
-    def Incorrect_behaviour_tests(self):
+    def Incorrect_behavior_tests(self):
         pass
 
 @pytest.mark.parametrize("test_model", MODEL_LTL_FILES)
 def test_LTL(test_model: str):
     m = LTL_pytest(test_model)
-    m.Correct_behaviour_tests()
-    m.Incorrect_behaviour_tests()
+    m.Correct_behavior_tests()
+    m.Incorrect_behavior_tests()
     m.write_output_file()
 
 
@@ -129,20 +129,20 @@ class Regular_expression_pytest(Model_pytest):
             dsl = regFile.read()
         self.name, self.model = RegEx.fromDSL(dsl)
 
-    def Correct_behaviour_tests(self):
+    def Correct_behavior_tests(self):
         if self.model.isFiniteRegEx():
             self.function_test(lambda: vars(self.model.asFSA()), "convert_to_FSA", sort = True)
         
         if self.model.isOmegaRegEx():
             self.function_test(lambda: vars(self.model.asNBA()), "convert_to_NBA", sort = True)
 
-    def Incorrect_behaviour_tests(self):
+    def Incorrect_behavior_tests(self):
         pass
 
 
 @pytest.mark.parametrize("test_model", MODEL_REGEX_FILES)
 def test_regular_expression(test_model: str):
     m = Regular_expression_pytest(test_model)
-    m.Correct_behaviour_tests()
-    m.Incorrect_behaviour_tests()
+    m.Correct_behavior_tests()
+    m.Incorrect_behavior_tests()
     m.write_output_file()

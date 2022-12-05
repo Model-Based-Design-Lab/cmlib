@@ -54,6 +54,11 @@ class Statistics(object):
             return None
         return self._meanEst
 
+    def stdDevEstimate(self)->Optional[float]:
+        if self._cycleCount < _law:
+            return None
+        return self._stdDevEst
+
     def updateVarianceEstimate(self)->None:
         # Compute S_M following the equation below Eq. B.67 of the reader
         # Update point estimate of standard deviation.
@@ -166,6 +171,13 @@ class DistributionStatistics(object):
         if not 0.9999 < sum(vRes) < 1.0001:
             return None
         
+        return vRes
+
+    def stdDevEstimates(self)->Optional[List[float]]:
+        res = [s.stdDevEstimate() for s in self._stateEstimators]
+        if None in res:
+            return None
+        vRes: List[float] = res  # type: ignore        
         return vRes
 
     def abError(self)->List[Optional[float]]:

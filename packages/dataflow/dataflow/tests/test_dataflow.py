@@ -51,7 +51,7 @@ class SDF_pytest(Model_pytest):
                     self.mu = 1/self.throughput
 
 
-    def Correct_behaviour_tests(self):
+    def Correct_behavior_tests(self):
         self.function_test(lambda: self.model.deadlock(), "deadlock")
         self.function_test(lambda: self.model.repetitionVector(), "repetitionVector")
         self.function_test(lambda: self.model.listOfInputsStr(), "listOfInputsStr")
@@ -68,7 +68,7 @@ class SDF_pytest(Model_pytest):
             self.function_test(lambda: self.model.latency(x0, mu), "latency")
             self.function_test(lambda: self.model.generalizedLatency(mu), "generalizedLatency")
 
-    def Incorrect_behaviour_tests(self):
+    def Incorrect_behavior_tests(self):
         mu = self.mu
         if mu is not None:
             x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
@@ -84,8 +84,8 @@ class SDF_pytest(Model_pytest):
 @pytest.mark.parametrize("test_model", MODEL_SDF_FILES)
 def test_SDF(test_model: str):
     m = SDF_pytest(test_model)
-    m.Correct_behaviour_tests()
-    m.Incorrect_behaviour_tests()
+    m.Correct_behavior_tests()
+    m.Incorrect_behavior_tests()
     m.write_output_file()
 
 
@@ -123,7 +123,7 @@ class MPM_pytest(Model_pytest):
             sequences=sq,
         )
 
-    def Correct_behaviour_tests(self):
+    def Correct_behavior_tests(self):
         # Function used to obtain multiple results
         mat = getSquareMatrix(self.Matrices, self.args)
 
@@ -152,7 +152,7 @@ class MPM_pytest(Model_pytest):
         # Non deterministic results, False added as argument
         self.function_test(lambda: self.Matrices[mat].eigenvectors(), "Eigenvectors", False) # Eigenvectors can appear in different order
 
-    def Incorrect_behaviour_tests(self):
+    def Incorrect_behavior_tests(self):
         pass
 
     # Class to create namespace args consisting of user input arguments 
@@ -163,6 +163,6 @@ class MPM_pytest(Model_pytest):
 @pytest.mark.parametrize("test_model", MODEL_MPM_FILES)
 def test_MPM(test_model: str):
     m = MPM_pytest(test_model)
-    m.Correct_behaviour_tests()
-    m.Incorrect_behaviour_tests()
+    m.Correct_behavior_tests()
+    m.Incorrect_behavior_tests()
     m.write_output_file()

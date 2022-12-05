@@ -2,7 +2,7 @@
 '''Operations on Markov chains '''
 
 import argparse
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
@@ -375,12 +375,13 @@ def process(args, dsl):
         if statisticsDict is None:
             print("A timeout has occurred during the analysis.")
         else:
+            dStop: Dict[str,str] = stop  # type: ignore
             print("Estimated hitting probabilities for {} are:".format(s))
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
                     t, s, optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()),
-                    optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), stop[i]
+                    optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                 ))
                 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
@@ -398,8 +399,9 @@ def process(args, dsl):
                 if statistics.meanEstimate() is None:
                     print("From state {}: Cannot be decided".format(S[i]))
                 else:
+                    dStop: Dict[str,str] = stop  # type: ignore
                     print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), stop[i]
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                     ))
     
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
@@ -417,9 +419,10 @@ def process(args, dsl):
                 if statistics.meanEstimate() is None:
                     print("From state {}: Cannot be decided".format(S[i]))
                 else:
+                    dStop: Dict[str,str] = stop  # type: ignore
                     print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
                         S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimate()),
-                        printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), stop[i]
+                        printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                 ))
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
@@ -437,8 +440,9 @@ def process(args, dsl):
                 if statistics.meanEstimate() is None:
                     print("From state {}: Cannot be decided".format(S[i]))
                 else:
+                    dStop: Dict[str,str] = stop  # type: ignore
                     print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), stop[i]
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                     ))
                     
 if __name__ == "__main__":
