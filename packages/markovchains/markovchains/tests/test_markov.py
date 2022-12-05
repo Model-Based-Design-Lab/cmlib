@@ -96,13 +96,13 @@ class Markov_pytest(Model_pytest):
         self.model.setRecurrentState(None) # reset trace recurrent state
         self.function_test(lambda: self.model.estimationTransientDistribution((0.95,-1,-1,1,1,-1), 1), "estimationDistribution")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, False, False, self.model.states()), "estimationHittingState")
+        self.function_test(lambda: self.model.estimationHittingProbabilityState((0.95,-1,-1,1,1,-1), self.state, self.model.states()), "estimationHittingState")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, False, True, self.model.states()), "estimationHittingreward")
+        self.function_test(lambda: self.model.estimationRewardUntilHittingState((0.95,-1,-1,1,1,-1), self.state, self.model.states()), "estimationHittingreward")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, True, False, self.model.states()), "estimationHittingStateSet")
+        self.function_test(lambda: self.model.estimationHittingProbabilityStateSet((0.95,-1,-1,1,1,-1), [self.state], self.model.states()), "estimationHittingStateSet")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.model.estimationHittingState((0.95,-1,-1,1,1,-1), self.state, True, True, self.model.states()), "estimationHittingRewardSet")
+        self.function_test(lambda: self.model.estimationRewardUntilHittingStateSet((0.95,-1,-1,1,1,-1), [self.state], self.model.states()), "estimationHittingRewardSet")
 
     def Incorrect_behaviour_tests(self):
         self.incorrect_test(lambda: self.model.executeSteps(-2), 'Number of steps must be non-negative.')
@@ -110,7 +110,7 @@ class Markov_pytest(Model_pytest):
         self.incorrect_test(lambda: self.model.longRunExpectedAverageReward((-1.00,0,0,1000,0,-1)), "p must be in the range 0.0 < p < 1.0")
         self.incorrect_test(lambda: self.model.cezaroLimitDistribution((-1.00,0,0,1000,0,-1.-1)), "p must be in the range 0.0 < p < 1.0")
         self.incorrect_test(lambda: self.model.estimationExpectedReward((-1.00,0,0,1000,0,-1), 1), "p must be in the range 0.0 < p < 1.0")
-        self.incorrect_test(lambda: self.model.estimationHittingState((-1.00,0,0,1000,0,-1), self.state, True, True, self.model.states()), "p must be in the range 0.0 < p < 1.0")
+        self.incorrect_test(lambda: self.model.estimationRewardUntilHittingStateSet((-1.00,0,0,1000,0,-1), [self.state], self.model.states()), "p must be in the range 0.0 < p < 1.0")
 
 
 @pytest.mark.parametrize("test_model", MODEL_FILES)
