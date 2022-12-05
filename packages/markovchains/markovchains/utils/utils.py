@@ -63,9 +63,9 @@ def printList(l: List[float])->str:
     except:
         return str(l)
 
-def printOptionalList(l: Optional[List[float]])->str:
+def printOptionalList(l: Optional[List[float]], noneText: str = "--")->str:
     if l is None:
-        return "--"
+        return noneText
     return printList(l)
 
 

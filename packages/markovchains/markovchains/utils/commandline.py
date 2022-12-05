@@ -301,6 +301,7 @@ def process(args, dsl):
         print("{}".format(trace))
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
+        # TODO: warn if it is not a uni-chain?
         setSeed(args, M)
         M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
@@ -310,10 +311,10 @@ def process(args, dsl):
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.sanitizedEstimatedMean())))
-            print("\tConfidence interval: {}".format(printInterval(statistics.sanitizedConfidenceInterval())))
-            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedAbsoluteError())))
-            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedRelativeError())))
+            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.meanEstimate())))
+            print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
+            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
+            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
             print("\tNumber of cycles: {}".format(statistics.cycleCount()))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
@@ -322,14 +323,15 @@ def process(args, dsl):
         C = requireStopCriteria(args)
         distributionStatistics, stop = M.cezaroLimitDistribution(C)
         
-        if limit is None:
+        if distributionStatistics is None:
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
-            print("Cezaro limit distribution: {}".format(printList(limit)))
-            print("Number of cycles: {}\n".format(n))
-            for i, l in enumerate(limit):
-                print("[{}]: {:.4f}".format(i, l))
+            print("Cezaro limit distribution: {}".format(printOptionalList(distributionStatistics.pointEstimates(), "Could not be determined")))
+            print("Number of cycles: {}\n".format(distributionStatistics.cycleCount()))
+            dist: List[float] = distributionStatistics.pointEstimates()  # type: ignore
+            for i in range(len(M.states())):
+                print("[{}]: {:.4f}".format(i, dist[i]))
                 print("\tConfidence interval: {}".format(printOptionalInterval(interval[i])))
                 print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
                 print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))

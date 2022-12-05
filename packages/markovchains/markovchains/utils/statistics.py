@@ -185,78 +185,78 @@ class DistributionStatistics(object):
 
 # what is this for?
 
-class WelfordWiki(object):
-    '''
-    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    '''
+# class WelfordWiki(object):
+#     '''
+#     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+#     '''
 
-    def __init__(self) -> None:
-        self._count = 0
-        self._mean = 0.0
-        self._M2 = 0.0
+#     def __init__(self) -> None:
+#         self._count = 0
+#         self._mean = 0.0
+#         self._M2 = 0.0
 
-    def update(self, newValue):
-        # For a new value newValue, compute the new count, new mean, the new M2.
-        # mean accumulates the mean of the entire dataset
-        # M2 aggregates the squared distance from the mean
-        # count aggregates the number of samples seen so far
-        self._count += 1
-        delta = newValue - self._mean
-        self._mean += delta / self._count
-        delta2 = newValue - self._mean
-        self._M2 += delta * delta2
+#     def update(self, newValue):
+#         # For a new value newValue, compute the new count, new mean, the new M2.
+#         # mean accumulates the mean of the entire dataset
+#         # M2 aggregates the squared distance from the mean
+#         # count aggregates the number of samples seen so far
+#         self._count += 1
+#         delta = newValue - self._mean
+#         self._mean += delta / self._count
+#         delta2 = newValue - self._mean
+#         self._M2 += delta * delta2
 
-    def finalize(self, existingAggregate):
-        # Retrieve the mean, variance and sample variance from an aggregate
-        if self._count < 2:
-            return float("nan")
-        else:
-            (mean, variance, sampleVariance) = (mean, M2 / count, M2 / (count - 1))
-            return (mean, variance, sampleVariance)
+#     def finalize(self, existingAggregate):
+#         # Retrieve the mean, variance and sample variance from an aggregate
+#         if self._count < 2:
+#             return float("nan")
+#         else:
+#             (mean, variance, sampleVariance) = (mean, M2 / count, M2 / (count - 1))
+#             return (mean, variance, sampleVariance)
 
-class Welford(object):
+# class Welford(object):
 
-    def __init__(self, confidence: float, stopDescriptions: List[str]) -> None:
+#     def __init__(self, confidence: float, stopDescriptions: List[str]) -> None:
 
-        # confidence level
-        self._c = NormalDist().inv_cdf((1+confidence)/2)
+#         # confidence level
+#         self._c = NormalDist().inv_cdf((1+confidence)/2)
 
-        self._interval: Tuple[float,float] = (0, 0)
-        self._abErrorVal: float = -1.0
-        self._reErrorVal: float = -1.0
-        self._mean: float = 0.0
-        self._count: int = 0
-        self._M2: float = 0.0 # Welford's algorithm variable
+#         self._interval: Tuple[float,float] = (0, 0)
+#         self._abErrorVal: float = -1.0
+#         self._reErrorVal: float = -1.0
+#         self._mean: float = 0.0
+#         self._count: int = 0
+#         self._M2: float = 0.0 # Welford's algorithm variable
 
-        # There are in total four applicable stop conditions for this function
-        self._y = 0.0
+#         # There are in total four applicable stop conditions for this function
+#         self._y = 0.0
 
-    def sample(self, v: float)->None:
-        self._y = v
-        # Execute Welford's algorithm to compute running standard derivation and mean
-        self._count += 1
-        d1 = self._y - self._mean
-        self._mean += d1/self._count
-        d2 = self._y - self._mean
-        self._M2 += d1 * d2
-        self._Sm = math.sqrt(self._M2/float(self._count))
+#     def sample(self, v: float)->None:
+#         self._y = v
+#         # Execute Welford's algorithm to compute running standard derivation and mean
+#         self._count += 1
+#         d1 = self._y - self._mean
+#         self._mean += d1/self._count
+#         d2 = self._y - self._mean
+#         self._M2 += d1 * d2
+#         self._Sm = math.sqrt(self._M2/float(self._count))
 
-    def getNumberOfSamples(self)->int:
-        return self._count
+#     def getNumberOfSamples(self)->int:
+#         return self._count
 
-    def getErrorVals(self)->Tuple[float,float]:
+#     def getErrorVals(self)->Tuple[float,float]:
 
-        # Compute absolute and relative errors
-        self._abErrorVal = abs((self._c*self._Sm) / math.sqrt(float(self._count)))
-        self._d = self._mean-self._abErrorVal
-        if self._d != 0.0:
-            self._reErrorVal = abs(self._abErrorVal/self._d)
+#         # Compute absolute and relative errors
+#         self._abErrorVal = abs((self._c*self._Sm) / math.sqrt(float(self._count)))
+#         self._d = self._mean-self._abErrorVal
+#         if self._d != 0.0:
+#             self._reErrorVal = abs(self._abErrorVal/self._d)
 
-        # interval calculation
-        self._interval = (self._mean - self._abErrorVal, self._mean + self._abErrorVal)
+#         # interval calculation
+#         self._interval = (self._mean - self._abErrorVal, self._mean + self._abErrorVal)
 
-        # Do not evaluate abError/reError in the first _law cycles:
-        if self._count < _law and self._count != rounds: # (if rounds is less than 10 we still want an abError and reError)
-            self._abErrorVal = -1.0
-            self._reErrorVal = -1.0
-        return self._abError, self._reError
+#         # Do not evaluate abError/reError in the first _law cycles:
+#         if self._count < _law and self._count != rounds: # (if rounds is less than 10 we still want an abError and reError)
+#             self._abErrorVal = -1.0
+#             self._reErrorVal = -1.0
+#         return self._abError, self._reError

@@ -17,7 +17,7 @@ import time
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sortNames
-from markovchains.utils.statistics import Statistics, DistributionStatistics, Welford
+from markovchains.utils.statistics import Statistics, DistributionStatistics
 
 TStoppingCriteria = Tuple[float,float,float,int,int,float]
 
@@ -1003,7 +1003,7 @@ class MarkovChain(object):
         Statistics,
         Optional[str]]:
         '''
-        Estimate the expected reward by simulation using the provided stop_conditions.
+        Estimate the transient expected reward after nr_of_steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1024,37 +1024,34 @@ class MarkovChain(object):
         seconds = stop_conditions[5]
 
         stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        WW = Welford(confidence, stopDescriptions)
 
         statistics = Statistics(confidence)
-
 
         def _action_lastStateReward(n: int, state: str)->bool:
             if n == nr_of_steps:
                 statistics.addSample(float(self._rewards[state]))
+                statistics.completeCycle()
             return False
 
         sim_stop_conditions: List[bool] = [False] * 4
 
         # Save current time
         current_time = time.time()
-        abErrorVal: float
-        reErrorVal: float
         while not any(sim_stop_conditions):
-            # Used in self_lastStateReward function to assign reward to y when hitting last state
-
             self._markovSimulation([
+                (_action_lastStateReward, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
                 (lambda n, state: 0 <= seconds <= time.time() - current_time, None), # Exit on time
-                (_action_lastStateReward, None)
             ])
 
-            abErrorVal, reErrorVal = W.getErrorVals()
-
             # Check stop conditions
-            sim_stop_conditions[0] = (0.0 <= abErrorVal <= max_abError)
-            sim_stop_conditions[1] = (0.0 <= reErrorVal <= max_reError)
-            sim_stop_conditions[2] = (0 <= rounds <= W.getNumberOfSamples())
+            abErrorVal = statistics.abError()
+            if abErrorVal is not None:
+                sim_stop_conditions[0] = (0.0 <= abErrorVal <= max_abError)
+            reErrorVal = statistics.reError()
+            if reErrorVal is not None:
+                sim_stop_conditions[1] = (0.0 <= reErrorVal <= max_reError)
+            sim_stop_conditions[2] = (0 <= rounds <= statistics.cycleCount())
             sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
 
         # Determine stop condition (if it is added)
@@ -1062,10 +1059,8 @@ class MarkovChain(object):
         for i, condition in enumerate(sim_stop_conditions):
             if condition: 
                 stop = stopDescriptions[i]
-
-
        
-        return W
+        return statistics, stop
 
 
     def estimationTransientDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
