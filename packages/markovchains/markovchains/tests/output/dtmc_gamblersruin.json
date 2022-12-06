@@ -5,8 +5,8 @@
     "executeSteps_15": "[[0, 1/2, 1/2, 0], [1/4, 1/4, 1/4, 1/4], [3/8, 1/8, 1/8, 3/8], [7/16, 1/16, 1/16, 7/16], [15/32, 1/32, 1/32, 15/32], [31/64, 1/64, 1/64, 31/64], [63/128, 1/128, 1/128, 63/128], [127/256, 1/256, 1/256, 127/256], [255/512, 1/512, 1/512, 255/512], [511/1024, 1/1024, 1/1024, 511/1024], [1023/2048, 1/2048, 1/2048, 1023/2048], [2047/4096, 1/4096, 1/4096, 2047/4096], [4095/8192, 1/8192, 1/8192, 4095/8192], [8191/16384, 1/16384, 1/16384, 8191/16384], [16383/32768, 1/32768, 1/32768, 16383/32768], [32767/65536, 1/65536, 1/65536, 32767/65536]]",
     "classifyTransientRecurrent": "[[S2, S3], [S1, S4]]",
     "classifyPeriodicity": {
-        "S4": "1.0000",
-        "S1": "1.0000"
+        "S1": "1.0000",
+        "S4": "1.0000"
     },
     "determineMCType": "ergodic non-unichain",
     "hittingProbabilities": {
@@ -45,7 +45,7 @@
     "estimationExpectedReward_rel": "[[128.1711, 198.4955], 35.1622, 0.2743, 163.3333, 98.2627, Relative Error]",
     "estimationDistribution": "[None, [None, None, None, None], [None, None, None, None], None, None, Number of Paths]",
     "estimationHittingState": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
-    "estimationHittingreward": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
+    "estimationHittingreward": "None",
     "estimationHittingStateSet": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
-    "estimationHittingRewardSet": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]"
+    "estimationHittingRewardSet": "None"
 }

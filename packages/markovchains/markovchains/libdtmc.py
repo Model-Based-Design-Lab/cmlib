@@ -1196,7 +1196,7 @@ class MarkovChain(object):
                 _, simResult = self._markovSimulation([
                     (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
                     (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
-                    (action, None) # stop when hitting state is found
+                    (action, "hit") # stop when hitting state is found
                 ], initialState)
 
                 if simResult=="timeout":
