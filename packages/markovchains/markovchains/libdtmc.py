@@ -1142,6 +1142,30 @@ class MarkovChain(object):
 
     def estimationHittingStateGeneric(self, stop_conditions:TStoppingCriteria, analysisStates: List[str], initialization: Callable, action: Callable[[int,str],bool], onHit: Callable[[Statistics],None], onNoHit: Callable[[Statistics],None])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
+        '''
+        Generic framework for estimating hitting probability, or reward until hit by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+
+        The analysis is performed for all initial states in analysisStates
+
+        initialization is called every time the analysis starts for a new starting state
+
+        action is called every step of the simulation and should return a boolean indicating if the simulation should be stopped because the target set is hit
+
+        after the simulation is finished, onHit is called if the target is hit (the maximum number of steps is not completed in the simulation).
+        onNoHit is called if the target was not hit after the maximum number of steps.
+
+        Returns a tuple:
+        - statistics of the estimated hitting probability
+        - the stop criteria applied as strings
+        '''
+
         confidence = stop_conditions[0]
         max_abError = stop_conditions[1]
         max_reError = stop_conditions[2]
@@ -1167,17 +1191,12 @@ class MarkovChain(object):
             # generic initialization
             initialization()
 
-            # define action to be performed during simulation
-            # specific
-            def _action_hitting(n: int, state: str)->bool:
-                return action(n, state)
-
             while not any(sim_stop_conditions):
 
                 _, simResult = self._markovSimulation([
                     (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
                     (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
-                    (_action_hitting, None) # stop when hitting state is found
+                    (action, None) # stop when hitting state is found
                 ], initialState)
 
                 if simResult=="timeout":
@@ -1206,6 +1225,49 @@ class MarkovChain(object):
                     stop[initialState] = stopDescriptions[i]
                 
         return statistics, stop
+
+
+
+    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+        
+        '''
+        Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+
+        Parameter hitting_state is a state to be hit
+
+        The analysis is performed for all initial states in analysisStates
+        
+        Returns a tuple:
+        - statistics of the estimated hitting probability
+        - the stop criteria applied as strings
+        '''
+
+        def initialization():
+            pass
+
+        def action(n: int, state: str)->bool:
+            # define action to be performed during simulation
+            # suppress initial state for hitting
+            if n == 0:
+                return False
+            return state == hitting_state
+
+        def onHit(s: Statistics):
+            s.addSample(1.0)
+            s.completeCycle()
+
+        def onNoHit(s: Statistics):
+            s.addSample(0.0)
+            s.completeCycle()
+
+        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
 
     def estimationRewardUntilHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
@@ -1256,49 +1318,7 @@ class MarkovChain(object):
 
         return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
 
-    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
-        '''
-        Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
-        stop_conditions is a five-tuple with:
-        - confidence level
-        - absolute error
-        - relative error
-        - path length
-        - nr. cycles
-        - timeout in seconds
 
-        Parameter hitting_state is a state to be hit
-
-        The analysis is performed for all initial states in analysisStates
-        
-        Returns a tuple:
-        - statistics of the estimated hitting probability
-        - the stop criteria applied as strings
-        '''
-
-        def initialization():
-            pass
-
-        def action(n: int, state: str)->bool:
-            # define action to be performed during simulation
-            # suppress initial state for hitting
-            if n == 0:
-                return False
-            return state == hitting_state
-
-        def onHit(s: Statistics):
-            s.addSample(1.0)
-            s.completeCycle()
-
-        def onNoHit(s: Statistics):
-            s.addSample(0.0)
-            s.completeCycle()
-
-        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
-
-
-    # TODO: generalize state hit and ste set hit versions
     def estimationHittingProbabilityStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
@@ -1320,70 +1340,25 @@ class MarkovChain(object):
         - the stop criteria applied as strings
         '''
 
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        nr_of_steps = stop_conditions[3]
-        rounds = stop_conditions[4]
-        seconds = stop_conditions[5]
+        def initialization():
+            pass
 
-        statistics: Dict[str,Statistics] = dict()
-        for s in analysisStates:
-            statistics[s] = Statistics(confidence)
+        # define action to be performed during simulation
+        def action(n: int, state: str)->bool:
+            # suppress initial state for hitting
+            if n == 0:
+                return False
+            return state in hitting_states
 
-        # There are in total four applicable stop conditions for this function
-        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        sim_stop_conditions = [False] * 4
-        stop: Dict[str,str] = dict()
+        def onHit(s: Statistics):
+            s.addSample(1.0)
+            s.completeCycle()
 
-        # Save current time
-        current_time = time.time()
-        for initialState in analysisStates:
-            
-            sim_stop_conditions = [False] * 4
+        def onNoHit(s: Statistics):
+            s.addSample(0.0)
+            s.completeCycle()
 
-            # define action to be performed during simulation
-            def _action_hitting(n: int, state: str)->bool:
-                # suppress initial state for hitting
-                if n == 0:
-                    return False
-                return state in hitting_states
-
-            while not any(sim_stop_conditions):
-
-                _, simResult = self._markovSimulation([
-                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
-                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
-                    (_action_hitting, None) # stop when hitting state is found
-                ], initialState)
-
-                if simResult=="timeout":
-                   return None, "Timeout"
-
-                if simResult=="steps":
-                    # hitting state was not hit
-                    statistics[initialState].addSample(0.0)
-                else:
-                    # hitting state was hit
-                    statistics[initialState].addSample(1.0)
-                statistics[initialState].completeCycle()
-
-                # Check stop conditions
-                abError = statistics[initialState].abError()
-                if abError is not None:
-                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
-                reError = statistics[initialState].reError()
-                if reError is not None:
-                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
-                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
-                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
-
-            # Determine stop condition (if it is added)
-            for i, condition in enumerate(sim_stop_conditions):
-                if condition: 
-                    stop[initialState] = stopDescriptions[i]
-                
-        return statistics, stop
+        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
 
     def estimationRewardUntilHittingStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
@@ -1406,72 +1381,31 @@ class MarkovChain(object):
         - the stop criteria applied as strings
         '''
 
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        nr_of_steps = stop_conditions[3]
-        rounds = stop_conditions[4]
-        seconds = stop_conditions[5]
+        accumulatedReward: float
 
-        statistics: Dict[str,Statistics] = dict()
-        for s in analysisStates:
-            statistics[s] = Statistics(confidence)
-
-        # There are in total four applicable stop conditions for this function
-        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-        sim_stop_conditions = [False] * 4
-        stop: Dict[str,str] = dict()
-
-        # Save current time
-        current_time = time.time()
-        for initialState in analysisStates:
-            
-            sim_stop_conditions = [False] * 4
-
+        def initialization():
+            nonlocal accumulatedReward
             accumulatedReward = 0.0
 
-            # define action to be performed during simulation
-            def _action_hitting(n: int, state: str)->bool:
-                if n==0:
-                    nonlocal accumulatedReward
-                    accumulatedReward += float(self.getReward(state))
-                    # suppress initial state for hitting
-                    return False
-                if state in hitting_states:
-                    return True
-                # reward of hitting state is not counted
+        # define action to be performed during simulation
+        def action(n: int, state: str)->bool:
+            nonlocal accumulatedReward
+            if n==0:
                 accumulatedReward += float(self.getReward(state))
+                # suppress initial state for hitting
                 return False
+            if state in hitting_states:
+                return True
+            # reward of hitting state is not counted
+            accumulatedReward += float(self.getReward(state))
+            return False
 
-            while not any(sim_stop_conditions):
+        def onHit(s: Statistics):
+            s.addSample(accumulatedReward)
+            s.completeCycle()
 
-                _, simResult = self._markovSimulation([
-                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
-                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
-                    (_action_hitting, None) # stop when hitting state is found
-                ], initialState)
+        def onNoHit(s: Statistics):
+            pass
 
-                if simResult=="timeout":
-                   return None, "Timeout"
+        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
 
-                if simResult!="steps":
-                    # hitting state was hit
-                    statistics[initialState].addSample(accumulatedReward)
-                statistics[initialState].completeCycle()
-
-                # Check stop conditions
-                abError = statistics[initialState].abError()
-                if abError is not None:
-                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
-                reError = statistics[initialState].reError()
-                if reError is not None:
-                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
-                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
-                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
-
-            # Determine stop condition (if it is added)
-            for i, condition in enumerate(sim_stop_conditions):
-                if condition: 
-                    stop[initialState] = stopDescriptions[i]
-                
-        return statistics, stop

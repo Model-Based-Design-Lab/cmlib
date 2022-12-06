@@ -1,7 +1,6 @@
 import math
 from statistics import NormalDist
-from typing import List, Optional, Tuple
-import markovchains.utils.linalgebra as linalg
+from typing import List, Optional, Tuple, Union
 
 # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
 # this variable determines the number of results that are required for the markov simulation before the stop conditions
@@ -9,7 +8,7 @@ import markovchains.utils.linalgebra as linalg
 _law: int = 30
 
 
-# TODO: modify terminology: reward to sample ?
+RES_TOO_FEW_SAMPLES = "Cannot be decided, too few samples."
 class Statistics(object):
     '''
     Determine estimated long-run sample average, absolute error, relative error and confidence interval
@@ -22,7 +21,7 @@ class Statistics(object):
     _cumulativeCycleLengths: int                # Sum of cycle lengths
     _cumulativeSamples: float                   # Cumulative sum of samples
     _cumulativeCycleLengthsSq: int              # Sum of cycle length squared
-    _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative reward squared
+    _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative samples squared
     _cumulativeProdCycleLengthSumSamples: float # Sum of cycle product length and cycle
     _meanEst: float                                # Estimated mean
     _stdDevEst: float                            # Estimated variance
@@ -31,12 +30,12 @@ class Statistics(object):
     def __init__(self, confidence: float) -> None:
         '''confidence: confidence level'''
         self._cycleLength = 0                           # Current cycle length
-        self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative reward
+        self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative samples
         self._cycleCount = 0                           # Cycle count (-1 to subtract unfinished cycle beforehand)
         self._cumulativeCycleLengths = 0                # Sum of cycle lengths
-        self._cumulativeSamples = 0.0                   # Sum of cumulative rewards
+        self._cumulativeSamples = 0.0                   # Sum of cumulative samples
         self._cumulativeCycleLengthsSq = 0              # Sum of cycle length squared
-        self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative reward squared
+        self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative samples squared
         self._cumulativeProdCycleLengthSumSamples = 0   # Sum of cycle product length and cycle
         self._meanEst = 0                                  # Estimated mean
         self._stdDevEst = 0                              # Estimated variance
@@ -52,6 +51,11 @@ class Statistics(object):
     def meanEstimate(self)->Optional[float]:
         if self._cycleCount < _law:
             return None
+        return self._meanEst
+
+    def meanEstimateResult(self)->Union[str,float]:
+        if self._cycleCount < _law:
+            return RES_TOO_FEW_SAMPLES
         return self._meanEst
 
     def stdDevEstimate(self)->Optional[float]:

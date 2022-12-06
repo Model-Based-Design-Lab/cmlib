@@ -82,8 +82,6 @@ def printListOfIntervals(l: List[Tuple[float,float]])->str:
     except:
         return str(l)
 
-
-
 def printOptionalInterval(i: Optional[Tuple[float,float]])->str:
     if i is None:
         return "--"
@@ -94,47 +92,6 @@ def printOptionalListOfIntervals(l: Optional[List[Tuple[float,float]]])->str:
         return "--"
     return printListOfIntervals(l)
     
-# def printListFrac(l):
-#     try:
-#         string = "[ "
-#         for item in l:
-#             string += "{} ".format(Frac(item))
-#         return string + "]"
-#     except:
-#         return l
-
-# def printDListFrac(dl):
-#     try:
-#         string = "[\n"
-#         for l in dl:
-#             string += "[ "
-#             for item in l:
-#                 string += "{} ".format(Frac(item))
-#             string = string + "] \n"
-#         return string[:-2] + "\n]"
-#     except:
-#         return dl
-
-
-
-# def printDList(dl:List[List[float]]):
-#     try:
-#         string = "["
-#         for l in dl:
-#             string += "["
-#             for item in l:
-#                 string += "{:.4f}, ".format(item)
-#             string = string[:-2] + "], "
-#         return string[:-2] + "]"
-#     except:
-#         return dl
-
-# def print4F(nr: float):
-#     try:
-#         return "{:.4f}".format(nr)
-#     except:
-#         return "{}".format(nr)
-
 def optionalFloatOrStringToString(nr: Optional[Union[str,float]]):
     if nr is None:
         return "--"

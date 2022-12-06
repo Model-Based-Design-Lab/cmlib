@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, TVector
-from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
+from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
 import markovchains.utils.linalgebra as linalg
 
 
@@ -300,7 +300,6 @@ def process(args, dsl):
         print("{}".format(trace))
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
-        # TODO: warn if it is not a uni-chain?
         setSeed(args, M)
         M.setRecurrentState(args.targetState) # targetState is allowed to be None
         C = requireStopCriteria(args)
@@ -310,7 +309,7 @@ def process(args, dsl):
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.meanEstimate())))
+            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
             print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
             print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
             print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
@@ -345,7 +344,7 @@ def process(args, dsl):
         C = requireStopCriteria(args)
         statistics, stop = M.estimationExpectedReward(C, N)
         print("Simulation termination reason: {}".format(stop))
-        print("\tExpected reward: {:.4f}".format(statistics.meanEstimate()))
+        print("\tExpected reward: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
         print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
         print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
         print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
@@ -380,7 +379,7 @@ def process(args, dsl):
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    t, s, optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()),
+                    t, s, optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()),
                     optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                 ))
                 
@@ -396,12 +395,12 @@ def process(args, dsl):
             print("Estimated cumulative reward until hitting {} are:".format(s))
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if statistics.meanEstimate() is None:
-                    print("From state {}: Cannot be decided".format(S[i]))
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                     ))
     
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
@@ -416,12 +415,12 @@ def process(args, dsl):
             print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if statistics.meanEstimate() is None:
-                    print("From state {}: Cannot be decided".format(S[i]))
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimate()),
+                        S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimateResult()),
                         printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                 ))
 
@@ -437,12 +436,12 @@ def process(args, dsl):
             print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if statistics.meanEstimate() is None:
-                    print("From state {}: Cannot be decided".format(S[i]))
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimate()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
                     ))
                     
 if __name__ == "__main__":
