@@ -2,18 +2,17 @@
 '''Operations on Markov chains '''
 
 import argparse
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from markovchains.libdtmc import MarkovChain, TStoppingCriteria
 from markovchains.utils.graphs import plotSvg
-from markovchains.utils.linalgebra import matPower
-from markovchains.utils.utils import sortNames, printList, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printInterval, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
+from markovchains.utils.linalgebra import matPower, TVector
+from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
 import markovchains.utils.linalgebra as linalg
 
 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
-
 
 def main():
 
@@ -250,12 +249,12 @@ def process(args, dsl):
         prettyPrintMatrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
-        dist = M.limitingDistribution()
+        lDist: TVector = M.limitingDistribution()
 
         print ("State vector:")
         printListOfStrings(M.states())
         print ("Limiting Distribution:")
-        prettyPrintVector(dist)
+        prettyPrintVector(lDist)
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
         mcType = M.determineMCType()
@@ -302,7 +301,8 @@ def process(args, dsl):
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
         setSeed(args, M)
-        M.setRecurrentState(args.targetState) # targetState is allowed to be None
+        if args.targetState:
+            M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         statistics, stop = M.longRunExpectedAverageReward(C)
         if statistics.cycleCount() == 0:
@@ -310,27 +310,32 @@ def process(args, dsl):
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.sanitizedEstimatedMean())))
-            print("\tConfidence interval: {}".format(printInterval(statistics.sanitizedConfidenceInterval())))
-            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedAbsoluteError())))
-            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.sanitizedRelativeError())))
+            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
+            print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
+            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
+            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
             print("\tNumber of cycles: {}".format(statistics.cycleCount()))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         setSeed(args, M)
-        M.setRecurrentState(args.targetState) # targetState is allowed to be None
+        if args.targetState:
+            M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         distributionStatistics, stop = M.cezaroLimitDistribution(C)
         
-        if limit is None:
+        if distributionStatistics is None:
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
-            print("Cezaro limit distribution: {}".format(printList(limit)))
-            print("Number of cycles: {}\n".format(n))
-            for i, l in enumerate(limit):
-                print("[{}]: {:.4f}".format(i, l))
-                print("\tConfidence interval: {}".format(printOptionalInterval(interval[i])))
+            print("Cezaro limit distribution: {}".format(printOptionalList(distributionStatistics.pointEstimates(), "Could not be determined")))
+            print("Number of cycles: {}\n".format(distributionStatistics.cycleCount()))
+            dist: List[float] = distributionStatistics.pointEstimates()  # type: ignore
+            intervals = distributionStatistics.confidenceIntervals()
+            abError = distributionStatistics.abError()
+            reError = distributionStatistics.reError()
+            for i in range(len(M.states())):
+                print("[{}]: {:.4f}".format(i, dist[i]))
+                print("\tConfidence interval: {}".format(printOptionalInterval(None if intervals is None else intervals[i])))
                 print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
                 print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
                 print("\n")
@@ -339,86 +344,106 @@ def process(args, dsl):
         setSeed(args, M)
         N = requireNumberOfSteps(args)
         C = requireStopCriteria(args)
-        u, interval, abError, reError, nr_of_paths, stop = M.estimationExpectedReward(C, N)
+        statistics, stop = M.estimationExpectedReward(C, N)
         print("Simulation termination reason: {}".format(stop))
-        print("\tExpected reward: {:.4f}".format(u))
-        print("\tConfidence interval: {}".format(printOptionalInterval(interval)))
-        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
-        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
-        print("\tNumber of paths: ", nr_of_paths)
+        print("\tExpected reward: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
+        print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
+        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
+        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
+        print("\tNumber of paths: ", statistics.cycleCount())
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
         setSeed(args, M)
         states = M.states()
         N = requireNumberOfSteps(args)
         C = requireStopCriteria(args)
-        distribution, intervals, abError, reError, nr_of_paths, stop = M.estimationTransientDistribution(C, N)
+        distributionStatistics, stop = M.estimationTransientDistribution(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
-        print("\tDistribution: {}".format(printOptionalList(distribution)))
-        print("\tConfidence intervals: {}".format(printOptionalListOfIntervals(intervals)))
-        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError)))
-        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError)))
-        print("\tNumber of paths: ", nr_of_paths)
+        print("\tDistribution: {}".format(printOptionalList(distributionStatistics.pointEstimates())))
+        print("\tConfidence intervals: {}".format(printOptionalListOfIntervals(distributionStatistics.confidenceIntervals())))
+        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxAbError())))
+        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxReError())))
+        print("\tNumber of paths: ", distributionStatistics.cycleCount())
 
-    # TODO: for None use "Cannot be decided"
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
         s = requireTargetState(M, args)
         C = requireStopCriteria(args)
-        statistics, stop = M.estimationHittingProbabilityState(C, s, S)
-        print("Estimated hitting probabilities for {} are:".format(s))
-        for i in range(len(hitting_probability)):
-            print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                S[i], s, optionalFloatOrStringToString(hitting_probability[i]), printOptionalInterval(intervals[i]),
-                optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
-            ))
+        statisticsDict, stop = M.estimationHittingProbabilityState(C, s, S)
+        if statisticsDict is None:
+            print("A timeout has occurred during the analysis.")
+        else:
+            dStop: Dict[str,str] = stop  # type: ignore
+            print("Estimated hitting probabilities for {} are:".format(s))
+            for i, t in enumerate(S):
+                statistics = statisticsDict[t]
+                print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
+                    t, s, optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()),
+                    optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                ))
                 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
         s = requireTargetState(M, args)
         C = requireStopCriteria(args)
-        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationRewardUntilHittingState(C, s, S)
-        print("Estimated cumulative reward until hitting {} are:".format(s))
-        for i in range(len(cumulative_reward)):
-            if type(cumulative_reward[i]) is str:
-                print("From state {}: {}".format(S[i], cumulative_reward[i]))
-            else:
-                print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    S[i], optionalFloatOrStringToString(cumulative_reward[i]), printOptionalInterval(intervals[i]),   
-                    optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
-                ))
+        statisticsDict, stop = M.estimationRewardUntilHittingState(C, s, S)
+        if statisticsDict is None:
+            print("A timeout has occurred during the analysis.")
+        else:
+            print("Estimated cumulative reward until hitting {} are:".format(s))
+            for i, t in enumerate(S):
+                statistics = statisticsDict[t]
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
+                else:
+                    dStop: Dict[str,str] = stop  # type: ignore
+                    print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                    ))
     
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
         s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
-        hitting_probability,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationHittingProbabilityStateSet(C, s, S)
-        print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
-        for i in range(len(hitting_probability)):
-            print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                S[i], ', '.join(s), optionalFloatOrStringToString(hitting_probability[i]),
-                printOptionalInterval(intervals[i]), optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
-            ))
+        statisticsDict, stop = M.estimationHittingProbabilityStateSet(C, s, S)
+        if statisticsDict is None:
+            print("A timeout has occurred during the analysis.")
+        else:
+            print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
+            for i, t in enumerate(S):
+                statistics = statisticsDict[t]
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
+                else:
+                    dStop: Dict[str,str] = stop  # type: ignore
+                    print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
+                        S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimateResult()),
+                        printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                ))
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
         s = requireTargetStateSet(M, args)
         C = requireStopCriteria(args)
-        cumulative_reward,nr_of_paths,abErrors,reErrors,intervals,stop = M.estimationRewardUntilHittingStateSet(C, s, S)
-        print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
-        for i in range(len(cumulative_reward)):
-            if type(cumulative_reward[i]) is str:
-                print("From state {}: {}".format(S[i], cumulative_reward[i]))
-            else:
-                print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    S[i], optionalFloatOrStringToString(cumulative_reward[i]), printOptionalInterval(intervals[i]), 
-                    optionalFloatOrStringToString(abErrors[i]), optionalFloatOrStringToString(reErrors[i]), nr_of_paths[i], stop[i]
-                ))
-                
+        statisticsDict, stop = M.estimationRewardUntilHittingStateSet(C, s, S)
+        if statisticsDict is None:
+            print("A timeout has occurred during the analysis.")
+        else:
+            print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
+            for i, t in enumerate(S):
+                statistics = statisticsDict[t]
+                if not isinstance(statistics.meanEstimateResult(), float):
+                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
+                else:
+                    dStop: Dict[str,str] = stop  # type: ignore
+                    print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
+                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
+                    ))
+                    
 if __name__ == "__main__":
     main()

@@ -1,7 +1,6 @@
 import math
 from statistics import NormalDist
-from typing import List, Optional, Tuple
-import markovchains.utils.linalgebra as linalg
+from typing import List, Optional, Tuple, Union
 
 # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
 # this variable determines the number of results that are required for the markov simulation before the stop conditions
@@ -9,7 +8,7 @@ import markovchains.utils.linalgebra as linalg
 _law: int = 30
 
 
-# TODO: modify terminology: reward to sample ?
+RES_TOO_FEW_SAMPLES = "Cannot be decided, too few samples."
 class Statistics(object):
     '''
     Determine estimated long-run sample average, absolute error, relative error and confidence interval
@@ -22,7 +21,7 @@ class Statistics(object):
     _cumulativeCycleLengths: int                # Sum of cycle lengths
     _cumulativeSamples: float                   # Cumulative sum of samples
     _cumulativeCycleLengthsSq: int              # Sum of cycle length squared
-    _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative reward squared
+    _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative samples squared
     _cumulativeProdCycleLengthSumSamples: float # Sum of cycle product length and cycle
     _meanEst: float                                # Estimated mean
     _stdDevEst: float                            # Estimated variance
@@ -31,12 +30,12 @@ class Statistics(object):
     def __init__(self, confidence: float) -> None:
         '''confidence: confidence level'''
         self._cycleLength = 0                           # Current cycle length
-        self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative reward
+        self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative samples
         self._cycleCount = 0                           # Cycle count (-1 to subtract unfinished cycle beforehand)
         self._cumulativeCycleLengths = 0                # Sum of cycle lengths
-        self._cumulativeSamples = 0.0                   # Sum of cumulative rewards
+        self._cumulativeSamples = 0.0                   # Sum of cumulative samples
         self._cumulativeCycleLengthsSq = 0              # Sum of cycle length squared
-        self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative reward squared
+        self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative samples squared
         self._cumulativeProdCycleLengthSumSamples = 0   # Sum of cycle product length and cycle
         self._meanEst = 0                                  # Estimated mean
         self._stdDevEst = 0                              # Estimated variance
@@ -53,6 +52,16 @@ class Statistics(object):
         if self._cycleCount < _law:
             return None
         return self._meanEst
+
+    def meanEstimateResult(self)->Union[str,float]:
+        if self._cycleCount < _law:
+            return RES_TOO_FEW_SAMPLES
+        return self._meanEst
+
+    def stdDevEstimate(self)->Optional[float]:
+        if self._cycleCount < _law:
+            return None
+        return self._stdDevEst
 
     def updateVarianceEstimate(self)->None:
         # Compute S_M following the equation below Eq. B.67 of the reader
@@ -87,17 +96,14 @@ class Statistics(object):
     def cycleCount(self)->int:
         return self._cycleCount
 
-    def abError(self, noWarmup: bool = False)->Optional[float]:
+    def abError(self)->Optional[float]:
         '''
         Return estimated absolute error.
         If no estimate can be given, None is returned
-        If noWarmup = True is provided, then an estimate is returned, even if the minimum number of cycles is not yet achieved.
         '''
 
-        # TODO: check if noWarmup is actually used
-
         # check if we have collected sufficient cycles 
-        if not noWarmup and (self._cycleCount < _law):
+        if self._cycleCount < _law:
             return None
         
         if self._cycleCount == 0:
@@ -110,17 +116,17 @@ class Statistics(object):
         else:
             return None
 
-    def reError(self, noWarmup: bool = False)->Optional[float]:
+    def reError(self)->Optional[float]:
         '''Return estimated relative error'''
 
         # check if we have collected sufficient cycles 
-        if not noWarmup and (0 <= self._cycleCount < _law):
+        if 0 <= self._cycleCount < _law:
             return None
 
         if self._cycleCount == 0:
             return None
 
-        absError = self.abError(noWarmup)
+        absError = self.abError()
         if absError is None:
             return None
 
@@ -171,92 +177,40 @@ class DistributionStatistics(object):
         
         return vRes
 
-    def abError(self, noWarmup: bool = False)->List[Optional[float]]:
+    def stdDevEstimates(self)->Optional[List[float]]:
+        res = [s.stdDevEstimate() for s in self._stateEstimators]
+        if None in res:
+            return None
+        vRes: List[float] = res  # type: ignore        
+        return vRes
+
+    def abError(self)->List[Optional[float]]:
         '''Return estimated absolute errors'''
-        return [s.abError(noWarmup) for s in self._stateEstimators]
+        return [s.abError() for s in self._stateEstimators]
 
-    def reError(self, noWarmup: bool = False)->List[Optional[float]]:
+    def maxAbError(self)->Optional[float]:
+        '''Return maximum estimated absolute error'''
+        res = [s.abError() for s in self._stateEstimators]
+        if any([e is None for e in res]):
+            return None
+        vRes: List[float] = res  # type: ignore
+        return max(vRes)
+
+    def reError(self)->List[Optional[float]]:
         '''Return estimated relative errors'''
-        return [s.reError(noWarmup) for s in self._stateEstimators]
+        return [s.reError() for s in self._stateEstimators]
 
-    def confidenceIntervals(self)->List[Optional[Tuple[float,float]]]:
-        return [s.confidenceInterval() for s in self._stateEstimators]
+    def maxReError(self)->Optional[float]:
+        '''Return maximum estimated relative error'''
+        res = [s.reError() for s in self._stateEstimators]
+        if any([e is None for e in res]):
+            return None
+        vRes: List[float] = res  # type: ignore
+        return max(vRes)
 
-
-# what is this for?
-
-class WelfordWiki(object):
-    '''
-    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    '''
-
-    def __init__(self) -> None:
-        self._count = 0
-        self._mean = 0.0
-        self._M2 = 0.0
-
-    def update(self, newValue):
-        # For a new value newValue, compute the new count, new mean, the new M2.
-        # mean accumulates the mean of the entire dataset
-        # M2 aggregates the squared distance from the mean
-        # count aggregates the number of samples seen so far
-        self._count += 1
-        delta = newValue - self._mean
-        self._mean += delta / self._count
-        delta2 = newValue - self._mean
-        self._M2 += delta * delta2
-
-    def finalize(self, existingAggregate):
-        # Retrieve the mean, variance and sample variance from an aggregate
-        if self._count < 2:
-            return float("nan")
-        else:
-            (mean, variance, sampleVariance) = (mean, M2 / count, M2 / (count - 1))
-            return (mean, variance, sampleVariance)
-
-class Welford(object):
-
-    def __init__(self, confidence: float, stopDescriptions: List[str]) -> None:
-
-        # confidence level
-        self._c = NormalDist().inv_cdf((1+confidence)/2)
-
-        self._interval: Tuple[float,float] = (0, 0)
-        self._abErrorVal: float = -1.0
-        self._reErrorVal: float = -1.0
-        self._mean: float = 0.0
-        self._count: int = 0
-        self._M2: float = 0.0 # Welford's algorithm variable
-
-        # There are in total four applicable stop conditions for this function
-        self._y = 0.0
-
-    def sample(self, v: float)->None:
-        self._y = v
-        # Execute Welford's algorithm to compute running standard derivation and mean
-        self._count += 1
-        d1 = self._y - self._mean
-        self._mean += d1/self._count
-        d2 = self._y - self._mean
-        self._M2 += d1 * d2
-        self._Sm = math.sqrt(self._M2/float(self._count))
-
-    def getNumberOfSamples(self)->int:
-        return self._count
-
-    def getErrorVals(self)->Tuple[float,float]:
-
-        # Compute absolute and relative errors
-        self._abErrorVal = abs((self._c*self._Sm) / math.sqrt(float(self._count)))
-        self._d = self._mean-self._abErrorVal
-        if self._d != 0.0:
-            self._reErrorVal = abs(self._abErrorVal/self._d)
-
-        # interval calculation
-        self._interval = (self._mean - self._abErrorVal, self._mean + self._abErrorVal)
-
-        # Do not evaluate abError/reError in the first _law cycles:
-        if self._count < _law and self._count != rounds: # (if rounds is less than 10 we still want an abError and reError)
-            self._abErrorVal = -1.0
-            self._reErrorVal = -1.0
-        return self._abError, self._reError
+    def confidenceIntervals(self)->Optional[List[Tuple[float,float]]]:
+        res = [s.confidenceInterval() for s in self._stateEstimators]
+        if any([i is None for i in res]):
+            return None
+        vRes: List[Tuple[float,float]] = res  # type: ignore
+        return vRes

@@ -45,7 +45,15 @@ def print4F(data):
             return ""
             
     else:
-        if type(data) == bool or type(data) == str or data == None or type(data) == Fraction:
+        if not (type(data) == int or type(data) == float):
+            try:
+                xyz = "{}".format(data)
+            except:
+                print("***")
+                print(type(data))
+                print(data)
+                return "XYZ"
+
             return "{}".format(data)
         else:
             return "{:.4f}".format(data)
