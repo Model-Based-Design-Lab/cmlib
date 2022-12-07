@@ -301,7 +301,8 @@ def process(args, dsl):
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
         setSeed(args, M)
-        M.setRecurrentState(args.targetState) # targetState is allowed to be None
+        if args.targetState:
+            M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         statistics, stop = M.longRunExpectedAverageReward(C)
         if statistics.cycleCount() == 0:
@@ -317,7 +318,8 @@ def process(args, dsl):
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         setSeed(args, M)
-        M.setRecurrentState(args.targetState) # targetState is allowed to be None
+        if args.targetState:
+            M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         distributionStatistics, stop = M.cezaroLimitDistribution(C)
         
@@ -364,7 +366,6 @@ def process(args, dsl):
         print("\tRelative error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxReError())))
         print("\tNumber of paths: ", distributionStatistics.cycleCount())
 
-    # TODO: for None use "Cannot be decided"
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)
         S = setStartingStateSet(args, M)

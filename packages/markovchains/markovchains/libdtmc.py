@@ -764,7 +764,7 @@ class MarkovChain(object):
         return self._states[0]
 
     def randomTransition(self, s: str)->str:
-        '''Determine random transition.'''
+        '''Determine random transition from state s.'''
         # calculate random value for state transition
         r = random.random()
         # set probability count to zero
@@ -779,14 +779,17 @@ class MarkovChain(object):
 
 
     def setRecurrentState(self, state:Optional[str]):
-        '''Set the recurrent state for simulation. If the given state is not a recurrent state. It is set to None.'''
+        '''
+        Set the recurrent state for simulation. If the given state is not a recurrent state, an exception is raised.
+        If state is None, recurrent state is cleared.
+        '''
         if state is None:
             self._recurrent_state = None
         else:
             if self._isRecurrentState(state):
                 self._recurrent_state = state
             else:
-                self._recurrent_state = None
+                raise DTMCException("{} is not a recurrent state.".format(state))
 
 
     # type for generic actions to be executed during a random simulation
@@ -797,6 +800,7 @@ class MarkovChain(object):
         Simulate Markov Chain. 
         actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends. 
         The callable should take two arguments: n: int, the number of performed simulation steps before this one, and state: str, the current state of the Markov Chain in the simulation. It should return a Boolean value indicating if the simulation should be ended.
+        An optional forced initial state can be provided. If no initial state is provided, it is selected randomly according to the initial state distribution.
         Returns a pair n, stop, consisting of the total number of steps simulated and the optional string describing the reason for stopping.
         '''
         # list for stop condition status
@@ -829,21 +833,10 @@ class MarkovChain(object):
         return n, stop
 
     def _isRecurrentState(self, state: str)->bool:
-        '''Check if state is a recurrent state.'''
+        '''Check if state is a recurrent state. Note that this method may be time consuming as an analysis is performed every time it is called.'''
         # recurrent state thats encountered in the random state_sequence dictionary
         _, rClasses = self.classifyTransientRecurrent()
         return state in rClasses
-
-    def _cycleUpdate(self, state: str, statistics: Statistics)->int:
-        '''Called during simulation on visiting the recurrent state. Update statistics. Returns current cycle count.'''        
-        statistics.completeCycle()
-        return statistics.cycleCount()
-
-    def _cycleUpdateCezaro(self, state: str, distributionStatistics: DistributionStatistics)->int:
-        '''Called during simulation. Update statistics. Returns current cycle count.'''
-
-        distributionStatistics.completeCycle()
-        return distributionStatistics.cycleCount()
 
     def markovTrace(self, rounds: int)->List[str]:
         '''Simulate Markov Chain for the given number of rounds (steps).
@@ -862,8 +855,8 @@ class MarkovChain(object):
 
         return state_list
 
-    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
-        '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
+    def genericEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
+        '''generic estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -895,21 +888,17 @@ class MarkovChain(object):
         recurrentState: Optional[str] = None
         recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
 
-        def _action_AbsErr(n:int, state:str)->bool:
+        def _action_AbsErr(_n:int, _state:str)->bool:
             c = statistics.abError()
             if c is None:
                 return False
             return max_abError > 0 and c <= max_abError
             
-        def _action_RelErr(n:int, state:str)->bool:
+        def _action_RelErr(_n:int, _state:str)->bool:
             c = statistics.reError()
             if c is None:
                 return False
             return max_reError > 0 and c <= max_reError
-
-        def _action_addSample(n:int, state:str)->bool:
-            statistics.addSample(float(self._rewards[state]))
-            return False
             
         def _action_CycleUpdate(n:int, state:str)->bool:
             nonlocal recurrentState, recurrentStates
@@ -918,24 +907,55 @@ class MarkovChain(object):
                     recurrentState = state
             if state != recurrentState:
                 return False
-            c = self._cycleUpdate(state, statistics)
-            return 0 <= nr_of_cycles <= c
+            statistics.completeCycle()
+            return 0 <= nr_of_cycles <= statistics.cycleCount()
+
+        # TODO: suppress collection of data until first hit of recurrent state?
+        def _action_update(n: int, state: str)->bool:
+            return action_update(statistics, n, state)
 
         # Save current time
         current_time = time.time()
         _, stop = self._markovSimulation([
             (lambda n, _: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda _n, _state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
-            (_action_addSample, ""),
+            (_action_update, None),
             (_action_CycleUpdate, "Number of cycles"), # check cycle completed
             (_action_AbsErr, "Absolute Error"), # check absolute error
             (_action_RelErr, "Relative Error") # check relative error
         ])
         return statistics, stop
 
+
+    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
+        '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - Statistics with:
+            - confidence interval
+            - estimate of the absolute error
+            - estimate of the relative error
+            - point estimate of the mean
+            - point estimate of the variance
+        - the stop criterion applied as a string
+        '''
+        def _action_addSample(statistics: Statistics, _n:int, state:str)->bool:
+            statistics.addSample(float(self._rewards[state]))
+            return False
+
+        return self.genericEstimationFromRecurrentCycles(stop_conditions, _action_addSample)
+
+
     def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
         '''
-        Estimate the Cesaro limit distribution by simulation using the provided stop_conditions.
+        Estimate the Cezaro limit distribution by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -964,15 +984,18 @@ class MarkovChain(object):
 
         distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
 
-        def _action_number_of_cycles(n: int, state:str)->bool:
-            c = self._cycleUpdateCezaro(state, distributionStatistics)
-            return 0 <= nr_of_cycles <= c
+        def _action_number_of_cycles(_n: int, _state:str)->bool:
+            # TODO: is it correct tom complete cycle here? Next is not independent?
+            # Shouldn't we end cycle on recurent state?
+            # also: skip until first hit of recurrent state
+            distributionStatistics.completeCycle()
+            return 0 <= nr_of_cycles <= distributionStatistics.cycleCount()
 
-        def _action_visitState(n:int, state:str)->bool:
+        def _action_visitState(_n:int, state:str)->bool:
             distributionStatistics.visitState(self._states.index(state))
             return False
 
-        def _action_abError(n: int, state:str)->bool:
+        def _action_abError(_n: int, _state:str)->bool:
             c = distributionStatistics.abError()
             if c is None:
                 return False
@@ -981,7 +1004,7 @@ class MarkovChain(object):
             vc : List[float] = c  # type: ignore
             return max_abError > 0 and max(vc) <= max_abError
 
-        def _action_reError(n: int, state:str)->bool:
+        def _action_reError(_n: int, _state:str)->bool:
             c = distributionStatistics.reError()
             if c is None:
                 return False
@@ -1101,7 +1124,7 @@ class MarkovChain(object):
         
         currentState: Optional[str] = None
 
-        def _action_trackState(n: int, state: str)-> bool:
+        def _action_trackState(_n: int, state: str)-> bool:
             nonlocal currentState
             currentState = state
             return True
