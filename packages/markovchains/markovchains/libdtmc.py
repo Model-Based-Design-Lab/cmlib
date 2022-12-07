@@ -855,7 +855,7 @@ class MarkovChain(object):
 
         return state_list
 
-    def genericEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
+    def genericLongRunSampleEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
         '''generic estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -910,8 +910,10 @@ class MarkovChain(object):
             statistics.completeCycle()
             return 0 <= nr_of_cycles <= statistics.cycleCount()
 
-        # TODO: suppress collection of data until first hit of recurrent state?
         def _action_update(n: int, state: str)->bool:
+            if recurrentState is None:
+                # suppress until the first recurrent state is passed.
+                return False
             return action_update(statistics, n, state)
 
         # Save current time
@@ -926,9 +928,8 @@ class MarkovChain(object):
         ])
         return statistics, stop
 
-
-    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
-        '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
+    def genericLongRunDistributionEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[DistributionStatistics,int,str],bool])->Tuple[DistributionStatistics, Optional[str]]:
+        '''generic long-run distribution estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -938,39 +939,12 @@ class MarkovChain(object):
         - timeout in seconds
         
         Returns a tuple: each of the results can be None if they could not be determined.
-        - Statistics with:
+        - DistributionStatistics with:
             - confidence interval
             - estimate of the absolute error
             - estimate of the relative error
             - point estimate of the mean
             - point estimate of the variance
-        - the stop criterion applied as a string
-        '''
-        def _action_addSample(statistics: Statistics, _n:int, state:str)->bool:
-            statistics.addSample(float(self._rewards[state]))
-            return False
-
-        return self.genericEstimationFromRecurrentCycles(stop_conditions, _action_addSample)
-
-
-    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
-        '''
-        Estimate the Cezaro limit distribution by simulation using the provided stop_conditions.
-        stop_conditions is a five-tuple with:
-        - confidence level
-        - absolute error
-        - relative error
-        - path length
-        - nr. cycles
-        - timeout in seconds
-        
-        Returns a tuple:
-        - DistributionStatistics with:
-            - List of point estimates of the probabilities of the limit distribution
-            - List of confidence intervals
-            - List of estimates of the absolute errors
-            - List of estimates of the relative errors
-            - number of cycles 
         - the stop criterion applied as a string
         '''
 
@@ -984,16 +958,24 @@ class MarkovChain(object):
 
         distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
 
-        def _action_number_of_cycles(_n: int, _state:str)->bool:
-            # TODO: is it correct tom complete cycle here? Next is not independent?
-            # Shouldn't we end cycle on recurent state?
-            # also: skip until first hit of recurrent state
+        recurrentState: Optional[str] = None
+        recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
+
+        def _action_CycleUpdate(n:int, state:str)->bool:
+            nonlocal recurrentState, recurrentStates
+            if recurrentState is None:
+                if state in recurrentStates:
+                    recurrentState = state
+            if state != recurrentState:
+                return False
             distributionStatistics.completeCycle()
             return 0 <= nr_of_cycles <= distributionStatistics.cycleCount()
 
-        def _action_visitState(_n:int, state:str)->bool:
-            distributionStatistics.visitState(self._states.index(state))
-            return False
+        def _action_visitState(n:int, state:str)->bool:
+            if recurrentState is None:
+                # suppress until the first recurrent state is passed.
+                return False
+            return action_update(distributionStatistics, n, state)
 
         def _action_abError(_n: int, _state:str)->bool:
             c = distributionStatistics.abError()
@@ -1019,18 +1001,72 @@ class MarkovChain(object):
             (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
             (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
             (_action_visitState, ""),
-            (_action_number_of_cycles, "Number of cycles"), # find first recurrent state
+            (_action_CycleUpdate, "Number of cycles"), # find first recurrent state
             (_action_abError, "Absolute Error"), # Calculate smallest absolute error
             (_action_reError, "Relative Error") # Calculate smallest relative error
         ])
         
         return distributionStatistics, stop
 
-    def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
+
+    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
+        '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - Statistics with:
+            - confidence interval
+            - estimate of the absolute error
+            - estimate of the relative error
+            - point estimate of the mean
+            - point estimate of the variance
+        - the stop criterion applied as a string
+        '''
+        def _action_addSample(statistics: Statistics, _n:int, state:str)->bool:
+            statistics.addSample(float(self._rewards[state]))
+            return False
+
+        return self.genericLongRunSampleEstimationFromRecurrentCycles(stop_conditions, _action_addSample)
+
+    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
+        '''
+        Estimate the Cezaro limit distribution by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple:
+        - DistributionStatistics with:
+            - List of point estimates of the probabilities of the limit distribution
+            - List of confidence intervals
+            - List of estimates of the absolute errors
+            - List of estimates of the relative errors
+            - number of cycles 
+        - the stop criterion applied as a string
+        '''
+
+        def action_visitState(s: DistributionStatistics, n:int, state:str)->bool:
+            s.visitState(self._states.index(state))
+            return False
+
+        return self.genericLongRunDistributionEstimationFromRecurrentCycles(stop_conditions, action_visitState)
+
+
+    def estimationGenericTransientSample(self, stop_conditions:TStoppingCriteria, getSample: Callable[[str],float], nr_of_steps)->Tuple[
         Statistics,
         Optional[str]]:
         '''
-        Estimate the transient expected reward after nr_of_steps by simulation using the provided stop_conditions.
+        Estimate the transient sample after nr_of_steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1056,7 +1092,7 @@ class MarkovChain(object):
 
         def _action_lastStateReward(n: int, state: str)->bool:
             if n == nr_of_steps:
-                statistics.addSample(float(self._rewards[state]))
+                statistics.addSample(getSample(state))
                 statistics.completeCycle()
             return False
 
@@ -1088,6 +1124,26 @@ class MarkovChain(object):
                 stop = stopDescriptions[i]
        
         return statistics, stop
+
+    def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
+        Statistics,
+        Optional[str]]:
+        '''
+        Estimate the transient expected reward after nr_of_steps by simulation using the provided stop_conditions.
+        stop_conditions is a five-tuple with:
+        - confidence level
+        - absolute error
+        - relative error
+        - path length
+        - nr. cycles
+        - timeout in seconds
+        
+        Returns a tuple: each of the results can be None if they could not be determined.
+        - statistics of the expected reward 
+        - the stop criterion applied as a string
+        '''
+
+        return self.estimationGenericTransientSample(stop_conditions, lambda state: float(self.getReward(state)), nr_of_steps)
 
 
     def estimationTransientDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
