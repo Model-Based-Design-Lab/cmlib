@@ -3,9 +3,11 @@
 from functools import reduce
 from math import floor, gcd, log
 from string import digits
+import time
 from fractions import Fraction
-from typing import Iterable, List, Optional, Set, Tuple, Union
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 import markovchains.utils.linalgebra as linalg
+from markovchains.utils.statistics import StopConditions
 
 NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
@@ -113,7 +115,7 @@ def printListOfStrings(s: List[str]):
     print ("[{}]\n".format(", ".join(s)))
 
 
-def stopCriteria(c: List[float])->List[float]:
+def stopCriteria(c: List[float])->StopConditions:
     # Format stop criteria: 
     stop = '''
     Steady state behavior = 
@@ -150,7 +152,7 @@ def stopCriteria(c: List[float])->List[float]:
         s = "No stop conditions inside -c argument, simulation never terminating"
         error(s)
     
-    return c
+    return StopConditions(c[0],c[1], c[2], int(c[3]), int(c[4]), c[5])
 
 def nrOfSteps(ns: int)->int:
     if ns == None:
@@ -407,3 +409,24 @@ def printFractionVector(v: List[Fraction]):
         return
     w: Optional[int] = determineMaxFractionWidthVector(v)
     print(vectorToFractionString(v, w))
+
+class TimeoutTimer(object):
+    
+    _secondsTimeout: float
+    _initialTime: float
+    _active: bool
+
+    def __init__(self, secondsTimeOut: float) -> None:
+        self._secondsTimeout = secondsTimeOut
+        self._active = secondsTimeOut > 0.0
+        self._initialTime = time.time()
+
+    def isExpired(self)->bool:
+        if self._active:
+            return self._secondsTimeout <= time.time() - self._initialTime
+        return False
+
+    def simAction(self)-> Callable[[int,str],bool]:
+        if self._active:
+            return lambda n, state: self._secondsTimeout <= time.time() - self._initialTime
+        return lambda n, state: False

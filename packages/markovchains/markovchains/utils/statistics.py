@@ -116,6 +116,12 @@ class Statistics(object):
         else:
             return None
 
+    def abErrorReached(self, maxAbError: float)-> bool: 
+        abErrorVal = self.abError()
+        if abErrorVal is not None:
+            return  (0.0 <= abErrorVal <= maxAbError)
+        return False
+
     def reError(self)->Optional[float]:
         '''Return estimated relative error'''
 
@@ -135,12 +141,20 @@ class Statistics(object):
 
         return absError / (abs(self._meanEst) - absError)
 
+    def reErrorReached(self, maxReError: float)-> bool: 
+        reErrorVal = self.reError()
+        if reErrorVal is not None:
+            return  (0.0 <= reErrorVal <= maxReError)
+        return False
+
     def confidenceInterval(self)->Optional[Tuple[float,float]]:
         # Compute confidence interval
         abError = self.abError()
         if abError is None:
             return None
         return (self._meanEst - abError, self._meanEst + abError)
+
+
 
 
 class DistributionStatistics(object):
@@ -196,6 +210,13 @@ class DistributionStatistics(object):
         vRes: List[float] = res  # type: ignore
         return max(vRes)
 
+    def abErrorReached(self, maxAbError: float)->bool:
+        abError = self.abError()
+        if not (None in abError):
+            vAbError: List[float] = abError  # type: ignore
+            return 0 <= max(vAbError) <= maxAbError
+        return False
+
     def reError(self)->List[Optional[float]]:
         '''Return estimated relative errors'''
         return [s.reError() for s in self._stateEstimators]
@@ -208,9 +229,33 @@ class DistributionStatistics(object):
         vRes: List[float] = res  # type: ignore
         return max(vRes)
 
+    def reErrorReached(self, maxReError: float)->bool:
+        reError = self.reError()
+        if not (None in reError):
+            vReError: List[float] = reError  # type: ignore
+            return 0 <= max(vReError) <= maxReError
+        return False
+
     def confidenceIntervals(self)->Optional[List[Tuple[float,float]]]:
         res = [s.confidenceInterval() for s in self._stateEstimators]
         if any([i is None for i in res]):
             return None
         vRes: List[Tuple[float,float]] = res  # type: ignore
         return vRes
+
+class StopConditions(object):
+
+    confidence: float
+    maxAbError: float
+    maxReError: float
+    maxPathLength: int
+    nrOfCycles: int
+    secondsTimeout: float
+
+    def __init__(self, confidence: float,maxAbError: float,maxReError: float,maxPathLength: int,nrOfCycles: int,secondsTimeout: float) -> None:
+        self.confidence = confidence
+        self.maxAbError = maxAbError
+        self.maxReError = maxReError
+        self.maxPathLength = maxPathLength
+        self.nrOfCycles = nrOfCycles
+        self.secondsTimeout = secondsTimeout

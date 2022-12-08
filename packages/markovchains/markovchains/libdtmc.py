@@ -13,13 +13,20 @@ import functools
 import math
 import random
 import os
-import time
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
-from markovchains.utils.utils import sortNames
-from markovchains.utils.statistics import Statistics, DistributionStatistics
+from markovchains.utils.utils import sortNames, TimeoutTimer
+from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
 
-TStoppingCriteria = Tuple[float,float,float,int,int,float]
+# type for generic actions to be executed during a random simulation
+TSimulationAction = Callable[[int,str],bool]
+TSimulationActionAndDescription = Tuple[TSimulationAction,Optional[str]]
+
+STR_TIMEOUT = "Timeout"
+STR_ABS_ERROR = "Absolute Error"
+STR_REL_ERROR = "Relative Error"
+STR_NR_OF_PATHS = "Number of Paths"
+STR_MAX_PATH_LENGTH = "Maximum path length"
 
 class DTMCException(Exception):
     pass
@@ -38,7 +45,7 @@ class MarkovChain(object):
     # initialProbabilityVector holds the initial probabilities in the form of a vector
     _initialProbabilityVector: Optional[linalg.TVector]
     # Recurrent state for simulation run calibration
-    _recurrent_state: Optional[str]
+    _recurrentState: Optional[str]
 
 
     def __init__(self):
@@ -48,7 +55,7 @@ class MarkovChain(object):
         self._rewards = dict()
         self._transitionMatrix = None
         self._initialProbabilityVector = None
-        self._recurrent_state = None
+        self._recurrentState = None
         # Set pseudo random seed based on os current time
         random_data = os.urandom(8)
         seed = int.from_bytes(random_data, byteorder="big")
@@ -747,6 +754,8 @@ class MarkovChain(object):
     # - Markov Chain simulation                                                  - #
     # ---------------------------------------------------------------------------- #
 
+    _stopDescriptions = [STR_ABS_ERROR, STR_REL_ERROR, STR_NR_OF_PATHS, STR_TIMEOUT]
+
     def setSeed(self, seed: int):
         ''' Set random generator seed'''
         random.seed(seed)
@@ -784,18 +793,14 @@ class MarkovChain(object):
         If state is None, recurrent state is cleared.
         '''
         if state is None:
-            self._recurrent_state = None
+            self._recurrentState = None
         else:
             if self._isRecurrentState(state):
-                self._recurrent_state = state
+                self._recurrentState = state
             else:
                 raise DTMCException("{} is not a recurrent state.".format(state))
-
-
-    # type for generic actions to be executed during a random simulation
-    TSimulationAction = Callable[[int,str],bool]
     
-    def _markovSimulation(self, actions: List[Tuple[TSimulationAction,Optional[str]]], initialState: Optional[str] = None)->Tuple[int,Optional[str]]:
+    def _markovSimulation(self, actions: List[TSimulationActionAndDescription], initialState: Optional[str] = None)->Tuple[int,Optional[str]]:
         '''
         Simulate Markov Chain. 
         actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends. 
@@ -832,6 +837,52 @@ class MarkovChain(object):
 
         return n, stop
 
+
+    def markovSimulationRecurrentCycles(self, permActions: List[TSimulationActionAndDescription], cycleActions: List[TSimulationActionAndDescription], completeCycle: Callable[[],bool], initialState: Optional[str] = None):
+        '''
+        simulate a uni-chain MC from recurrent, provide callback on every state and on every visit of the recurrent state.
+        If _recurrentState is defined, it will be use as the recurrent state; otherwise the first visited recurrent state is used.
+        '''
+
+        recurrentStateVisits: int = 0
+        recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
+
+        def _action_CycleUpdate(n:int, state:str)->bool:
+            nonlocal recurrentStateVisits, recurrentStates
+            if self._recurrentState is None:
+                # we have no designated recurrent state yet
+                if state in recurrentStates:
+                    # if the current state is a recurrent state, use it
+                    self._recurrentState = state
+                    recurrentStateVisits = 1
+                return False
+            # we have a designated recurrent state
+            if state != self._recurrentState:
+                # the current state is not it
+                return False
+            # we visit the recurrent state
+            if recurrentStateVisits > 0:
+                # we have visited it before
+                recurrentStateVisits += 1
+                return completeCycle()
+            # mark it as visited and carry on
+            recurrentStateVisits = 1
+            return False
+
+        def _inRecurrentCycleDo(a: Callable[[int,str],bool], n, state)->bool:
+            if recurrentStateVisits > 0:
+                return a(n, state)
+            return False
+
+        # make a combined list of permanent actions, in-cycle actions and cycle update action
+        _simActions: List[TSimulationActionAndDescription] = permActions
+        # note the python magic 'a=a' in the lambda function to make sure a gets bound to its current value
+        _simActions.extend([(lambda n, state, a=a: _inRecurrentCycleDo(a[0], n, state), a[1]) for a in cycleActions])
+        _simActions.append((_action_CycleUpdate, "Number of cycles"))
+
+        return self._markovSimulation(_simActions, initialState)
+
+
     def _isRecurrentState(self, state: str)->bool:
         '''Check if state is a recurrent state. Note that this method may be time consuming as an analysis is performed every time it is called.'''
         # recurrent state thats encountered in the random state_sequence dictionary
@@ -855,7 +906,7 @@ class MarkovChain(object):
 
         return state_list
 
-    def genericLongRunSampleEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
+    def genericLongRunSampleEstimationFromRecurrentCycles(self, sc:StopConditions, action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
         '''generic estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -874,61 +925,42 @@ class MarkovChain(object):
             - point estimate of the variance
         - the stop criterion applied as a string
         '''
-        # separate stop conditions
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        max_path_length = stop_conditions[3]
-        nr_of_cycles = stop_conditions[4]
-        seconds = stop_conditions[5]
-
         # Global variables used during simulation
-        statistics = Statistics(confidence)
-
-        recurrentState: Optional[str] = None
-        recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
+        statistics = Statistics(sc.confidence)
 
         def _action_AbsErr(_n:int, _state:str)->bool:
             c = statistics.abError()
             if c is None:
                 return False
-            return max_abError > 0 and c <= max_abError
+            return sc.maxAbError > 0 and c <= sc.maxAbError
             
         def _action_RelErr(_n:int, _state:str)->bool:
             c = statistics.reError()
             if c is None:
                 return False
-            return max_reError > 0 and c <= max_reError
+            return sc.maxReError > 0 and c <= sc.maxReError
             
-        def _action_CycleUpdate(n:int, state:str)->bool:
-            nonlocal recurrentState, recurrentStates
-            if recurrentState is None:
-                if state in recurrentStates:
-                    recurrentState = state
-            if state != recurrentState:
-                return False
+        def _CycleUpdate()->bool:
             statistics.completeCycle()
-            return 0 <= nr_of_cycles <= statistics.cycleCount()
+            return 0 <= sc.nrOfCycles <= statistics.cycleCount()
 
         def _action_update(n: int, state: str)->bool:
-            if recurrentState is None:
-                # suppress until the first recurrent state is passed.
-                return False
             return action_update(statistics, n, state)
 
-        # Save current time
-        current_time = time.time()
-        _, stop = self._markovSimulation([
-            (lambda n, _: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
-            (lambda _n, _state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
-            (_action_update, None),
-            (_action_CycleUpdate, "Number of cycles"), # check cycle completed
-            (_action_AbsErr, "Absolute Error"), # check absolute error
-            (_action_RelErr, "Relative Error") # check relative error
-        ])
+        t = TimeoutTimer(sc.secondsTimeout)
+        _, stop = self.markovSimulationRecurrentCycles(
+            [
+                (lambda n, _: 0 <= sc.maxPathLength <= n, STR_MAX_PATH_LENGTH), # Run until max path length has been reached
+                (t.simAction(), STR_TIMEOUT), # Exit on time out
+            ], [
+                (_action_update, None),
+                (_action_AbsErr, STR_ABS_ERROR), # check absolute error
+                (_action_RelErr, STR_REL_ERROR) # check relative error
+            ],
+            _CycleUpdate)
         return statistics, stop
 
-    def genericLongRunDistributionEstimationFromRecurrentCycles(self, stop_conditions:TStoppingCriteria, action_update: Callable[[DistributionStatistics,int,str],bool])->Tuple[DistributionStatistics, Optional[str]]:
+    def genericLongRunDistributionEstimationFromRecurrentCycles(self, sc:StopConditions, action_update: Callable[[DistributionStatistics,int,str],bool])->Tuple[DistributionStatistics, Optional[str]]:
         '''generic long-run distribution estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -948,33 +980,13 @@ class MarkovChain(object):
         - the stop criterion applied as a string
         '''
 
-        # separate stop conditions
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        max_path_length = stop_conditions[3]
-        nr_of_cycles = stop_conditions[4]
-        seconds = stop_conditions[5]
+        distributionStatistics = DistributionStatistics(self.numberOfStates(), sc.confidence)
 
-        distributionStatistics = DistributionStatistics(self.numberOfStates(), confidence)
-
-        recurrentState: Optional[str] = None
-        recurrentStates: Set[str] = (self.classifyTransientRecurrent())[1]
-
-        def _action_CycleUpdate(n:int, state:str)->bool:
-            nonlocal recurrentState, recurrentStates
-            if recurrentState is None:
-                if state in recurrentStates:
-                    recurrentState = state
-            if state != recurrentState:
-                return False
+        def _completeCycle()->bool:
             distributionStatistics.completeCycle()
-            return 0 <= nr_of_cycles <= distributionStatistics.cycleCount()
+            return 0 <= sc.nrOfCycles <= distributionStatistics.cycleCount()
 
         def _action_visitState(n:int, state:str)->bool:
-            if recurrentState is None:
-                # suppress until the first recurrent state is passed.
-                return False
             return action_update(distributionStatistics, n, state)
 
         def _action_abError(_n: int, _state:str)->bool:
@@ -984,7 +996,7 @@ class MarkovChain(object):
             if any([v is None for v in c]):
                 return False
             vc : List[float] = c  # type: ignore
-            return max_abError > 0 and max(vc) <= max_abError
+            return sc.maxAbError > 0 and max(vc) <= sc.maxAbError
 
         def _action_reError(_n: int, _state:str)->bool:
             c = distributionStatistics.reError()
@@ -993,23 +1005,23 @@ class MarkovChain(object):
             if any([v is None for v in c]):
                 return False
             vc : List[float] = c  # type: ignore
-            return max_reError > 0 and max(vc) <= max_reError
+            return sc.maxReError > 0 and max(vc) <= sc.maxReError
 
-        # Save current time
-        current_time = time.time()
-        _, stop = self._markovSimulation([
-            (lambda n, state: 0 <= max_path_length <= n, "Maximum path length"), # Run until max path length has been reached
-            (lambda n, state: 0 <= seconds <= time.time() - current_time, "Timeout"), # Exit on time
-            (_action_visitState, ""),
-            (_action_CycleUpdate, "Number of cycles"), # find first recurrent state
-            (_action_abError, "Absolute Error"), # Calculate smallest absolute error
-            (_action_reError, "Relative Error") # Calculate smallest relative error
-        ])
+        t = TimeoutTimer(sc.secondsTimeout)
+        _, stop = self.markovSimulationRecurrentCycles(
+            [
+                (lambda n, state: 0 <= sc.maxPathLength <= n, STR_MAX_PATH_LENGTH), # Run until max path length has been reached
+                (t.simAction(), STR_TIMEOUT), # Exit on time
+            ], [
+                (_action_visitState, ""),
+                (_action_abError, STR_ABS_ERROR), # Calculate smallest absolute error
+                (_action_reError, STR_REL_ERROR) # Calculate smallest relative error
+            ],
+            _completeCycle)
         
         return distributionStatistics, stop
 
-
-    def longRunExpectedAverageReward(self, stop_conditions:TStoppingCriteria)->Tuple[Statistics, Optional[str]]:
+    def longRunExpectedAverageReward(self, sc:StopConditions)->Tuple[Statistics, Optional[str]]:
         '''Estimate the long run expected average reward by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -1032,9 +1044,9 @@ class MarkovChain(object):
             statistics.addSample(float(self._rewards[state]))
             return False
 
-        return self.genericLongRunSampleEstimationFromRecurrentCycles(stop_conditions, _action_addSample)
+        return self.genericLongRunSampleEstimationFromRecurrentCycles(sc, _action_addSample)
 
-    def cezaroLimitDistribution(self, stop_conditions:TStoppingCriteria)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
+    def cezaroLimitDistribution(self, sc:StopConditions)-> Tuple[Optional[DistributionStatistics], Optional[str]]:
         '''
         Estimate the Cezaro limit distribution by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1059,12 +1071,10 @@ class MarkovChain(object):
             s.visitState(self._states.index(state))
             return False
 
-        return self.genericLongRunDistributionEstimationFromRecurrentCycles(stop_conditions, action_visitState)
+        return self.genericLongRunDistributionEstimationFromRecurrentCycles(sc, action_visitState)
 
 
-    def estimationGenericTransientSample(self, stop_conditions:TStoppingCriteria, getSample: Callable[[str],float], nr_of_steps)->Tuple[
-        Statistics,
-        Optional[str]]:
+    def estimationGenericTransientSample(self, sc:StopConditions, getSample: Callable[[str],float], nr_of_steps)->Tuple[Statistics, Optional[str]]:
         '''
         Estimate the transient sample after nr_of_steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1079,16 +1089,8 @@ class MarkovChain(object):
         - statistics of the expected reward 
         - the stop criterion applied as a string
         '''
-        # separate stop conditions
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        rounds = stop_conditions[4]
-        seconds = stop_conditions[5]
 
-        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
-
-        statistics = Statistics(confidence)
+        statistics = Statistics(sc.confidence)
 
         def _action_lastStateReward(n: int, state: str)->bool:
             if n == nr_of_steps:
@@ -1098,34 +1100,25 @@ class MarkovChain(object):
 
         sim_stop_conditions: List[bool] = [False] * 4
 
-        # Save current time
-        current_time = time.time()
+        t = TimeoutTimer(sc.secondsTimeout)
         while not any(sim_stop_conditions):
             self._markovSimulation([
                 (_action_lastStateReward, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
-                (lambda n, state: 0 <= seconds <= time.time() - current_time, None), # Exit on time
+                (t.simAction(), STR_TIMEOUT), # Exit on time
             ])
 
             # Check stop conditions
-            abErrorVal = statistics.abError()
-            if abErrorVal is not None:
-                sim_stop_conditions[0] = (0.0 <= abErrorVal <= max_abError)
-            reErrorVal = statistics.reError()
-            if reErrorVal is not None:
-                sim_stop_conditions[1] = (0.0 <= reErrorVal <= max_reError)
-            sim_stop_conditions[2] = (0 <= rounds <= statistics.cycleCount())
-            sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+            sim_stop_conditions[0] = statistics.abErrorReached(sc.maxAbError)
+            sim_stop_conditions[1] = statistics.reErrorReached(sc.maxReError)
+            sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics.cycleCount())
+            sim_stop_conditions[3] = t.isExpired()
 
-        # Determine stop condition (if it is added)
-        stop = None
-        for i, condition in enumerate(sim_stop_conditions):
-            if condition: 
-                stop = stopDescriptions[i]
-       
+        # Determine stop condition
+        stop = self._stopDescriptions[sim_stop_conditions.index(True)]       
         return statistics, stop
 
-    def estimationExpectedReward(self, stop_conditions:TStoppingCriteria, nr_of_steps)->Tuple[
+    def estimationExpectedReward(self, sc:StopConditions, nr_of_steps)->Tuple[
         Statistics,
         Optional[str]]:
         '''
@@ -1143,17 +1136,11 @@ class MarkovChain(object):
         - the stop criterion applied as a string
         '''
 
-        return self.estimationGenericTransientSample(stop_conditions, lambda state: float(self.getReward(state)), nr_of_steps)
+        return self.estimationGenericTransientSample(sc, lambda state: float(self.getReward(state)), nr_of_steps)
 
 
-    def estimationTransientDistribution(self, stop_conditions:TStoppingCriteria, nr_of_steps: int)->Tuple[
+    def estimationTransientDistribution(self, sc:StopConditions, nr_of_steps: int)->Tuple[
         DistributionStatistics, Optional[str]]:
-        # separate stop conditions
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        rounds = stop_conditions[4]
-        seconds = stop_conditions[5]
         '''
         Estimate the distribution after nr_of_steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1169,15 +1156,12 @@ class MarkovChain(object):
         - the stop criterion applied as a string
         '''
 
-        distributionStatistics = DistributionStatistics(len(self._states), confidence)
+        distributionStatistics = DistributionStatistics(len(self._states), sc.confidence)
 
         # There are in total four applicable stop conditions for this function
-        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions: List[bool] = [False] * 4
 
-        # Save current time
-        starting_time = time.time()
-        
+        t = TimeoutTimer(sc.secondsTimeout)        
         currentState: Optional[str] = None
 
         def _action_trackState(_n: int, state: str)-> bool:
@@ -1190,36 +1174,26 @@ class MarkovChain(object):
             self._markovSimulation([
                 (_action_trackState, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
-                (lambda n, state: 0 <= seconds <= time.time() - starting_time, None), # Exit on time out
+                (t.simAction(), STR_TIMEOUT), # Exit on time out
             ])
 
             vCurrentState: str = currentState  # type: ignore
             distributionStatistics.visitState(self._states.index(vCurrentState))
             distributionStatistics.completeCycle()
 
-            abError = distributionStatistics.abError()
-            reError = distributionStatistics.reError()
-
             # Check stop conditions
-            if not (None in abError):
-                vAbError: List[float] = abError  # type: ignore
-                sim_stop_conditions[0] = (0 <= max(vAbError) <= max_abError)
-            if not (None in reError):
-                vReError: List[float] = reError  # type: ignore
-                sim_stop_conditions[1] = (0 <= max(vReError) <= max_reError)
-            sim_stop_conditions[2] = (0 <= rounds <= distributionStatistics.cycleCount())
-            sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - starting_time)
+            sim_stop_conditions[0] = distributionStatistics.abErrorReached(sc.maxAbError)
+            sim_stop_conditions[1] = distributionStatistics.reErrorReached(sc.maxReError)
+            sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= distributionStatistics.cycleCount())
+            sim_stop_conditions[3] = t.isExpired()
 
-        # Determine stop condition (if it is added)
-        stop = None
-        for i, condition in enumerate(sim_stop_conditions):
-            if condition: 
-                stop = stopDescriptions[i]
+        # Determine stop condition
+        stop = self._stopDescriptions[sim_stop_conditions.index(True)]       
            
         return distributionStatistics, stop
 
 
-    def estimationHittingStateGeneric(self, stop_conditions:TStoppingCriteria, analysisStates: List[str], initialization: Callable, action: Callable[[int,str],bool], onHit: Callable[[Statistics],None], onNoHit: Callable[[Statistics],None])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+    def estimationHittingStateGeneric(self, sc:StopConditions, analysisStates: List[str], initialization: Callable, action: Callable[[int,str],bool], onHit: Callable[[Statistics],None], onNoHit: Callable[[Statistics],None])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Generic framework for estimating hitting probability, or reward until hit by simulation using the provided stop_conditions.
@@ -1245,24 +1219,16 @@ class MarkovChain(object):
         - the stop criteria applied as strings
         '''
 
-        confidence = stop_conditions[0]
-        max_abError = stop_conditions[1]
-        max_reError = stop_conditions[2]
-        nr_of_steps = stop_conditions[3]
-        rounds = stop_conditions[4]
-        seconds = stop_conditions[5]
-
         statistics: Dict[str,Statistics] = dict()
         for s in analysisStates:
-            statistics[s] = Statistics(confidence)
+            statistics[s] = Statistics(sc.confidence)
 
         # There are in total four applicable stop conditions for this function
-        stopDescriptions = ["Absolute Error", "Relative Error", "Number of Paths", "Timeout"]
         sim_stop_conditions = [False] * 4
         stop: Dict[str,str] = dict()
 
-        # Save current time
-        current_time = time.time()
+        t = TimeoutTimer(sc.secondsTimeout)
+
         for initialState in analysisStates:
             
             sim_stop_conditions = [False] * 4
@@ -1273,13 +1239,13 @@ class MarkovChain(object):
             while not any(sim_stop_conditions):
 
                 _, simResult = self._markovSimulation([
-                    (lambda n, state: 0 <= nr_of_steps <= n, "steps"), # Exit when n is number of steps
-                    (lambda n, state: 0 <= seconds <= time.time() - current_time, "timeout"), # Exit on time
+                    (lambda n, state: 0 <= sc.maxPathLength <= n, "steps"), # Exit when n is number of steps
+                    (t.simAction(), STR_TIMEOUT), # Exit on time
                     (action, "hit") # stop when hitting state is found
                 ], initialState)
 
-                if simResult=="timeout":
-                   return None, "Timeout"
+                if simResult==STR_TIMEOUT:
+                   return None, STR_TIMEOUT
 
                 if simResult!="steps":
                     # hitting state was hit
@@ -1289,25 +1255,19 @@ class MarkovChain(object):
                     onNoHit(statistics[initialState])
 
                 # Check stop conditions
-                abError = statistics[initialState].abError()
-                if abError is not None:
-                    sim_stop_conditions[0] = (0 <= abError <= max_abError)
-                reError = statistics[initialState].reError()
-                if reError is not None:
-                    sim_stop_conditions[1] = (0 <= reError <= max_reError)
-                sim_stop_conditions[2] = (0 <= rounds <= statistics[initialState].cycleCount())
-                sim_stop_conditions[3] = (0.0 <= seconds <= time.time() - current_time)
+                sim_stop_conditions[0] = statistics[initialState].abErrorReached(sc.maxAbError)
+                sim_stop_conditions[1] = statistics[initialState].reErrorReached(sc.maxReError)
+                sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics[initialState].cycleCount())
+                sim_stop_conditions[3] = t.isExpired()
 
-            # Determine stop condition (if it is added)
-            for i, condition in enumerate(sim_stop_conditions):
-                if condition: 
-                    stop[initialState] = stopDescriptions[i]
+            # Determine stop condition
+            stop[initialState] = self._stopDescriptions[sim_stop_conditions.index(True)]       
                 
         return statistics, stop
 
 
 
-    def estimationHittingProbabilityState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+    def estimationHittingProbabilityState(self, sc:StopConditions, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
@@ -1346,9 +1306,9 @@ class MarkovChain(object):
             s.addSample(0.0)
             s.completeCycle()
 
-        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
+        return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)
 
-    def estimationRewardUntilHittingState(self, stop_conditions:TStoppingCriteria, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+    def estimationRewardUntilHittingState(self, sc:StopConditions, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
@@ -1395,10 +1355,10 @@ class MarkovChain(object):
         def onNoHit(s: Statistics):
             pass
 
-        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
+        return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)
 
 
-    def estimationHittingProbabilityStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+    def estimationHittingProbabilityStateSet(self, sc:StopConditions, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the hitting probability until hitting a set of states by simulation using the provided stop_conditions.
@@ -1437,9 +1397,9 @@ class MarkovChain(object):
             s.addSample(0.0)
             s.completeCycle()
 
-        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
+        return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)
 
-    def estimationRewardUntilHittingStateSet(self, stop_conditions:TStoppingCriteria, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
+    def estimationRewardUntilHittingStateSet(self, sc:StopConditions, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
@@ -1486,5 +1446,4 @@ class MarkovChain(object):
         def onNoHit(s: Statistics):
             pass
 
-        return self.estimationHittingStateGeneric(stop_conditions, analysisStates, initialization, action, onHit, onNoHit)
-
+        return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)

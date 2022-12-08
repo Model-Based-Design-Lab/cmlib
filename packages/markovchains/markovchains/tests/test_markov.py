@@ -4,7 +4,7 @@ import pytest
 from modeltest.modeltest import Model_pytest # Import Model_pytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.utils import sortNames
-from markovchains.utils.statistics import Statistics, DistributionStatistics
+from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
 
 # Collect models and output files
 TEST_FILE_FOLDER = os.path.dirname(__file__)
@@ -90,45 +90,45 @@ class Markov_pytest(Model_pytest):
         self.model.setRecurrentState(None) # reset trace recurrent state
         self.function_test(lambda: self.model.markovTrace(15), "markovTrace_15")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward((0.95,-1,-1,-1,1,-1))), "longRunExpectedAverageReward_cycle")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward(StopConditions(0.95,-1,-1,-1,1,-1))), "longRunExpectedAverageReward_cycle")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward((0.95,-1,-1,1,-1,-1))), "longRunExpectedAverageReward_steps")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward(StopConditions(0.95,-1,-1,1,-1,-1))), "longRunExpectedAverageReward_steps")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward((0.95,0.5,-1,-1,-1,-1))), "longRunExpectedAverageReward_abs")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward(StopConditions(0.95,0.5,-1,-1,-1,-1))), "longRunExpectedAverageReward_abs")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward((0.95,-1,0.5,1000,-1,-1))), "longRunExpectedAverageReward_rel")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.longRunExpectedAverageReward(StopConditions(0.95,-1,0.5,1000,-1,-1))), "longRunExpectedAverageReward_rel")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution((0.95,-1,-1,-1,1,-1))), "cezaroLimitDistribution_cycle")
+        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution(StopConditions(0.95,-1,-1,-1,1,-1))), "cezaroLimitDistribution_cycle")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution((0.95,-1,-1,1,-1,-1))), "cezaroLimitDistribution_steps")
+        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution(StopConditions(0.95,-1,-1,1,-1,-1))), "cezaroLimitDistribution_steps")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution((0.95,0.5,-1,-1,-1,-1))), "cezaroLimitDistribution_abs")
+        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution(StopConditions(0.95,0.5,-1,-1,-1,-1))), "cezaroLimitDistribution_abs")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution((0.95,-1,0.5,1000,-1,-1))), "cezaroLimitDistribution_rel")
+        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.cezaroLimitDistribution(StopConditions(0.95,-1,0.5,1000,-1,-1))), "cezaroLimitDistribution_rel")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward((0.95,-1,-1,-1,1,-1), 1)), "estimationExpectedReward_step")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward(StopConditions(0.95,-1,-1,-1,1,-1), 1)), "estimationExpectedReward_step")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward((0.95,0.5,-1,-1,-1,-1), 1)), "estimationExpectedReward_abs")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward(StopConditions(0.95,0.5,-1,-1,-1,-1), 1)), "estimationExpectedReward_abs")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward((0.95,-1,0.5,-1,1000,-1), 1)), "estimationExpectedReward_rel")
+        self.function_test(lambda: self.statisticsAndStop(*self.model.estimationExpectedReward(StopConditions(0.95,-1,0.5,-1,1000,-1), 1)), "estimationExpectedReward_rel")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.estimationTransientDistribution((0.95,-1,-1,1,1,-1), 1)), "estimationDistribution")
+        self.function_test(lambda: self.distributionStatisticsAndStop(*self.model.estimationTransientDistribution(StopConditions(0.95,-1,-1,1,1,-1), 1)), "estimationDistribution")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationHittingProbabilityState((0.95,-1,-1,1,1,-1), self.state, self.model.states())), "estimationHittingState")
+        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationHittingProbabilityState(StopConditions(0.95,-1,-1,1,1,-1), self.state, self.model.states())), "estimationHittingState")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationRewardUntilHittingState((0.95,-1,-1,1,1,30), self.state, self.model.states())), "estimationHittingreward")
+        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationRewardUntilHittingState(StopConditions(0.95,-1,-1,1,1,30), self.state, self.model.states())), "estimationHittingreward")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationHittingProbabilityStateSet((0.95,-1,-1,1,1,-1), [self.state], self.model.states())), "estimationHittingStateSet")
+        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationHittingProbabilityStateSet(StopConditions(0.95,-1,-1,1,1,-1), [self.state], self.model.states())), "estimationHittingStateSet")
         self.model.setRecurrentState(None) # reset trace recurrent state
-        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationRewardUntilHittingStateSet((0.95,-1,-1,1,1,30), [self.state], self.model.states())), "estimationHittingRewardSet")
+        self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationRewardUntilHittingStateSet(StopConditions(0.95,-1,-1,1,1,30), [self.state], self.model.states())), "estimationHittingRewardSet")
 
     def Incorrect_behavior_tests(self):
         self.incorrect_test(lambda: self.model.executeSteps(-2), 'Number of steps must be non-negative.')
         self.incorrect_test(lambda: self.model.hittingProbabilities('NOT_A_STATE'), "'NOT_A_STATE'")
-        self.incorrect_test(lambda: self.model.longRunExpectedAverageReward((-1.00,0,0,1000,0,-1)), "p must be in the range 0.0 < p < 1.0")
-        self.incorrect_test(lambda: self.model.cezaroLimitDistribution((-1.00,0,0,1000,0,-1.-1)), "p must be in the range 0.0 < p < 1.0")
-        self.incorrect_test(lambda: self.model.estimationExpectedReward((-1.00,0,0,1000,0,-1), 1), "p must be in the range 0.0 < p < 1.0")
-        self.incorrect_test(lambda: self.model.estimationRewardUntilHittingStateSet((-1.00,0,0,1000,0,-1), [self.state], self.model.states()), "p must be in the range 0.0 < p < 1.0")
+        self.incorrect_test(lambda: self.model.longRunExpectedAverageReward(StopConditions(-1.00,0,0,1000,0,-1)), "p must be in the range 0.0 < p < 1.0")
+        self.incorrect_test(lambda: self.model.cezaroLimitDistribution(StopConditions(-1.00,0,0,1000,0,-1.-1)), "p must be in the range 0.0 < p < 1.0")
+        self.incorrect_test(lambda: self.model.estimationExpectedReward(StopConditions(-1.00,0,0,1000,0,-1), 1), "p must be in the range 0.0 < p < 1.0")
+        self.incorrect_test(lambda: self.model.estimationRewardUntilHittingStateSet(StopConditions(-1.00,0,0,1000,0,-1), [self.state], self.model.states()), "p must be in the range 0.0 < p < 1.0")
 
 
 @pytest.mark.parametrize("test_model", MODEL_FILES)

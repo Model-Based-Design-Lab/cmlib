@@ -4,15 +4,17 @@
 import argparse
 from typing import Any, Dict, List, Optional
 
-from markovchains.libdtmc import MarkovChain, TStoppingCriteria
+from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, TVector
+from markovchains.utils.statistics import StopConditions
 from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
 import markovchains.utils.linalgebra as linalg
 
 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
+
 
 def main():
 
@@ -102,11 +104,11 @@ def requireTargetStateSet(M: MarkovChain, args: Any)->List[str]:
             raise(Exception("State {} in specified state set does not exist.".format(s)))
     return stateSet
 
-def requireStopCriteria(args: Any)->TStoppingCriteria:
+def requireStopCriteria(args: Any)->StopConditions:
     if args.Conditions is None:
         raise Exception("Stop conditions must be specified with the -c option.")
     cc = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
-    return (cc[0], cc[1], cc[2], int(cc[3]), int(cc[4]), cc[5])
+    return cc
 
 def setSeed(args: Any, M: MarkovChain):
     if args.Seed is not None:
