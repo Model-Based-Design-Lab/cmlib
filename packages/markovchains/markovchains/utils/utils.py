@@ -114,6 +114,39 @@ def printSortedList(s: Iterable[str]):
 def printListOfStrings(s: List[str]):
     print ("[{}]\n".format(", ".join(s)))
 
+def printTable(table: List[Union[str,List[str]]], margin: int = 1):
+
+    # determine nr of columns of table
+    nrColumns: int = -1
+    for row in table:
+        if isinstance(row, list):
+            nrColumns = len(row)
+
+    if nrColumns == -1:
+        # table has no proper rows
+        for row in table:
+            print(row)
+            return
+
+    # determine column widths
+    widths: List[int] = []
+    for column in range(nrColumns):
+        w: int = 0
+        for row in table:
+            if isinstance(row, list):
+                w = max(w, len(row[column]))
+        widths.append(w)
+    
+    # print the table
+    for row in table:
+        if isinstance(row, str):
+            print(row)
+        else:
+            for i in range(len(row)):
+                if i > 0:
+                    print(" ".ljust(margin), end="")
+                print(row[i].ljust(widths[i]), end="")
+            print()
 
 def stopCriteria(c: List[float])->StopConditions:
     # Format stop criteria: 

@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 # As a rule of thumb, a reasonable number of results are needed before certain calculations can be considered valid
 # this variable determines the number of results that are required for the markov simulation before the stop conditions
 # are checked. (Based on the law of strong numbers)
-_law: int = 30
+Minimum_Nr_Samples: int = 30
 
 
 RES_TOO_FEW_SAMPLES = "Cannot be decided, too few samples."
@@ -23,22 +23,24 @@ class Statistics(object):
     _cumulativeCycleLengthsSq: int              # Sum of cycle length squared
     _cumulativeSamplesCycleSq: float            # Sum of cycle cumulative samples squared
     _cumulativeProdCycleLengthSumSamples: float # Sum of cycle product length and cycle
-    _meanEst: float                                # Estimated mean
-    _stdDevEst: float                            # Estimated variance
+    _meanEst: float                             # Estimated mean
+    _stdDevEst: float                           # Estimated variance
     _confLevel: float                           # confidence level
+    _nrPaths: int                               # keep track of number of paths explored
 
     def __init__(self, confidence: float) -> None:
         '''confidence: confidence level'''
         self._cycleLength = 0                           # Current cycle length
         self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative samples
-        self._cycleCount = 0                           # Cycle count (-1 to subtract unfinished cycle beforehand)
+        self._cycleCount = 0                            # Cycle count (-1 to subtract unfinished cycle beforehand)
         self._cumulativeCycleLengths = 0                # Sum of cycle lengths
         self._cumulativeSamples = 0.0                   # Sum of cumulative samples
         self._cumulativeCycleLengthsSq = 0              # Sum of cycle length squared
         self._cumulativeSamplesCycleSq = 0              # Sum of cycle cumulative samples squared
         self._cumulativeProdCycleLengthSumSamples = 0   # Sum of cycle product length and cycle
-        self._meanEst = 0                                  # Estimated mean
-        self._stdDevEst = 0                              # Estimated variance
+        self._meanEst = 0                               # Estimated mean
+        self._stdDevEst = 0                             # Estimated variance
+        self._nrPaths = 0
 
         # Calculate the confidence point estimate with inverse normal distribution
         self._confLevel = NormalDist().inv_cdf((1+confidence)/2)
@@ -49,17 +51,17 @@ class Statistics(object):
             self._meanEst = self._cumulativeSamples/self._cumulativeCycleLengths
 
     def meanEstimate(self)->Optional[float]:
-        if self._cycleCount < _law:
+        if self._cycleCount < Minimum_Nr_Samples:
             return None
         return self._meanEst
 
     def meanEstimateResult(self)->Union[str,float]:
-        if self._cycleCount < _law:
+        if self._cycleCount < Minimum_Nr_Samples:
             return RES_TOO_FEW_SAMPLES
         return self._meanEst
 
     def stdDevEstimate(self)->Optional[float]:
-        if self._cycleCount < _law:
+        if self._cycleCount < Minimum_Nr_Samples:
             return None
         return self._stdDevEst
 
@@ -103,7 +105,7 @@ class Statistics(object):
         '''
 
         # check if we have collected sufficient cycles 
-        if self._cycleCount < _law:
+        if self._cycleCount < Minimum_Nr_Samples:
             return None
         
         if self._cycleCount == 0:
@@ -126,7 +128,7 @@ class Statistics(object):
         '''Return estimated relative error'''
 
         # check if we have collected sufficient cycles 
-        if 0 <= self._cycleCount < _law:
+        if 0 <= self._cycleCount < Minimum_Nr_Samples:
             return None
 
         if self._cycleCount == 0:
@@ -153,6 +155,12 @@ class Statistics(object):
         if abError is None:
             return None
         return (self._meanEst - abError, self._meanEst + abError)
+
+    def incrementPaths(self)->None:
+        self._nrPaths += 1
+
+    def nrPaths(self)->int:
+        return self._nrPaths
 
 
 

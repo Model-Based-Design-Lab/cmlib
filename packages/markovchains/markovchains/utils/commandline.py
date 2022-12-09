@@ -2,18 +2,19 @@
 '''Operations on Markov chains '''
 
 import argparse
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, TVector
 from markovchains.utils.statistics import StopConditions
-from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString
+from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString, printTable
 import markovchains.utils.linalgebra as linalg
 
 
 from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
 import sys
+
 
 
 def main():
@@ -335,8 +336,9 @@ def process(args, dsl):
             intervals = distributionStatistics.confidenceIntervals()
             abError = distributionStatistics.abError()
             reError = distributionStatistics.reError()
-            for i in range(len(M.states())):
-                print("[{}]: {:.4f}".format(i, dist[i]))
+            states: List[str] = M.states()
+            for i in range(len(states)):
+                print("[{}]: {:.4f}".format(states[i], dist[i]))
                 print("\tConfidence interval: {}".format(printOptionalInterval(None if intervals is None else intervals[i])))
                 print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
                 print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
@@ -379,12 +381,18 @@ def process(args, dsl):
         else:
             dStop: Dict[str,str] = stop  # type: ignore
             print("Estimated hitting probabilities for {} are:".format(s))
+            tableHS: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                print("f({}, {}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                    t, s, optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()),
-                    optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
-                ))
+                tableHS.append([
+                    "f({}, {}) = {}".format(t, s, optionalFloatOrStringToString(statistics.meanEstimateResult())),
+                    "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
+                    "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
+                    "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                    "#paths: {}".format(statistics.nrPaths()),
+                    "stop: {}".format(dStop[t])
+                ])
+            printTable(tableHS, 4)
                 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
         setSeed(args, M)
@@ -396,15 +404,22 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print("Estimated cumulative reward until hitting {} are:".format(s))
+            tableRS: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 if not isinstance(statistics.meanEstimateResult(), float):
-                    print("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
+                    tableRS.append("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
-                    print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
-                    ))
+                    tableRS.append([
+                        "From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())),
+                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
+                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "#paths: {}".format(statistics.nrPaths()),
+                        "stop: {}".format(dStop[t])
+                    ])
+            printTable(tableRS, 4)
     
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
         setSeed(args, M)
@@ -416,16 +431,23 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
+            table: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 if not isinstance(statistics.meanEstimateResult(), float):
-                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
+                    table.append("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
-                    print("f({}, {{{}}}) = {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimateResult()),
-                        printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
-                ))
+                    table.append([
+                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimateResult())),
+                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
+                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "#paths: {}".format(statistics.nrPaths()),
+                        "stop: {}".format(dStop[t])
+                    ])
+            printTable(table, 4)
+
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
         setSeed(args, M)
@@ -437,15 +459,22 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
+            tableRSet: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 if not isinstance(statistics.meanEstimateResult(), float):
-                    print("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
+                    tableRSet.append("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
-                    print("From state {}: {}\tint:{}\tabEr:{}\treEr:{}\t#paths:{}\tstop:{}".format(
-                        S[i], optionalFloatOrStringToString(statistics.meanEstimateResult()), printOptionalInterval(statistics.confidenceInterval()), optionalFloatOrStringToString(statistics.abError()), optionalFloatOrStringToString(statistics.reError()), statistics.cycleCount(), dStop[t]
-                    ))
+                    tableRSet.append([
+                        "From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())),
+                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
+                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "#paths: {}".format(statistics.nrPaths()),
+                        "stop: {}".format(dStop[t])
+                    ])
+            printTable(tableRSet, 4)
                     
 if __name__ == "__main__":
     main()

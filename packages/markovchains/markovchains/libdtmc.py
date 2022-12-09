@@ -1244,6 +1244,8 @@ class MarkovChain(object):
                     (action, "hit") # stop when hitting state is found
                 ], initialState)
 
+                statistics[initialState].incrementPaths()
+
                 if simResult==STR_TIMEOUT:
                    return None, STR_TIMEOUT
 
@@ -1257,7 +1259,7 @@ class MarkovChain(object):
                 # Check stop conditions
                 sim_stop_conditions[0] = statistics[initialState].abErrorReached(sc.maxAbError)
                 sim_stop_conditions[1] = statistics[initialState].reErrorReached(sc.maxReError)
-                sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics[initialState].cycleCount())
+                sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics[initialState].nrPaths())
                 sim_stop_conditions[3] = t.isExpired()
 
             # Determine stop condition
