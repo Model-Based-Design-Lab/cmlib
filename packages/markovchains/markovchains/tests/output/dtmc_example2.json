@@ -5,10 +5,10 @@
     "executeSteps_15": "[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 5/6, 0, 1/6], [1/6, 0, 5/6, 0], [0, 31/36, 0, 5/36], [5/36, 0, 31/36, 0], [0, 185/216, 0, 31/216], [31/216, 0, 185/216, 0], [0, 1111/1296, 0, 185/1296], [185/1296, 0, 1111/1296, 0], [0, 6665/7776, 0, 1111/7776], [1111/7776, 0, 6665/7776, 0], [0, 39991/46656, 0, 6665/46656], [6665/46656, 0, 39991/46656, 0], [0, 239945/279936, 0, 39991/279936]]",
     "classifyTransientRecurrent": "[, [A, B, C, D]]",
     "classifyPeriodicity": {
-        "B": "2.0000",
         "D": "2.0000",
+        "C": "2.0000",
         "A": "2.0000",
-        "C": "2.0000"
+        "B": "2.0000"
     },
     "determineMCType": "non-ergodic unichain",
     "hittingProbabilities": {
@@ -47,7 +47,7 @@
     "estimationExpectedReward_rel": "[[5.0000, 5.0000], 0.0000, 0.0000, 5.0000, 0.0000, Relative Error]",
     "estimationDistribution": "[None, [None, None, None, None], [None, None, None, None], None, None, Number of Paths]",
     "estimationHittingState": "[{'A': '[None, None, None, None, None]', 'B': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]', 'D': '[None, None, None, None, None]'}, {'A': 'Number of Paths', 'B': 'Number of Paths', 'C': 'Number of Paths', 'D': 'Number of Paths'}]",
-    "estimationHittingreward": "None",
+    "estimationHittingreward": "[{'A': '[None, None, None, None, None]', 'B': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]', 'D': '[None, None, None, None, None]'}, {'A': 'Number of Paths', 'B': 'Number of Paths', 'C': 'Number of Paths', 'D': 'Number of Paths'}]",
     "estimationHittingStateSet": "[{'A': '[None, None, None, None, None]', 'B': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]', 'D': '[None, None, None, None, None]'}, {'A': 'Number of Paths', 'B': 'Number of Paths', 'C': 'Number of Paths', 'D': 'Number of Paths'}]",
-    "estimationHittingRewardSet": "None"
+    "estimationHittingRewardSet": "[{'A': '[None, None, None, None, None]', 'B': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]', 'D': '[None, None, None, None, None]'}, {'A': 'Number of Paths', 'B': 'Number of Paths', 'C': 'Number of Paths', 'D': 'Number of Paths'}]"
 }

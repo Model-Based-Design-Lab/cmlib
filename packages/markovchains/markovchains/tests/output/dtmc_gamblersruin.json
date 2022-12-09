@@ -45,7 +45,7 @@
     "estimationExpectedReward_rel": "[[130.6377, 209.3623], 39.3623, 0.3013, 170.0000, 110.0000, Relative Error]",
     "estimationDistribution": "[None, [None, None, None, None], [None, None, None, None], None, None, Number of Paths]",
     "estimationHittingState": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
-    "estimationHittingreward": "None",
+    "estimationHittingreward": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
     "estimationHittingStateSet": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]",
-    "estimationHittingRewardSet": "None"
+    "estimationHittingRewardSet": "[{'S1': '[None, None, None, None, None]', 'S2': '[None, None, None, None, None]', 'S3': '[None, None, None, None, None]', 'S4': '[None, None, None, None, None]'}, {'S1': 'Number of Paths', 'S2': 'Number of Paths', 'S3': 'Number of Paths', 'S4': 'Number of Paths'}]"
 }
