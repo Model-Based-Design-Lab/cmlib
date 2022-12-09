@@ -332,17 +332,18 @@ def process(args, dsl):
             print("Simulation termination reason: {}".format(stop))
             print("Cezaro limit distribution: {}".format(printOptionalList(distributionStatistics.pointEstimates(), "Could not be determined")))
             print("Number of cycles: {}\n".format(distributionStatistics.cycleCount()))
-            dist: List[float] = distributionStatistics.pointEstimates()  # type: ignore
-            intervals = distributionStatistics.confidenceIntervals()
-            abError = distributionStatistics.abError()
-            reError = distributionStatistics.reError()
-            states: List[str] = M.states()
-            for i in range(len(states)):
-                print("[{}]: {:.4f}".format(states[i], dist[i]))
-                print("\tConfidence interval: {}".format(printOptionalInterval(None if intervals is None else intervals[i])))
-                print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
-                print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
-                print("\n")
+            dist: Optional[List[float]] = distributionStatistics.pointEstimates()
+            if dist is not None:
+                intervals = distributionStatistics.confidenceIntervals()
+                abError = distributionStatistics.abError()
+                reError = distributionStatistics.reError()
+                states: List[str] = M.states()
+                for i in range(len(states)):
+                    print("[{}]: {:.4f}".format(states[i], dist[i]))
+                    print("\tConfidence interval: {}".format(printOptionalInterval(None if intervals is None else intervals[i])))
+                    print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
+                    print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
+                    print("\n")
 
     if operation == OP_DTMC_ESTIMATION_EXPECTED_REWARD:
         setSeed(args, M)
