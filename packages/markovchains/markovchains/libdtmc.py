@@ -1272,7 +1272,7 @@ class MarkovChain(object):
     def estimationHittingProbabilityState(self, sc:StopConditions, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
-        Estimate the hitting probability until hitting a single state by simulation using the provided stop_conditions.
+        Estimate the hitting probability until hitting a single state in one or more steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1351,7 +1351,9 @@ class MarkovChain(object):
             return False
 
         def onHit(s: Statistics):
+            nonlocal accumulatedReward
             s.addSample(accumulatedReward)
+            accumulatedReward = 0.0
             s.completeCycle()
 
         def onNoHit(s: Statistics):
@@ -1363,7 +1365,7 @@ class MarkovChain(object):
     def estimationHittingProbabilityStateSet(self, sc:StopConditions, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
         
         '''
-        Estimate the hitting probability until hitting a set of states by simulation using the provided stop_conditions.
+        Estimate the hitting probability until hitting a set of states in zero or more steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1386,9 +1388,7 @@ class MarkovChain(object):
 
         # define action to be performed during simulation
         def action(n: int, state: str)->bool:
-            # suppress initial state for hitting
-            if n == 0:
-                return False
+            # note that for set of states, the initial states is not suppressed like in single state hitting probability
             return state in hitting_states
 
         def onHit(s: Statistics):
@@ -1431,10 +1431,6 @@ class MarkovChain(object):
         # define action to be performed during simulation
         def action(n: int, state: str)->bool:
             nonlocal accumulatedReward
-            if n==0:
-                accumulatedReward += float(self.getReward(state))
-                # suppress initial state for hitting
-                return False
             if state in hitting_states:
                 return True
             # reward of hitting state is not counted
@@ -1442,8 +1438,10 @@ class MarkovChain(object):
             return False
 
         def onHit(s: Statistics):
+            nonlocal accumulatedReward
             s.addSample(accumulatedReward)
             s.completeCycle()
+            accumulatedReward = 0.0
 
         def onNoHit(s: Statistics):
             pass
