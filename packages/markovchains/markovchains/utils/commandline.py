@@ -354,7 +354,7 @@ def process(args, dsl):
         print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
         print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
         print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
-        print("\tNumber of paths: ", statistics.cycleCount())
+        print("\tNumber of realizations: ", statistics.cycleCount())
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
         setSeed(args, M)
@@ -368,7 +368,7 @@ def process(args, dsl):
         print("\tConfidence intervals: {}".format(printOptionalListOfIntervals(distributionStatistics.confidenceIntervals())))
         print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxAbError())))
         print("\tRelative error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxReError())))
-        print("\tNumber of paths: ", distributionStatistics.cycleCount())
+        print("\tNumber of realizations: ", distributionStatistics.cycleCount())
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)

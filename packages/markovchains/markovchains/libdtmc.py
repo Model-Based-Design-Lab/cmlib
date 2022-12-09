@@ -1167,7 +1167,7 @@ class MarkovChain(object):
         def _action_trackState(_n: int, state: str)-> bool:
             nonlocal currentState
             currentState = state
-            return True
+            return False
         
         while not any(sim_stop_conditions):
 
