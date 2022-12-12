@@ -138,18 +138,20 @@ class DataflowGraph(object):
         '''
         # Compute the repetition vector if needed
         if self._repetitionVector is None:
-            self._repetitionVector = self.repetitionVector()
-            if self._repetitionVector is None:
+            repVec = self.repetitionVector()
+            if isinstance(repVec, list):
                 raise SDFInconsistentException("Dataflow graph is inconsistent")
+            self._repetitionVector = repVec 
         return self._repetitionVector[actor]
 
     def repetitionVectorSum(self)->int:
         '''Determine the sum of the repetitions of all actors, inputs and outputs. An SDFInconsistentException is raised if the graph is inconsistent.'''
         # Compute the repetition vector if needed
         if self._repetitionVector is None:
-            self._repetitionVector = self.repetitionVector()
-            if self._repetitionVector is None:
+            repVec = self.repetitionVector()
+            if isinstance(repVec, list):
                 raise SDFInconsistentException("Dataflow graph is inconsistent")
+            self._repetitionVector = repVec
         res: int = 0
         for a in self._actorsAndIO:
             res = res + self._repetitionVector[a]
@@ -509,11 +511,9 @@ class DataflowGraph(object):
 
         return H, _splitMatrix(A, self.numberOfInitialTokens())
 
-    def repetitionVector(self) -> Optional[Dict[str,int]]:
+    def repetitionVector(self) -> Union[Dict[str,int],List[str]]:
         '''Determine the repetition vector of the graph. Returns None if the graph is inconsistent.'''
-        # TODO: return an inconsistent cycle
-
-        def _findIntegerRates(comp: Set[str], rates: Dict[str,Fraction]):
+        def _findIntegerRates(comp: List[str], rates: Dict[str,Fraction]):
             '''Make the rates of all actors in set comp least integer values.'''
             # determine smallest scaling factor that makes fractional rates integer in the set comp of actors
             factor = Fraction(1,1)
@@ -534,7 +534,36 @@ class DataflowGraph(object):
                 res[a] = rates[a].numerator
             return res
 
-        actors: Set[str] = set(self._actorsAndIO)
+        def _getAncestorCycle(tree: Dict[str,str], node1: str, node2: str):
+
+            def _findCommonAncestor(tree: Dict[str,str], node1: str, node2: str):
+
+                def _isAncestor(tree: Dict[str,str], node1: str, node2: str):
+                    while node2 != node1 and node2 in tree:
+                        node2 = tree[node2]
+                    return node1 == node2
+
+                while not _isAncestor(tree, node1, node2):
+                    node1 = tree[node1]
+                
+                return node1
+
+            def _ancestorPath(tree: Dict[str,str], node: str, parent: str):
+                res = []
+                while node != parent:
+                    res.append(node)
+                    node = tree[node]
+                res.append(parent)
+                return res                
+
+            # start from node 1 upward and check if node is ancestor of node2, nc first one
+            nc = _findCommonAncestor(tree, node1, node2)
+            res = _ancestorPath(tree, node1, nc)
+            res.reverse()
+            res.extend(_ancestorPath(tree, node2, nc)[:-1])
+            return res
+
+        actors: List[str] = sorted(set(self._actorsAndIO))
         
         # if there are no actors return trivial solution
         if len(actors)==0:
@@ -554,9 +583,9 @@ class DataflowGraph(object):
             
             tree:Dict[str,str] = dict()
             # actors to be processed, initialize with a
-            proc: Set[str] = set([a])
+            proc: List[str] = list([a])
             # computed, initialize with a
-            comp: Set[str] = set([a])
+            comp: List[str] = list([a])
             
             while len(proc)>0:
                 # get next actor
@@ -576,14 +605,14 @@ class DataflowGraph(object):
                         if ca in rates:
                             if not rate == rates[ca]:
                                 # found inconsistent cycle
-                                return None
+                                return _getAncestorCycle(tree, ca, b)
                         else:
                             # set b as parent of ca in the tree
                             tree[ca] = b
                             rates[ca] = rate
-                            proc.add(ca)
-                            comp.add(ca)
-                # does b hav incoming channels?
+                            proc.append(ca)
+                            comp.append(ca)
+                # does b have incoming channels?
                 if b in self._inChannels:
                     for c in self._inChannels[b]:
                         pr = self.productionRate(c)
@@ -593,12 +622,12 @@ class DataflowGraph(object):
                         if ca in rates:
                             if not rate == rates[ca]:
                                 # found an inconsistent cycle
-                                return None
+                                return _getAncestorCycle(tree, ca, b)
                         else:
                             tree[ca] = b
                             rates[ca] = rate
-                            proc.add(ca)
-                            comp.add(ca)
+                            proc.append(ca)
+                            comp.append(ca)
             _findIntegerRates(comp, rates)
         # convert fractional rates to integer rates
         return _makeIntegerRates(rates)  
@@ -705,7 +734,7 @@ class DataflowGraph(object):
             return self.copy()
         
         repVec = self.repetitionVector()
-        if repVec is None:
+        if isinstance(repVec, list):
             raise SDFInconsistentException("Graph is inconsistent")
         
         res = DataflowGraph()

@@ -10,6 +10,7 @@
     "star_closure": "None",
     "multiply": "[[None, 0, None, None, None], [2, None, None, None, None], [7, None, 5, None, None], [None, None, None, None, 0], [13, None, 11, 6, None]]",
     "Eigenvectors": [
-        "[[[[None, None, None, -3, 0], 3], [[None, None, -6, -5, 0], 5]], [[[-12, -11, -6, -5, 0], [1, 1, 5, 5, 5]]]]"
+        "[[[[None, None, None, -3, 0], 3], [[None, None, -6, -5, 0], 5]], [[[-12, -11, -6, -5, 0], [1, 1, 5, 5, 5]]]]",
+        "[[[[None, None, -6, -5, 0], 5], [[None, None, None, -3, 0], 3]], [[[-12, -11, -6, -5, 0], [1, 1, 5, 5, 5]]]]"
     ]
 }

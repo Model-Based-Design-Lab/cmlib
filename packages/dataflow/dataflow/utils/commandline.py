@@ -120,8 +120,9 @@ def processDataflowOperation(args, dsl):
     if args.operation == OP_SDF_REP_VECTOR:
         print('Repetition Vector:')
         rates = G.repetitionVector()
-        if rates is None:
+        if isinstance(rates, list):
             print('The graph is inconsistent.')
+            print('There is an inconsistent cycle between the following actors: {}'.format(', '.join(rates)))
         else:
             for a in G.actors():
                 print('{}: {}'.format(a, rates[a]))
@@ -234,7 +235,7 @@ def processDataflowOperation(args, dsl):
 
         # write gantt chart trace
         rv = G.repetitionVector()
-        if rv is None:
+        if isinstance(rv, list):
             raise Exception("The graph is inconsistent.")
         floatFiringDurations = [float(d) for d in firingDurations]
         printXmlGanttChart(G.actorsWithoutInputsOutputs(), rv, fractionToFloatOptionalLList(firingStarts), floatFiringDurations, G.inputs(), fractionToFloatOptionalLList(inputTraces), G.outputs(), fractionToFloatOptionalLList(outputTraces))
@@ -251,7 +252,7 @@ def processDataflowOperation(args, dsl):
 
         # determine the repetition vector for the extended graph
         reps = G.repetitionVector()
-        if reps is None:
+        if isinstance(reps, list):
             raise Exception("The graph is inconsistent")
 
         # add the new inputs and channels
