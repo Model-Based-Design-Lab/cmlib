@@ -35,7 +35,7 @@ def main():
         description='Perform operations on discrete-time Markov chains.\nhttps://computationalmodeling.info')
     parser.add_argument('markovchain', help="the Markov chain to analyze")
     parser.add_argument('-op', '--operation', dest='operation',
-                        help="the operation or analysis to perform, use 'markovchains -oh OPERATION' for information about the specific operation ")
+                        help="the operation or analysis to perform, one of : {}.\nUse 'markovchains -oh OPERATION' for information about the specific operation.".format("; \n".join(MarkovChainOperations)))
     parser.add_argument('-ns', '--numberofsteps', dest='numberOfSteps',
                         help="the number of steps to execute")
     parser.add_argument('-s', '--state', dest='targetState',
