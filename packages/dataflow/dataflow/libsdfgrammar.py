@@ -3,6 +3,7 @@ from textx import metamodel_from_str, TextXSyntaxError
 from fractions import Fraction
 import sys
 
+
 # This is TextX version of the XText grammar in the clang repository
 # Xtext file:
 # src\info.computationalmodeling.lang.parent\info.computationalmodeling.lang\src\main\java\info\computationalmodeling\lang\Dataflow.xtext
@@ -10,6 +11,7 @@ import sys
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 
 MIN_INF_GRAMMAR_STRING = "-inf"
+MIN_INF_VAL = None
 
 SDFGrammar = """
 
@@ -186,6 +188,6 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
 
     if model.inputsignals:
         for inSig in model.inputsignals.signals:
-            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!=MIN_INF_GRAMMAR_STRING else MIN_INF_GRAMMAR_STRING for ts in inSig.timestamps])
+            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!=MIN_INF_GRAMMAR_STRING else MIN_INF_VAL for ts in inSig.timestamps])
 
     return (model.name, sdf)
