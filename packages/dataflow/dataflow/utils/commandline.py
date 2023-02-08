@@ -34,8 +34,6 @@ def main():
     parser = argparse.ArgumentParser(description='Perform operations on dataflow graphs.\nhttps://computationalmodeling.info')
     parser.add_argument('dataflow_graph_or_mpmatrix', help="the dataflow graph or max-plus matrix to analyze")
     parser.add_argument('-op', '--operation', dest='operation',
-                        help="the operation or analysis to perform, one of : {}".format("; \n".join(Operations)))
-    parser.add_argument('-op', '--operation', dest='operation',
                         help="the operation or analysis to perform, one of : {}.\nUse 'dataflow -oh OPERATION' for information about the specific operation.".format("; \n".join(Operations)))
     parser.add_argument('-p', '--period', dest='period',
                         help="the period of the system (for latency)")
