@@ -12,13 +12,25 @@ from finitestateautomata.utils.operations import Operations, AutomataOperations,
 
 def main():
 
+    # optional help flag explaining usage of each individual operation
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    parser.add_argument('-oh', '--operationhelp', dest='opHelp', nargs="?", const=" ")
+    options, remainder = parser.parse_known_args() # Only use options of parser above
+
+    if options.opHelp: # Check if -oh has been called
+        if options.opHelp not in Operations:
+            print("Operation '{}' does not exist. List of operations:\n\t- {}".format(options.opHelp, "\n\t- ".join(Operations)))
+        else:
+            print("{}: {}".format(options.opHelp, OperationDescriptions[Operations.index(options.opHelp)]))        
+        exit(1)
+
     parser = argparse.ArgumentParser(
         description='Perform operations on finite state automata.\nhttps://computationalmodeling.info')
     parser.add_argument('automaton_or_regularexpression', help="the automaton or regular expression to analyze")
     parser.add_argument('-sa', '--secondaryautomaton', dest='secondaryAutomaton',
                         help="a secondary automaton for the operation")
     parser.add_argument('-op', '--operation', dest='operation',
-                        help="the operation or analysis to perform, one of : {}".format("; ".join(OperationDescriptions)))
+                        help="the operation or analysis to perform, one of : {}.\nUse 'finitestateautomata -oh OPERATION' for information about the specific operation.".format("; \n".join(Operations)))
     parser.add_argument('-oa', '--outputautomaton', dest='outputAutomaton',
                         help="the outputfile to write output automata to")
     parser.add_argument('-re', '--regularexpression', dest='regularExpression',
