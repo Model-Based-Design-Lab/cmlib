@@ -788,15 +788,16 @@ class DataflowGraph(object):
         Returns a tuple with the following elements
         input traces, the output traces, all firing start times, all firing durations.
         '''
-        
+
         # determine the state-space model an the trace matrix
         H, SSM = self.stateSpaceMatrices()
 
         # compute vector trace from state-space matrices
         Matrices = {'A': MaxPlusMatrixModel.fromMatrix(SSM[0]), 'B': MaxPlusMatrixModel.fromMatrix(SSM[1]), 'C': MaxPlusMatrixModel.fromMatrix(SSM[2]), 'D': MaxPlusMatrixModel.fromMatrix(SSM[3]) }
 
-        stateSize = self.numberOfInitialTokens()
-        inputSize = self.numberOfInputs()
+        stateVectorSize = self.numberOfInitialTokens()
+        repetition_vector = self.repetitionVector()
+        inputVectorSize = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
 
         if x0 is None:
             x0 = mpZeroVector(Matrices['A'].numberOfColumns())
@@ -812,10 +813,11 @@ class DataflowGraph(object):
                     # split it according to the inputs within one graph iteration
                     inputs.extend(mpSplitSequence(ios_l, self.repetitions(s)))
                 else:
-                    # the input is given as a name referring to an input sequence specified in the model
+                    # the input is given as a name referring to an input sequence specified
+                    #  in the model
                     ios_s: str = inputOverride[s]  # type: ignore
                     if inputOverride[s] not in inpSig:
-                        raise SDFException("Unknown event sequence: {}.".format(inputOverride[s]))
+                        raise SDFException(f"Unknown event sequence: {inputOverride[s]}.")
                     inputs.extend(mpSplitSequence(inpSig[ios_s], self.repetitions(s)))
             else:
                 # the input is not specified in override
@@ -828,16 +830,17 @@ class DataflowGraph(object):
 
         # Compute the vector trace
         vt = MaxPlusMatrixModel.vectorTrace(Matrices, x0, ni, inputs)
-        
-        inputTraces = [v[0:inputSize] for v in vt]
-        outputTraces = [v[inputSize+stateSize:] for v in vt]
+
+        inputTraces = [v[0:inputVectorSize] for v in vt]
+        outputTraces = [v[inputVectorSize+stateVectorSize:] for v in vt]
 
         # reorder the vectors so that the state elements come first, followed by inputs
-        ssvt = [v[inputSize:stateSize+inputSize]+v[0:inputSize] for v in vt]
+        ssvt = [v[inputVectorSize:stateVectorSize+inputVectorSize]+v[0:inputVectorSize] for v in vt]
         # compute the firing starting times using the trace matrix H
         firingStarts = [mpMultiplyMatrixVector(H, s)  for s in ssvt]
         # collect the firing durations
         firingDurations= [self.executionTimeOfActor(a) for a in self.actorsWithoutInputsOutputs()]
+
         return inputTraces, outputTraces, firingStarts, firingDurations
 
     def determineTraceZeroBased(self, ni:int, x0: Optional[TMPVector]=None) -> Tuple[List[str],List[str],List[TTimeStampList],List[str],List[TTimeStampList],List[TTimeStampList],List[Fraction]]:
