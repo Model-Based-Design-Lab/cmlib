@@ -27,8 +27,9 @@ class Statistics(object):
     _stdDevEst: float                           # Estimated variance
     _confLevel: float                           # confidence level
     _nrPaths: int                               # keep track of number of paths explored
+    _minimumNrSamples: int                      # minimum number of samples to use
 
-    def __init__(self, confidence: float) -> None:
+    def __init__(self, confidence: float, minimumNumberOfSamples: int = Minimum_Nr_Samples) -> None:
         '''confidence: confidence level'''
         self._cycleLength = 0                           # Current cycle length
         self._sumOfSamplesCycle = 0.0                   # Current cycle cumulative samples
@@ -41,6 +42,7 @@ class Statistics(object):
         self._meanEst = 0                               # Estimated mean
         self._stdDevEst = 0                             # Estimated variance
         self._nrPaths = 0
+        self._minimumNrSamples = minimumNumberOfSamples
 
         # Calculate the confidence point estimate with inverse normal distribution
         self._confLevel = NormalDist().inv_cdf((1+confidence)/2)
@@ -51,17 +53,17 @@ class Statistics(object):
             self._meanEst = self._cumulativeSamples/self._cumulativeCycleLengths
 
     def meanEstimate(self)->Optional[float]:
-        if self._cycleCount < Minimum_Nr_Samples:
+        if self._cycleCount < self._minimumNrSamples:
             return None
         return self._meanEst
 
     def meanEstimateResult(self)->Union[str,float]:
-        if self._cycleCount < Minimum_Nr_Samples:
+        if self._cycleCount < self._minimumNrSamples:
             return RES_TOO_FEW_SAMPLES
         return self._meanEst
 
     def stdDevEstimate(self)->Optional[float]:
-        if self._cycleCount < Minimum_Nr_Samples:
+        if self._cycleCount < self._minimumNrSamples:
             return None
         return self._stdDevEst
 
@@ -105,7 +107,7 @@ class Statistics(object):
         '''
 
         # check if we have collected sufficient cycles 
-        if self._cycleCount < Minimum_Nr_Samples:
+        if self._cycleCount < self._minimumNrSamples:
             return None
         
         if self._cycleCount == 0:
@@ -128,7 +130,7 @@ class Statistics(object):
         '''Return estimated relative error'''
 
         # check if we have collected sufficient cycles 
-        if 0 <= self._cycleCount < Minimum_Nr_Samples:
+        if 0 <= self._cycleCount < self._minimumNrSamples:
             return None
 
         if self._cycleCount == 0:
@@ -259,11 +261,13 @@ class StopConditions(object):
     maxPathLength: int
     nrOfCycles: int
     secondsTimeout: float
+    minimumNumberOfSamples: int
 
-    def __init__(self, confidence: float,maxAbError: float,maxReError: float,maxPathLength: int,nrOfCycles: int,secondsTimeout: float) -> None:
+    def __init__(self, confidence: float,maxAbError: float,maxReError: float,maxPathLength: int,nrOfCycles: int,secondsTimeout: float, minimumNumberOfSamples: int = Minimum_Nr_Samples) -> None:
         self.confidence = confidence
         self.maxAbError = maxAbError
         self.maxReError = maxReError
         self.maxPathLength = maxPathLength
         self.nrOfCycles = nrOfCycles
         self.secondsTimeout = secondsTimeout
+        self.minimumNumberOfSamples = minimumNumberOfSamples
