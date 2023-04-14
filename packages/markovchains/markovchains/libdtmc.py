@@ -926,7 +926,7 @@ class MarkovChain(object):
         - the stop criterion applied as a string
         '''
         # Global variables used during simulation
-        statistics = Statistics(sc.confidence)
+        statistics = Statistics(sc.confidence, sc.minimumNumberOfSamples)
 
         def _action_AbsErr(_n:int, _state:str)->bool:
             c = statistics.abError()
@@ -1090,7 +1090,7 @@ class MarkovChain(object):
         - the stop criterion applied as a string
         '''
 
-        statistics = Statistics(sc.confidence)
+        statistics = Statistics(sc.confidence, sc.minimumNumberOfSamples)
 
         def _action_lastStateReward(n: int, state: str)->bool:
             if n == nr_of_steps:
