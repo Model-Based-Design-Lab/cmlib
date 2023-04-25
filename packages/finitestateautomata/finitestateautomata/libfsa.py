@@ -847,7 +847,7 @@ class Automaton(object):
         '''Escape quotes.'''
         if re.match(r"[a-zA-Z][a-zA-Z0-9]*", symbol):
             return symbol
-        return symbol.replace('"', '\\"')
+        return '"' + symbol.replace('"', '\\"') + '"'
 
     def asDSL(self, name: str)->str:
         '''Return a string representing the automaton in the domain-specific language,'''
