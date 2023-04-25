@@ -1,0 +1,30 @@
+{
+    "convert_to_FSA": {
+        "_states": "[S, S1, S11, S12, S13, S2, S3, S4, S41, S5]",
+        "_transitions": {
+            "S": {
+                "0": "[S1]"
+            },
+            "S4": {
+                "1": "[S13]"
+            },
+            "S3": {
+                "0": "[S11]"
+            },
+            "S41": {
+                "1": "[S12]"
+            }
+        },
+        "_epsilonTransitions": {
+            "S2": "[S3, S41]",
+            "S11": "[S2]",
+            "S13": "[S2]",
+            "S5": "[S, S4]",
+            "S12": "[S5]",
+            "S1": "[S5]"
+        },
+        "_initialStates": "[S5]",
+        "_finalStates": "[S5]",
+        "_generalizedAcceptanceSets": {}
+    }
+}
