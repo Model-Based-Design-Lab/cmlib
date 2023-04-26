@@ -3,18 +3,17 @@
     "states": "[S0, S1]",
     "deterministic": "False",
     "reachableStates": "[S0, S1]",
-    "languageEmpty": "[True, None, None]",
     "accepts": "False",
     "accepts_empty": "False",
     "languageIncluded": "[True, None]",
     "product": {
         "_states": "[(S0,S0), (S0,S1), (S1,S0), (S1,S1)]",
         "_transitions": {
-            "(S0,S0)": {
-                "a": "[(S1,S1)]"
-            },
             "(S1,S1)": {
                 "b": "[(S0,S0)]"
+            },
+            "(S0,S0)": {
+                "a": "[(S1,S1)]"
             }
         },
         "_epsilonTransitions": {},
@@ -22,133 +21,18 @@
         "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     },
-    "minimize": {
-        "_states": "",
-        "_transitions": {},
-        "_epsilonTransitions": {},
-        "_initialStates": "",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
-    "convert_to_DFA": {
-        "_states": "[{S0,S1}, {S0}, {S1}]",
+    "eliminateEpsilon": {
+        "_states": "[S0, S1]",
         "_transitions": {
-            "{S0,S1}": {
-                "a": "[{S1}]",
-                "b": "[{S0}]"
+            "S0": {
+                "a": "[S1]"
             },
-            "{S1}": {
-                "b": "[{S0}]"
-            },
-            "{S0}": {
-                "a": "[{S1}]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[{S0,S1}]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
-    "relabel": {
-        "_states": "[S1, S2]",
-        "_transitions": {
             "S1": {
-                "a": "[S2]"
-            },
-            "S2": {
-                "b": "[S1]"
+                "b": "[S0]"
             }
         },
         "_epsilonTransitions": {},
-        "_initialStates": "[S1, S2]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
-    "languageIncluded_refModel": "[True, None]",
-    "product_refModel": {
-        "_states": "[(S0,S0), (S0,S1), (S1,S0), (S1,S1)]",
-        "_transitions": {
-            "(S0,S0)": {
-                "a": "[(S1,S1)]"
-            },
-            "(S0,S1)": {
-                "a": "[(S1,S0)]"
-            },
-            "(S1,S0)": {
-                "b": "[(S0,S0)]"
-            },
-            "(S1,S1)": {
-                "b": "[(S0,S1)]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[(S0,S0), (S1,S0)]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
-    },
-    "languageEmptyBuchi": "[False, [b], [a, b], [(S0,F0), (S1,F0)], [(S0,F0), (S1,F1)]]",
-    "productBuchi": {
-        "_states": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S0,F0)),F1), (((S0,F0),(S0,F1)),F0), (((S0,F0),(S0,F1)),F1), (((S0,F0),(S1,F0)),F0), (((S0,F0),(S1,F0)),F1), (((S0,F0),(S1,F1)),F0), (((S0,F0),(S1,F1)),F1), (((S0,F1),(S0,F0)),F0), (((S0,F1),(S0,F0)),F1), (((S0,F1),(S0,F1)),F0), (((S0,F1),(S0,F1)),F1), (((S0,F1),(S1,F0)),F0), (((S0,F1),(S1,F0)),F1), (((S0,F1),(S1,F1)),F0), (((S0,F1),(S1,F1)),F1), (((S1,F0),(S0,F0)),F0), (((S1,F0),(S0,F0)),F1), (((S1,F0),(S0,F1)),F0), (((S1,F0),(S0,F1)),F1), (((S1,F0),(S1,F0)),F0), (((S1,F0),(S1,F0)),F1), (((S1,F0),(S1,F1)),F0), (((S1,F0),(S1,F1)),F1), (((S1,F1),(S0,F0)),F0), (((S1,F1),(S0,F0)),F1), (((S1,F1),(S0,F1)),F0), (((S1,F1),(S0,F1)),F1), (((S1,F1),(S1,F0)),F0), (((S1,F1),(S1,F0)),F1), (((S1,F1),(S1,F1)),F0), (((S1,F1),(S1,F1)),F1)]",
-        "_transitions": {
-            "(((S0,F1),(S0,F1)),F0)": {
-                "a": "[(((S1,F1),(S1,F1)),F0)]"
-            },
-            "(((S0,F1),(S0,F0)),F0)": {
-                "a": "[(((S1,F1),(S1,F1)),F0)]"
-            },
-            "(((S1,F0),(S1,F0)),F0)": {
-                "b": "[(((S0,F0),(S0,F0)),F0)]"
-            },
-            "(((S1,F0),(S1,F1)),F0)": {
-                "b": "[(((S0,F0),(S0,F0)),F0)]"
-            },
-            "(((S1,F1),(S1,F0)),F0)": {
-                "b": "[(((S0,F0),(S0,F0)),F1)]"
-            },
-            "(((S1,F1),(S1,F1)),F0)": {
-                "b": "[(((S0,F0),(S0,F0)),F1)]"
-            },
-            "(((S0,F0),(S0,F1)),F0)": {
-                "a": "[(((S1,F1),(S1,F1)),F1)]"
-            },
-            "(((S0,F0),(S0,F0)),F0)": {
-                "a": "[(((S1,F1),(S1,F1)),F1)]"
-            },
-            "(((S0,F1),(S0,F1)),F1)": {
-                "a": "[(((S1,F1),(S1,F1)),F1)]"
-            },
-            "(((S0,F1),(S0,F0)),F1)": {
-                "a": "[(((S1,F1),(S1,F1)),F0)]"
-            },
-            "(((S1,F0),(S1,F0)),F1)": {
-                "b": "[(((S0,F0),(S0,F0)),F1)]"
-            },
-            "(((S1,F0),(S1,F1)),F1)": {
-                "b": "[(((S0,F0),(S0,F0)),F0)]"
-            },
-            "(((S1,F1),(S1,F0)),F1)": {
-                "b": "[(((S0,F0),(S0,F0)),F1)]"
-            },
-            "(((S1,F1),(S1,F1)),F1)": {
-                "b": "[(((S0,F0),(S0,F0)),F0)]"
-            },
-            "(((S0,F0),(S0,F1)),F1)": {
-                "a": "[(((S1,F1),(S1,F1)),F1)]"
-            },
-            "(((S0,F0),(S0,F0)),F1)": {
-                "a": "[(((S1,F1),(S1,F1)),F0)]"
-            }
-        },
-        "_epsilonTransitions": {},
-        "_initialStates": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S1,F0)),F0), (((S1,F0),(S0,F0)),F0), (((S1,F0),(S1,F0)),F0)]",
-        "_finalStates": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S0,F0)),F1), (((S0,F0),(S0,F1)),F0), (((S0,F0),(S1,F0)),F0), (((S0,F0),(S1,F1)),F0), (((S0,F0),(S1,F1)),F1), (((S0,F1),(S0,F0)),F1), (((S0,F1),(S1,F1)),F1), (((S1,F0),(S0,F0)),F1), (((S1,F0),(S1,F1)),F1), (((S1,F1),(S0,F0)),F0), (((S1,F1),(S0,F0)),F1), (((S1,F1),(S0,F1)),F0), (((S1,F1),(S1,F0)),F0), (((S1,F1),(S1,F1)),F0), (((S1,F1),(S1,F1)),F1)]",
-        "_generalizedAcceptanceSets": {}
-    },
-    "minimizeBuchi": {
-        "_states": "",
-        "_transitions": {},
-        "_epsilonTransitions": {},
-        "_initialStates": "",
+        "_initialStates": "[S0, S1]",
         "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     },
@@ -198,18 +82,134 @@
         "_finalStates": "[S, {S0,S1}, {S0}, {S1}]",
         "_generalizedAcceptanceSets": {}
     },
-    "eliminateEpsilon": {
-        "_states": "[S0, S1]",
+    "minimize": {
+        "_states": "",
+        "_transitions": {},
+        "_epsilonTransitions": {},
+        "_initialStates": "",
+        "_finalStates": "",
+        "_generalizedAcceptanceSets": {}
+    },
+    "convert_to_DFA": {
+        "_states": "[{S0,S1}, {S0}, {S1}]",
         "_transitions": {
-            "S0": {
-                "a": "[S1]"
+            "{S0,S1}": {
+                "b": "[{S0}]",
+                "a": "[{S1}]"
             },
-            "S1": {
-                "b": "[S0]"
+            "{S0}": {
+                "a": "[{S1}]"
+            },
+            "{S1}": {
+                "b": "[{S0}]"
             }
         },
         "_epsilonTransitions": {},
-        "_initialStates": "[S0, S1]",
+        "_initialStates": "[{S0,S1}]",
+        "_finalStates": "",
+        "_generalizedAcceptanceSets": {}
+    },
+    "relabel": {
+        "_states": "[S1, S2]",
+        "_transitions": {
+            "S1": {
+                "a": "[S2]"
+            },
+            "S2": {
+                "b": "[S1]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[S1, S2]",
+        "_finalStates": "",
+        "_generalizedAcceptanceSets": {}
+    },
+    "convert_to_DSL": "finite state automaton TestName {\n\tS0 initial -- a --> S1 initial\n\tS1 -- b --> S0\n}\n",
+    "languageIncluded_refModel": "[True, None]",
+    "product_refModel": {
+        "_states": "[(S0,S0), (S0,S1), (S1,S0), (S1,S1)]",
+        "_transitions": {
+            "(S1,S1)": {
+                "b": "[(S0,S1)]"
+            },
+            "(S1,S0)": {
+                "b": "[(S0,S0)]"
+            },
+            "(S0,S1)": {
+                "a": "[(S1,S0)]"
+            },
+            "(S0,S0)": {
+                "a": "[(S1,S1)]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[(S0,S0), (S1,S0)]",
+        "_finalStates": "",
+        "_generalizedAcceptanceSets": {}
+    },
+    "languageEmptyBuchi": "[False, [b], [a, b], [(S0,F0), (S1,F0)], [(S0,F0), (S1,F1)]]",
+    "productBuchi": {
+        "_states": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S0,F0)),F1), (((S0,F0),(S0,F1)),F0), (((S0,F0),(S0,F1)),F1), (((S0,F0),(S1,F0)),F0), (((S0,F0),(S1,F0)),F1), (((S0,F0),(S1,F1)),F0), (((S0,F0),(S1,F1)),F1), (((S0,F1),(S0,F0)),F0), (((S0,F1),(S0,F0)),F1), (((S0,F1),(S0,F1)),F0), (((S0,F1),(S0,F1)),F1), (((S0,F1),(S1,F0)),F0), (((S0,F1),(S1,F0)),F1), (((S0,F1),(S1,F1)),F0), (((S0,F1),(S1,F1)),F1), (((S1,F0),(S0,F0)),F0), (((S1,F0),(S0,F0)),F1), (((S1,F0),(S0,F1)),F0), (((S1,F0),(S0,F1)),F1), (((S1,F0),(S1,F0)),F0), (((S1,F0),(S1,F0)),F1), (((S1,F0),(S1,F1)),F0), (((S1,F0),(S1,F1)),F1), (((S1,F1),(S0,F0)),F0), (((S1,F1),(S0,F0)),F1), (((S1,F1),(S0,F1)),F0), (((S1,F1),(S0,F1)),F1), (((S1,F1),(S1,F0)),F0), (((S1,F1),(S1,F0)),F1), (((S1,F1),(S1,F1)),F0), (((S1,F1),(S1,F1)),F1)]",
+        "_transitions": {
+            "(((S1,F0),(S1,F0)),F0)": {
+                "b": "[(((S0,F0),(S0,F0)),F0)]"
+            },
+            "(((S1,F0),(S1,F1)),F0)": {
+                "b": "[(((S0,F0),(S0,F0)),F0)]"
+            },
+            "(((S1,F1),(S1,F0)),F0)": {
+                "b": "[(((S0,F0),(S0,F0)),F1)]"
+            },
+            "(((S1,F1),(S1,F1)),F0)": {
+                "b": "[(((S0,F0),(S0,F0)),F1)]"
+            },
+            "(((S0,F1),(S0,F1)),F0)": {
+                "a": "[(((S1,F1),(S1,F1)),F0)]"
+            },
+            "(((S0,F1),(S0,F0)),F0)": {
+                "a": "[(((S1,F1),(S1,F1)),F0)]"
+            },
+            "(((S0,F0),(S0,F1)),F0)": {
+                "a": "[(((S1,F1),(S1,F1)),F1)]"
+            },
+            "(((S0,F0),(S0,F0)),F0)": {
+                "a": "[(((S1,F1),(S1,F1)),F1)]"
+            },
+            "(((S1,F0),(S1,F0)),F1)": {
+                "b": "[(((S0,F0),(S0,F0)),F1)]"
+            },
+            "(((S1,F0),(S1,F1)),F1)": {
+                "b": "[(((S0,F0),(S0,F0)),F0)]"
+            },
+            "(((S1,F1),(S1,F0)),F1)": {
+                "b": "[(((S0,F0),(S0,F0)),F1)]"
+            },
+            "(((S1,F1),(S1,F1)),F1)": {
+                "b": "[(((S0,F0),(S0,F0)),F0)]"
+            },
+            "(((S0,F1),(S0,F1)),F1)": {
+                "a": "[(((S1,F1),(S1,F1)),F1)]"
+            },
+            "(((S0,F1),(S0,F0)),F1)": {
+                "a": "[(((S1,F1),(S1,F1)),F0)]"
+            },
+            "(((S0,F0),(S0,F1)),F1)": {
+                "a": "[(((S1,F1),(S1,F1)),F1)]"
+            },
+            "(((S0,F0),(S0,F0)),F1)": {
+                "a": "[(((S1,F1),(S1,F1)),F0)]"
+            }
+        },
+        "_epsilonTransitions": {},
+        "_initialStates": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S1,F0)),F0), (((S1,F0),(S0,F0)),F0), (((S1,F0),(S1,F0)),F0)]",
+        "_finalStates": "[(((S0,F0),(S0,F0)),F0), (((S0,F0),(S0,F0)),F1), (((S0,F0),(S0,F1)),F0), (((S0,F0),(S1,F0)),F0), (((S0,F0),(S1,F1)),F0), (((S0,F0),(S1,F1)),F1), (((S0,F1),(S0,F0)),F1), (((S0,F1),(S1,F1)),F1), (((S1,F0),(S0,F0)),F1), (((S1,F0),(S1,F1)),F1), (((S1,F1),(S0,F0)),F0), (((S1,F1),(S0,F0)),F1), (((S1,F1),(S0,F1)),F0), (((S1,F1),(S1,F0)),F0), (((S1,F1),(S1,F1)),F0), (((S1,F1),(S1,F1)),F1)]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "minimizeBuchi": {
+        "_states": "",
+        "_transitions": {},
+        "_epsilonTransitions": {},
+        "_initialStates": "",
         "_finalStates": "",
         "_generalizedAcceptanceSets": {}
     }

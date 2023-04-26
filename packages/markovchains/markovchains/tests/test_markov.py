@@ -121,6 +121,8 @@ class Markov_pytest(Model_pytest):
         self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationHittingProbabilityStateSet(StopConditions(0.95,-1,-1,1,1,-1), [self.state], self.model.states())), "estimationHittingStateSet")
         self.model.setRecurrentState(None) # reset trace recurrent state
         self.function_test(lambda: self.dictionaryStatisticsAndStop(*self.model.estimationRewardUntilHittingStateSet(StopConditions(0.95,-1,-1,1,1,30), [self.state], self.model.states())), "estimationHittingRewardSet")
+        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
+
 
     def Incorrect_behavior_tests(self):
         self.incorrect_test(lambda: self.model.executeSteps(-2), 'Number of steps must be non-negative.')

@@ -43,5 +43,6 @@
     "estimationHittingState": "[{'A': '[None, None, None, None, None]'}, {'A': 'Number of Paths'}]",
     "estimationHittingreward": "[{'A': '[None, None, None, None, None]'}, {'A': 'Number of Paths'}]",
     "estimationHittingStateSet": "[{'A': '[None, None, None, None, None]'}, {'A': 'Number of Paths'}]",
-    "estimationHittingRewardSet": "[{'A': '[None, None, None, None, None]'}, {'A': 'Number of Paths'}]"
+    "estimationHittingRewardSet": "[{'A': '[None, None, None, None, None]'}, {'A': 'Number of Paths'}]",
+    "convert_to_DSL": "markov chain TestName {\n\tA [p: 1; r: 1] -- 1 --> A\n}\n"
 }

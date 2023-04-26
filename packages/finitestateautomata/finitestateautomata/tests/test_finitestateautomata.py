@@ -50,7 +50,7 @@ class Automaton_pytest(Model_pytest):
         self.function_test(lambda: vars(self.model.minimize()), "minimize", sort = True)
         self.function_test(lambda: vars(self.model.asDFA()), "convert_to_DFA", sort = True)
         self.function_test(lambda: vars(self.model.relabelStates()), "relabel", sort = True) # Nondeterministic
-        self.function_test(lambda: vars(self.model.asDSL("TestName")), "convert_to_DSL", sort = True)
+        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
 
         # Test current model against reference model defined in /models folder 
         if "fsa_refModel.fsa" in MODEL_FSA_FILES:
@@ -99,6 +99,7 @@ class LTL_pytest(Model_pytest):
 
     def Correct_behavior_tests(self):
         self.function_test(lambda: vars(self.model.asFSA()), "convert_to_NBA", sort = True)
+        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
 
     def Incorrect_behavior_tests(self):
         pass
@@ -136,6 +137,7 @@ class Regular_expression_pytest(Model_pytest):
         
         if self.model.isOmegaRegEx():
             self.function_test(lambda: vars(self.model.asNBA()), "convert_to_NBA", sort = True)
+        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
 
     def Incorrect_behavior_tests(self):
         pass

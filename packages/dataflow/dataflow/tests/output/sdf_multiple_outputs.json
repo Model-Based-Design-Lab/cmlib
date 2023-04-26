@@ -84,5 +84,6 @@
     "throughput": "2/3",
     "stateSpaceMatrices": "[[[1, None, 0], [2, None, 1], [0, None, None]], [[[None, 0], [3, None]], [[None], [2]], [[3, None], [1, None]], [[2], [None]]]]",
     "latency": "[[3], [1]]",
-    "generalizedLatency": "[[[3, 3/2], [1, -1/2]], [[2], [0]]]"
+    "generalizedLatency": "[[[3, 3/2], [1, -1/2]], [[2], [0]]]",
+    "convert_to_DSL": "dataflow graph TestName {\n\tinputs i\n\toutputs o1, o2\n\ti[0]  --------> A\n\tA  --------> B\n\tB  ---- initial tokens: 2 ----> C\n\tC  --------> A\n\tB  --------> o1[0]\n\tC  --------> o2[0]\n}\n"
 }

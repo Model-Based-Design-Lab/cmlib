@@ -240,7 +240,7 @@ class LTLFormulaUntil(LTLSubFormula):
         return True
    
     def __str__(self):
-        return str(self._phi1) + "U" + str(self._phi2)
+        return "("+str(self._phi1) + ") U (" + str(self._phi2) + ")"
 
 class LTLFormulaRelease(LTLSubFormula):
 
@@ -281,7 +281,7 @@ class LTLFormulaRelease(LTLSubFormula):
         return set([self]).union(self._phi1._getSubFormulas()).union(self._phi2._getSubFormulas())
 
     def __str__(self):
-        return str(self._phi1) + "R" + str(self._phi2)
+        return "("+str(self._phi1) + ") R (" + str(self._phi2) + ")"
 
 class LTLFormulaImplication(LTLSubFormula):
 
@@ -310,7 +310,7 @@ class LTLFormulaImplication(LTLSubFormula):
         return set([self]).union(self._phi1._getSubFormulas()).union(self._phi2._getSubFormulas())
 
     def __str__(self):
-        return str(self._phi1) + "=>" + str(self._phi1)
+        return "("+str(self._phi1) + ") => (" + str(self._phi1) + ")"
 
 class LTLFormulaConjunction(LTLSubFormula):
 
@@ -353,7 +353,7 @@ class LTLFormulaConjunction(LTLSubFormula):
         return reduce(l, self._subformulas, set())
 
     def __str__(self):
-        return " and ".join([str(phi) for phi in self._subformulas])
+        return " and ".join(["("+str(phi)+")" for phi in self._subformulas])
 
 class LTLFormulaDisjunction(LTLSubFormula):
 
@@ -393,7 +393,7 @@ class LTLFormulaDisjunction(LTLSubFormula):
         return reduce(l, self._subformulas, set())
 
     def __str__(self):
-        return " or ".join([str(phi) for phi in self._subformulas])
+        return " or ".join(["("+str(phi)+")" for phi in self._subformulas])
 
 class LTLFormulaNext(LTLSubFormula):
 
@@ -416,7 +416,7 @@ class LTLFormulaNext(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "X" + str(self._subformula)
+        return "X " + str(self._subformula)
 
 class LTLFormulaNegation(LTLSubFormula):
     
@@ -436,7 +436,7 @@ class LTLFormulaNegation(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "not" + str(self._subformula)
+        return "not (" + str(self._subformula) + ")"
 
 class LTLFormulaAlways(LTLSubFormula):
     
@@ -465,7 +465,7 @@ class LTLFormulaAlways(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "G" + str(self._subformula)
+        return "G (" + str(self._subformula) + ")"
 
 class LTLFormulaEventually(LTLSubFormula):
 
@@ -497,7 +497,7 @@ class LTLFormulaEventually(LTLSubFormula):
         return True
 
     def __str__(self):
-        return "F" + str(self._subformula)
+        return "F (" + str(self._subformula) + ")"
 
 class LTLFormula(object):
 
