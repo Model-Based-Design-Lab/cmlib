@@ -41,13 +41,14 @@ test:
         - cd ../finitestateautomata
         - coverage run -m pytest . -v -l
         - coverage html
+        - pwd
     artifacts:
       expire_in: 14d
       when: always
       paths:
-      - cmlib/packages/finitestateautomata/htmlcov/
-      - cmlib/packages/markovchains/htmlcov/
-      - cmlib/packages/dataflow/htmlcov/
+      - packages/finitestateautomata/htmlcov/
+      - packages/markovchains/htmlcov/
+      - packages/dataflow/htmlcov/
 
 
 
