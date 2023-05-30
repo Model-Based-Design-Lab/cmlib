@@ -169,9 +169,10 @@ class MarkovChain(object):
         # ensure that all rows add up to 1.
         # compute the row sums
         sums = linalg.rowSum(self._transitionMatrix)
-        for n in range(len(self._states)):
-            # if the row n sum is smaller than 1
-            if sums[n] < Fraction(1):
+        nrStates = len(self._states)
+        for n in range(nrStates):
+            # if the row n sum is significantly smaller than 1
+            if sums[n] < Fraction(999, 1000):
                 # try to add the missing probability mass on a self-loop on n, if it is not specified (is zero)
                 if self._transitionMatrix[n][n] == Fraction(0):
                     self._transitionMatrix[n][n] = Fraction(1) - sums[n]
@@ -179,7 +180,24 @@ class MarkovChain(object):
                     # cannot interpret it as an implicit transition
                     raise DTMCException("probabilities do not add to one")
             else:
-                if sums[n] > Fraction(1):
+                if sums[n] < Fraction(1001, 1000):
+                    # It is almost one, fix the largest probability
+                    kMax = 0
+                    maxVal = Fraction(0)
+                    for k in range(nrStates):
+                        if self._transitionMatrix[k][n] > maxVal:
+                            maxVal = self._transitionMatrix[k][n]
+                            kMax = k
+                    # determine the correct value for self._transitionMatrix[kMax][n]
+                    mass = Fraction(1)
+                    for k in range(nrStates):
+                        if k != kMax:
+                            mass = mass - self._transitionMatrix[k][n]
+
+                    self._transitionMatrix[kMax][n] = mass
+                
+                else:
+                    # it is significantly larger than 1
                     raise DTMCException("probability mass is larger than one")
 
     def transitionMatrix(self)->linalg.TMatrix:
@@ -228,19 +246,41 @@ class MarkovChain(object):
     def completeInitialProbabilities(self):
         '''Complete the initial probabilities.'''
         # ensure that the initial probabilities add up to 1.
-        sum = functools.reduce(lambda a,b : a+b, self._initialProbabilities.values(), Fraction(0))
-        if sum > Fraction(1):
+        sumValue = functools.reduce(lambda a,b : a+b, self._initialProbabilities.values(), Fraction(0))
+        if sumValue > Fraction(1001,1000):
+            # probability is significantly larger than 1
             raise DTMCException("initial probability mass is larger than one")
-        if sum < Fraction(1):
+        if sumValue < Fraction(999, 1000):
             K = [self.initialProbabilitySpecified(s) for s in self._states].count(False)
             if K == 0:
                 raise DTMCException("initial probability mass is smaller than one")
-            remainder: Fraction = (Fraction(1) - sum) / Fraction(K)
+            remainder: Fraction = (Fraction(1) - sumValue) / Fraction(K)
             k = 0
             for s in self._states:
                 if not self.initialProbabilitySpecified(s):
                     self.setInitialProbability(s, remainder)
                 k += 1
+        else:
+            # probability is close to one, but possibly not exactly equal
+            # fix the largest probability
+
+            sMax = ""
+            maxVal = Fraction(0)
+            for s in self._states:
+                if self.initialProbabilitySpecified(s):
+                    if self._initialProbabilities[s] > maxVal:
+                        maxVal = self._initialProbabilities[s]
+                        sMax = s
+            # determine the correct value for self._initialProbabilities[s]
+            mass = Fraction(1)
+            for s in self._states:
+                if s != sMax:
+                    if self.initialProbabilitySpecified(s):
+                        mass = mass - self._initialProbabilities[s]
+
+            self.setInitialProbability(sMax, mass)
+
+
 
     def completeRewards(self):
         '''Complete the implicit rewards to zero.'''
