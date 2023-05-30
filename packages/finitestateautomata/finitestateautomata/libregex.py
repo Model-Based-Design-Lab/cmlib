@@ -105,6 +105,23 @@ class RegExTerm(object):
         '''Perform conversion to an FSA.'''
         raise RegExException("Overwrite in subclasses")
 
+    def __eq__(self, other)->bool:
+        if not type(self) == type(other):
+            return False
+        else:
+            return self.__eq__same_class__(other)
+    
+    def __eq__same_class__(self, other)->bool:
+        raise RegExException("to be filled in subclasses to support sorting")
+
+    def __lt__(self, other)->bool:
+        if not type(self) == type(other):
+            return type(self).__name__ < type(other).__name__
+        return self.__lt__same_class__(other)
+    
+    def __lt__same_class__(self, other)->bool:
+        raise RegExException("to be filled in subclasses to support sorting")
+    
 
     @staticmethod
     def fromFSA(A: Automaton)->'RegExTerm':
@@ -237,6 +254,14 @@ class RegExTermEmptySet(RegExTerm):
     def _asNBA(self)->Automaton:
         return self._asFSA()
 
+    def __eq__same_class__(self, other)->bool:
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        return False
+
+
+
 class RegExTermEmptyWord(RegExTerm):
 
     def __init__(self):
@@ -260,6 +285,13 @@ class RegExTermEmptyWord(RegExTerm):
         result.makeInitialState(si)
         result.makeFinalState(si)
         return result
+
+    def __eq__same_class__(self, other)->bool:
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        return False
+
 
 class RegExTermConcatenation(RegExTerm):
     
@@ -298,6 +330,24 @@ class RegExTermConcatenation(RegExTerm):
             return next(iter(nonTrivialExpr))
         return RegExTermConcatenation(nonTrivialExpr)
 
+    def __eq__same_class__(self, other)->bool:
+        if not len(self._expressions) == len(other._expressions):
+            return False
+        for i in range(len(self._expressions)):
+            if not self._expressions[i].__eq__(other.expressions[i]):
+                return False
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        if not len(self._expressions) == len(other._expressions):
+            return len(self._expressions) < len(other._expressions)
+        for i in range(len(self._expressions)):
+            if self._expressions[i].__lt__(other.expressions[i]):
+                return True
+        return False
+
+
+
 
     @staticmethod
     def fromString(s: str)->Tuple[RegExTerm,str]:
@@ -327,28 +377,28 @@ class RegExTermConcatenation(RegExTerm):
         # add all states 
         for a in exprFSA:
             stateMap[a] = dict()
-            for s in a.states():
+            for s in sorted(a.states()):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symbol, dst) in a.transitions():
+            for (src, symbol, dst) in sorted(a.transitions()):
                 result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in a.epsilonTransitions():
+            for (src, dst) in sorted(a.epsilonTransitions()):
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
         # add initial states
-        for s in ia.initialStates():
+        for s in sorted(ia.initialStates()):
             result.makeInitialState(stateMap[ia][s])
         # add final states
-        for s in fa.finalStates():
+        for s in sorted(fa.finalStates()):
             result.makeFinalState(stateMap[fa][s])
         # connect automata, n to n+1 while n+1 < len exprFSA
         n = 0
         while n+1 < len(exprFSA):
             aa = exprFSA[n]
             ab = exprFSA[n+1]
-            for s in aa.finalStates():
-                for t in ab.initialStates():
+            for s in sorted(aa.finalStates()):
+                for t in sorted(ab.initialStates()):
                     result.addEpsilonTransition(stateMap[aa][s], stateMap[ab][t])
             n += 1
 
@@ -370,28 +420,28 @@ class RegExTermConcatenation(RegExTerm):
         # add all states 
         for a in exprFSA:
             stateMap[a] = dict()
-            for s in a.states():
+            for s in sorted(a.states()):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symbol, dst) in a.transitions():
+            for (src, symbol, dst) in sorted(a.transitions()):
                 result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in a.epsilonTransitions():
+            for (src, dst) in sorted(a.epsilonTransitions()):
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
         # add initial states
-        for s in ia.initialStates():
+        for s in sorted(ia.initialStates()):
             result.makeInitialState(stateMap[ia][s])
         # add final states
-        for s in fa.finalStates():
+        for s in sorted(fa.finalStates()):
             result.makeFinalState(stateMap[fa][s])
         # connect automata, n to n+1 while n+1 < len exprFSA
         n = 0
         while n+1 < len(exprFSA):
             aa = exprFSA[n]
             ab = exprFSA[n+1]
-            for s in aa.finalStates():
-                for t in ab.initialStates():
+            for s in sorted(aa.finalStates()):
+                for t in sorted(ab.initialStates()):
                     result.addEpsilonTransition(stateMap[aa][s], stateMap[ab][t])
             n += 1
 
@@ -446,7 +496,8 @@ class RegExTermAlternatives(RegExTerm):
 
     def _asFSA(self)->Automaton:
         # get automata for subexpressions
-        exprFSA = [e._asFSA() for e in self._expressions]
+
+        exprFSA = [e._asFSA() for e in sorted(self._expressions)]
 
         # build a new automaton
         result = Automaton()
@@ -454,27 +505,27 @@ class RegExTermAlternatives(RegExTerm):
         # add all states 
         for a in exprFSA:
             stateMap[a] = dict()
-            for s in a.states():
+            for s in sorted(a.states()):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symbol, dst) in a.transitions():
+            for (src, symbol, dst) in sorted(a.transitions()):
                 result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in a.epsilonTransitions():
+            for (src, dst) in sorted(a.epsilonTransitions()):
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
             # add initial states
-            for s in a.initialStates():
+            for s in sorted(a.initialStates()):
                 result.makeInitialState(stateMap[a][s])
             # add final states
-            for s in a.finalStates():
+            for s in sorted(a.finalStates()):
                 result.makeFinalState(stateMap[a][s])
 
         return result
 
     def _asNBA(self)->Automaton:
         # get automata for subexpressions
-        exprNBA = [e.asNBA() for e in self._expressions]
+        exprNBA = [e.asNBA() for e in sorted(self._expressions)]
 
         # build a new automaton
         result = Automaton()
@@ -482,23 +533,44 @@ class RegExTermAlternatives(RegExTerm):
         # add all states 
         for a in exprNBA:
             stateMap[a] = dict()
-            for s in a.states():
+            for s in sorted(a.states()):
                 ns = result.addStateUnique(s)
                 stateMap[a][s] = ns
             # add all transitions
-            for (src, symbol, dst) in a.transitions():
+            for (src, symbol, dst) in sorted(a.transitions()):
                 result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in a.epsilonTransitions():
+            for (src, dst) in sorted(a.epsilonTransitions()):
                 result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
             # add initial states
-            for s in a.initialStates():
+            for s in sorted(a.initialStates()):
                 result.makeInitialState(stateMap[a][s])
             # add final states
-            for s in a.finalStates():
+            for s in sorted(a.finalStates()):
                 result.makeFinalState(stateMap[a][s])
 
         return result
+
+    def __eq__same_class__(self, other)->bool:
+        if not len(self._expressions) == len(other._expressions):
+            return False
+        ss = sorted(self._expressions)
+        so = sorted(other._expressions)
+        for i in range(len(ss)):
+            if not ss[i].__eq__(so[i]):
+                return False
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        if not len(self._expressions) == len(other._expressions):
+            return len(self._expressions) < len(other._expressions)
+        ss = sorted(self._expressions)
+        so = sorted(other._expressions)
+        for i in range(len(ss)):
+            if ss[i].__lt__(so[i]):
+                return True
+        return False
+
 
 class RegExTermKleene(RegExTerm):
 
@@ -549,9 +621,9 @@ class RegExTermKleene(RegExTerm):
         sif = result.addStateUnique("S")
 
         # add feedback transitions
-        for s in result.initialStates():
+        for s in sorted(result.initialStates()):
             result.addEpsilonTransition(sif, s)
-        for s in result.finalStates():
+        for s in sorted(result.finalStates()):
             result.addEpsilonTransition(s, sif)
 
         # make the new state the only initial state
@@ -561,6 +633,13 @@ class RegExTermKleene(RegExTerm):
         result.makeFinalState(sif)
 
         return result
+
+    def __eq__same_class__(self, other)->bool:
+        return self._expression.__eq__(other._expression)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._expression.__lt__(other._expression)
+
 class RegExTermOmega(RegExTerm):
 
     _expression: RegExTerm
@@ -607,16 +686,23 @@ class RegExTermOmega(RegExTerm):
         result = self._expression._asFSA()
 
         # add feedback transitions
-        for s in result.initialStates():
-            for t in result.finalStates():
+        for s in sorted(result.initialStates()):
+            for t in sorted(result.finalStates()):
                 result.addEpsilonTransition(t, s)
 
         return result
+
+    def __eq__same_class__(self, other)->bool:
+        return self._expression.__eq__(other._expression)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._expression.__lt__(other._expression)
 
 class RegExTermLetter(RegExTerm):
     
     _letter: str
     
+
     def __init__(self, letter: str):
         self._letter = letter
 
@@ -653,6 +739,13 @@ class RegExTermLetter(RegExTerm):
         result.makeFinalState(sf)
         return result
 
+    def __eq__same_class__(self, other)->bool:
+        return self._letter == other._letter
+
+    def __lt__same_class__(self, other)->bool:
+        return self._letter < other._letter
+
+
 class RegEx(object):
 
     _expression: RegExTerm
@@ -666,6 +759,11 @@ class RegEx(object):
         if not self._expression.isFiniteRegEx():
             raise Exception('Not a finite regular expression.')
         return self._expression.asFSA()
+
+    def asNBA(self)->Automaton:
+        if not self._expression.isOmegaRegEx():
+            raise Exception('Not an omega regular expression.')
+        return self._expression.asNBA()
 
     def alphabet(self)->Set[str]:
         '''Return the alphabet of the regex '''
@@ -683,7 +781,7 @@ class RegEx(object):
         return 'regular expression {} = {}'.format(name, str(self))
 
     @staticmethod
-    def fromDSL(regexString)->Tuple[str,RegExTerm]:
+    def fromDSL(regexString)->Tuple[str,'RegEx']:
         factory = dict()
         factory['Letter'] = lambda l: RegExTermLetter(l)
         factory['Kleene'] = lambda exp: RegExTermKleene(exp)
@@ -695,7 +793,7 @@ class RegEx(object):
         (name, expression) = parseRegExDSL(regexString, factory)
         if name is None or expression is None:
             exit(1)
-        return name, expression
+        return name, RegEx(name, expression)
 
     @staticmethod
     def fromString(regexString):

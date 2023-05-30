@@ -46,5 +46,6 @@
     "estimationHittingState": "[{'A_s0': '[None, None, None, None, None]', 'B1': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]'}, {'A_s0': 'Number of Paths', 'B1': 'Number of Paths', 'C': 'Number of Paths'}]",
     "estimationHittingreward": "[{'A_s0': '[None, None, None, None, None]', 'B1': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]'}, {'A_s0': 'Number of Paths', 'B1': 'Number of Paths', 'C': 'Number of Paths'}]",
     "estimationHittingStateSet": "[{'A_s0': '[None, None, None, None, None]', 'B1': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]'}, {'A_s0': 'Number of Paths', 'B1': 'Number of Paths', 'C': 'Number of Paths'}]",
-    "estimationHittingRewardSet": "[{'A_s0': '[None, None, None, None, None]', 'B1': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]'}, {'A_s0': 'Number of Paths', 'B1': 'Number of Paths', 'C': 'Number of Paths'}]"
+    "estimationHittingRewardSet": "[{'A_s0': '[None, None, None, None, None]', 'B1': '[None, None, None, None, None]', 'C': '[None, None, None, None, None]'}, {'A_s0': 'Number of Paths', 'B1': 'Number of Paths', 'C': 'Number of Paths'}]",
+    "convert_to_DSL": "markov chain TestName {\n\tA_s0 [p: 1; r: 1] -- 1/2 --> A_s0\n\tA_s0 -- 1/2 --> B1\n\tB1 [p: 0; r: 2] -- 1/2 --> B1\n\tB1 -- 1/2 --> C\n\tC [p: 0] -- 1/2 --> B1\n\tC -- 1/2 --> C\n}\n"
 }

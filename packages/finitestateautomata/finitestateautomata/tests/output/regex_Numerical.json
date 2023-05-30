@@ -1,0 +1,31 @@
+{
+    "convert_to_FSA": {
+        "_states": "[S, S1, S11, S12, S13, S2, S21, S3, S4, S5]",
+        "_transitions": {
+            "S2": {
+                "0": "[S11]"
+            },
+            "S3": {
+                "1": "[S12]"
+            },
+            "S": {
+                "1": "[S1]"
+            },
+            "S4": {
+                "0": "[S13]"
+            }
+        },
+        "_epsilonTransitions": {
+            "S1": "[S21]",
+            "S21": "[S2, S3]",
+            "S11": "[S21]",
+            "S5": "[S, S4]",
+            "S13": "[S5]",
+            "S12": "[S5]"
+        },
+        "_initialStates": "[S5]",
+        "_finalStates": "[S5]",
+        "_generalizedAcceptanceSets": {}
+    },
+    "convert_to_DSL": "regular expression TestName = ('0'+'1'.'0'*.'1')*"
+}

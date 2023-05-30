@@ -69,5 +69,6 @@
         },
         "_symbolicTimeStampSize": "1.0000",
         "_symbolicVector": "[i]"
-    }
+    },
+    "convert_to_DSL": "dataflow graph TestName {\n\tinputs i\n\toutputs o\n\ti[0]  --------> A\n\tA  --------> B\n\tB  --------> C\n\tC  --------> A\n\tB  --------> o[0]\n}\n"
 }

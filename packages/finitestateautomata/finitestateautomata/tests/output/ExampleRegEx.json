@@ -1,29 +1,30 @@
 {
     "convert_to_FSA": {
-        "_states": "[S, S1, S11, S111, S12, S2, S21, S22, S3, S4, S5, S6, S7]",
+        "_states": "[S, S1, S11, S111, S12, S2, S21, S211, S3, S31, S4, S41, S5]",
         "_transitions": {
             "S": {
-                "d": "[S1]"
+                "a": "[S1]"
             },
-            "S3": {
-                "f": "[S11]"
+            "S2": {
+                "b": "[S11]"
             },
-            "S22": {
-                "b": "[S111]"
+            "S5": {
+                "d": "[S12]"
             },
-            "S7": {
-                "a": "[S12]"
+            "S31": {
+                "f": "[S111]"
             }
         },
         "_epsilonTransitions": {
-            "S21": "[S3, S4]",
-            "S2": "[S, S4]",
-            "S1": "[S2]",
-            "S4": "[S2, S21]",
-            "S11": "[S21]"
+            "S12": "[S21]",
+            "S111": "[S211]",
+            "S21": "[S41, S5]",
+            "S211": "[S31, S41]",
+            "S41": "[S21, S211]"
         },
-        "_initialStates": "[S22, S4, S5, S6, S7]",
-        "_finalStates": "[S111, S12, S4, S6]",
+        "_initialStates": "[S, S2, S3, S4, S41]",
+        "_finalStates": "[S1, S11, S4, S41]",
         "_generalizedAcceptanceSets": {}
-    }
+    },
+    "convert_to_DSL": "regular expression TestName = (d*+f*)*+\\o+\\e+a+b"
 }

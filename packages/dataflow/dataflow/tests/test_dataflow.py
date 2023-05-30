@@ -67,6 +67,8 @@ class SDF_pytest(Model_pytest):
             x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
             self.function_test(lambda: self.model.latency(x0, mu), "latency")
             self.function_test(lambda: self.model.generalizedLatency(mu), "generalizedLatency")
+        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
+
 
     def Incorrect_behavior_tests(self):
         mu = self.mu

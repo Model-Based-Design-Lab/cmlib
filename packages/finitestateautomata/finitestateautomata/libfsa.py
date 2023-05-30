@@ -1064,7 +1064,7 @@ class Automaton(object):
             return self, stateMap
         return self.addGeneralizedBuchiAcceptanceSetsWithStateMap(list(self._generalizedAcceptanceSets.values()))
 
-    def _dslMultiSymbolTransitions(self)->Set[Tuple[str,AbstractSet[str],str]]:
+    def _dslMultiSymbolTransitions(self)->Set[Tuple[str,Tuple[str],str]]:
         '''collect common transitions into multi-labels, including epsilon transitions'''
         reorg = dict()
 
@@ -1096,10 +1096,10 @@ class Automaton(object):
                 reorg[s][t].add(self._epsilonSymbol)
 
 		# create the results
-        result: Set[Tuple[str,AbstractSet[str],str]] = set()
+        result: Set[Tuple[str,Tuple[str],str]] = set()
         for s in reorg.keys():
             for t in reorg[s].keys():
-                result.add((s, frozenset(reorg[s][t]), t))
+                result.add((s, tuple(sorted(reorg[s][t])), t))
         return result
 
     def _dslOutputStateAttributes(self, state: str, output: StringIO):

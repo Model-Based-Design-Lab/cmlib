@@ -37,6 +37,7 @@ class LTLSubFormula(object):
 
     def _inSetDNF(self)->TDisjunctiveNormalForm:
         '''Return formula in disjunctive normal form as a set (disjunction) of sets (conjunction) of formulas.'''
+
         # default behavior, override where needed!
         conj: Set['LTLSubFormula'] = set()
         conj.add(self)
@@ -113,6 +114,26 @@ class LTLSubFormula(object):
                 res.add((frozenset(ntNow), frozenset(ntNxt), frozenset(ntAcc)))
         return res
 
+    def __eq__(self, other)->bool:
+        if not type(self) == type(other):
+            return False
+        else:
+            return self.__eq__same_class__(other)
+    
+    def __eq__same_class__(self, other)->bool:
+        raise Exception("to be filled in subclasses to support sorting")
+
+    def __lt__(self, other)->bool:
+        if not type(self) == type(other):
+            return type(self).__name__ < type(other).__name__
+        return self.__lt__same_class__(other)
+    
+    def __lt__same_class__(self, other)->bool:
+        raise Exception("to be filled in subclasses to support sorting")
+
+    def __hash__(self) -> int:
+        raise Exception("to be filled in subclasses")
+
 class LTLFormulaTrue(LTLSubFormula):
     '''Formula true'''
     
@@ -133,7 +154,15 @@ class LTLFormulaTrue(LTLSubFormula):
 
     def __str__(self):
         return "true"
+    
+    def __eq__same_class__(self, other)->bool:
+        return True
 
+    def __lt__same_class__(self, other)->bool:
+        return False
+
+    def __hash__(self) -> int:
+        return 1
 
 class LTLFormulaFalse(LTLSubFormula):
 
@@ -154,6 +183,16 @@ class LTLFormulaFalse(LTLSubFormula):
 
     def __str__(self):
         return "false"
+
+    def __eq__same_class__(self, other)->bool:
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        return False
+
+    def __hash__(self) -> int:
+        return 2
+
 
 class LTLFormulaProposition(LTLSubFormula):
 
@@ -195,6 +234,21 @@ class LTLFormulaProposition(LTLSubFormula):
         if LTLPROPOSITIONSIMPLE.match(self._proposition):
             return pre + self._proposition
         return pre + "'"+self._proposition.replace("'", "\\'")+"'"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._proposition == other._proposition and self._negated == other._negated
+
+    def __lt__same_class__(self, other)->bool:
+        if self._negated and not other._negated:
+            return True
+        if other._negated and not self._negated:
+            return False
+    
+        return self._proposition < other._proposition
+
+    def __hash__(self) -> int:
+        return hash((self._negated, self._proposition))
+
 
 class LTLFormulaUntil(LTLSubFormula):
 
@@ -240,7 +294,21 @@ class LTLFormulaUntil(LTLSubFormula):
         return True
    
     def __str__(self):
-        return str(self._phi1) + "U" + str(self._phi2)
+        return "("+str(self._phi1) + ") U (" + str(self._phi2) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._phi1 == other._phi1 and self._phi2 == other._phi2
+
+    def __lt__same_class__(self, other)->bool:
+        if self._phi1.__lt__(other.phi1):
+            return True
+        if other._phi1.__lt__(self._phi1):
+            return False
+        return self._phi2 < other._phi2
+
+    def __hash__(self) -> int:
+        return hash((self._phi1, self._phi2, "U"))
+
 
 class LTLFormulaRelease(LTLSubFormula):
 
@@ -281,7 +349,21 @@ class LTLFormulaRelease(LTLSubFormula):
         return set([self]).union(self._phi1._getSubFormulas()).union(self._phi2._getSubFormulas())
 
     def __str__(self):
-        return str(self._phi1) + "R" + str(self._phi2)
+        return "("+str(self._phi1) + ") R (" + str(self._phi2) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._phi1 == other._phi1 and self._phi2 == other._phi2
+
+    def __lt__same_class__(self, other)->bool:
+        if self._phi1.__lt__(other.phi1):
+            return True
+        if other._phi1.__lt__(self._phi1):
+            return False
+        return self._phi2 < other._phi2
+
+    def __hash__(self) -> int:
+        return hash((self._phi1, self._phi2, "R"))
+
 
 class LTLFormulaImplication(LTLSubFormula):
 
@@ -310,7 +392,21 @@ class LTLFormulaImplication(LTLSubFormula):
         return set([self]).union(self._phi1._getSubFormulas()).union(self._phi2._getSubFormulas())
 
     def __str__(self):
-        return str(self._phi1) + "=>" + str(self._phi1)
+        return "("+str(self._phi1) + ") => (" + str(self._phi1) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._phi1 == other._phi1 and self._phi2 == other._phi2
+
+    def __lt__same_class__(self, other)->bool:
+        if self._phi1.__lt__(other.phi1):
+            return True
+        if other._phi1.__lt__(self._phi1):
+            return False
+        return self._phi2 < other._phi2
+
+    def __hash__(self) -> int:
+        return hash((self._phi1, self._phi2, "I"))
+
 
 class LTLFormulaConjunction(LTLSubFormula):
 
@@ -353,7 +449,37 @@ class LTLFormulaConjunction(LTLSubFormula):
         return reduce(l, self._subformulas, set())
 
     def __str__(self):
-        return " and ".join([str(phi) for phi in self._subformulas])
+        return " and ".join(["("+str(phi)+")" for phi in self._subformulas])
+
+    def __eq__same_class__(self, other)->bool:
+        if not len(self._subformulas) == len(other._subformulas):
+            return False
+        ss = sorted(self._subformulas)
+        so = sorted(other._subformulas)
+        for i in range(len(self._subformulas)):
+            if not ss[i].__eq__(so[i]):
+                return False
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        if not len(self._subformulas) == len(other._subformulas):
+            return len(self._subformulas) < len(other._subformulas)
+        ss = sorted(self._subformulas)
+        so = sorted(other._subformulas)
+        for i in range(len(self._subformulas)):
+            if ss[i].__lt__(so[i]):
+                return True
+            if so[i].__lt__(ss[i]):
+                return False
+        return False
+
+    def __hash__(self) -> int:
+        ss = sorted(self._subformulas)
+        h = hash("C")
+        for phi in ss:
+            h = hash((h, phi))
+        return h
+
 
 class LTLFormulaDisjunction(LTLSubFormula):
 
@@ -393,7 +519,37 @@ class LTLFormulaDisjunction(LTLSubFormula):
         return reduce(l, self._subformulas, set())
 
     def __str__(self):
-        return " or ".join([str(phi) for phi in self._subformulas])
+        return " or ".join(["("+str(phi)+")" for phi in self._subformulas])
+
+    def __eq__same_class__(self, other)->bool:
+        if not len(self._subformulas) == len(other._subformulas):
+            return False
+        ss = sorted(self._subformulas)
+        so = sorted(other._subformulas)
+        for i in range(len(self._subformulas)):
+            if not ss[i].__eq__(so[i]):
+                return False
+        return True
+
+    def __lt__same_class__(self, other)->bool:
+        if not len(self._subformulas) == len(other._subformulas):
+            return len(self._subformulas) < len(other._subformulas)
+        ss = sorted(self._subformulas)
+        so = sorted(other._subformulas)
+        for i in range(len(self._subformulas)):
+            if ss[i].__lt__(so[i]):
+                return True
+            if so[i].__lt__(ss[i]):
+                return False
+        return False
+
+    def __hash__(self) -> int:
+        ss = sorted(self._subformulas)
+        h = hash("D")
+        for phi in ss:
+            h = hash((h, phi))
+        return h
+
 
 class LTLFormulaNext(LTLSubFormula):
 
@@ -416,7 +572,17 @@ class LTLFormulaNext(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "X" + str(self._subformula)
+        return "X " + str(self._subformula)
+
+    def __eq__same_class__(self, other)->bool:
+        return self._subformula.__eq__(other._subformula)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._subformula.__lt__(other._subformula)
+
+    def __hash__(self) -> int:
+        return hash((self._subformula,"X"))
+
 
 class LTLFormulaNegation(LTLSubFormula):
     
@@ -436,7 +602,17 @@ class LTLFormulaNegation(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "not" + str(self._subformula)
+        return "not (" + str(self._subformula) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._subformula.__eq__(other._subformula)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._subformula.__lt__(other._subformula)
+
+    def __hash__(self) -> int:
+        return hash((self._subformula,"N"))
+
 
 class LTLFormulaAlways(LTLSubFormula):
     
@@ -465,7 +641,16 @@ class LTLFormulaAlways(LTLSubFormula):
         return set([self]).union(self._subformula._getSubFormulas())
 
     def __str__(self):
-        return "G" + str(self._subformula)
+        return "G (" + str(self._subformula) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._subformula.__eq__(other._subformula)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._subformula.__lt__(other._subformula)
+
+    def __hash__(self) -> int:
+        return hash((self._subformula,"G"))
 
 class LTLFormulaEventually(LTLSubFormula):
 
@@ -497,7 +682,16 @@ class LTLFormulaEventually(LTLSubFormula):
         return True
 
     def __str__(self):
-        return "F" + str(self._subformula)
+        return "F (" + str(self._subformula) + ")"
+
+    def __eq__same_class__(self, other)->bool:
+        return self._subformula.__eq__(other._subformula)
+
+    def __lt__same_class__(self, other)->bool:
+        return self._subformula.__lt__(other._subformula)
+
+    def __hash__(self) -> int:
+        return hash((self._subformula,"F"))
 
 class LTLFormula(object):
 
@@ -549,20 +743,20 @@ class LTLFormula(object):
             
             # return a set of triples of (frozen) sets of now and next formulas and acceptance sets
             result:AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]] = set([(frozenset([]), frozenset([]), frozenset([]))])
-            for phi in s:
+            for phi in sorted(s):
                 unf: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
                 unf = phi._unfold()  # type: ignore
                 result = LTLSubFormula._pairSetDNFAnd(result, unf)
             return result
 
         def stateString(s: AbstractSet[LTLSubFormula])->str:
-            return ','.join([str(f) for f in s])
+            return ','.join([str(f) for f in sorted(s)])
 
         def printState(s):
             print(stateString(s))
 
         def printEdge(s):
-            print(','.join([str(f) for f in s]))
+            print(','.join([str(f) for f in sorted(s)]))
 
         # set of states by names
         states: Set[str]
@@ -625,7 +819,7 @@ class LTLFormula(object):
 
             # determine the symbols of the alphabet that match the propositional formula on the edge
             symbols = reduce(lambda res, f: f._filterSymbols(res, self._propDefinitions), edgePropositionalFormula, alphabet)
-            for symbol in symbols:
+            for symbol in sorted(symbols):
                 # create an edge from the state corresponding to s to the state corresponding to t, labelled with symbol
                 trans = (stateIndexF[ss], symbol, stateIndexF[ts])
                 # create an entry in the acceptanceSets dictionary
@@ -651,7 +845,7 @@ class LTLFormula(object):
         stateIndex = dict()
 
         # add the states we start from as initial states
-        for s in statesToUnfold:
+        for s in sorted(statesToUnfold):
             addState(s, True)
 
         # as long as we states that still need to be unfolded
@@ -662,7 +856,7 @@ class LTLFormula(object):
             
             # determine outgoing transitions from unfolded state
             transitions = _unfold(s)
-            for t in transitions:
+            for t in sorted(transitions):
                 t1: Set[LTLSubFormula] = t[1]  # type: ignore
                 # add state if it doesn't exist yet
                 if addState(t1):
@@ -678,7 +872,7 @@ class LTLFormula(object):
         acceptanceSetsStates: Dict[str,Set[AbstractSet[str]]]
         acceptanceSetsStates = dict([(s, set()) for s in states])
         # for all transitions, keys of acceptanceSets
-        for t in acceptanceSets:
+        for t in sorted(acceptanceSets):
             # add the acceptance set to the set of acceptance sets of the target state
             acceptanceSetsStates[t[2]].add(frozenset(acceptanceSets[t]))
         
@@ -690,7 +884,7 @@ class LTLFormula(object):
         # associate all (non empty) acceptance labels with a unique number starting from 1
         stateLabelsAcceptance: Dict[AbstractSet[str],int] = dict()
         k = 1
-        for a in acceptanceLabels:
+        for a in sorted(acceptanceLabels):
             if len(a) > 0:
                 stateLabelsAcceptance[a] = k
                 k += 1
@@ -701,27 +895,27 @@ class LTLFormula(object):
         F = Automaton()
 
         # add states without acceptance label
-        for s in states:
+        for s in sorted(states):
             F.addState(buildStateName(s, 0))
 
         # make initial states
-        for s in initialStateNames:
+        for s in sorted(initialStateNames):
             F.makeInitialState(buildStateName(s, 0))
 
         # for all states with incoming acceptance labels make different states
-        for s in acceptanceSetsStates:
-            for a in acceptanceSetsStates[s]:
+        for s in sorted(acceptanceSetsStates):
+            for a in sorted(acceptanceSetsStates[s]):
                 if len(a) > 0:
                     F.addState(buildStateName(s, stateLabelsAcceptance[a]))
 
         # construct appropriate transitions
-        for t in acceptanceSets:
+        for t in sorted(acceptanceSets):
             a = frozenset(acceptanceSets[t])
             if len(a) == 0:
                 targetState = buildStateName(t[2], 0)
             else:
                 targetState = buildStateName(t[2], stateLabelsAcceptance[a])
-            for s in F.states():
+            for s in sorted(F.states()):
                 if s.startswith("("+t[0]):
                     F.addTransition(s, t[1], targetState)
 
@@ -729,18 +923,18 @@ class LTLFormula(object):
         # one for each non-empty set
         acceptanceSetsKeys = reduce(lambda res, acc: res.union(acc), acceptanceLabels, set())
         generalizedAcceptanceSets = []
-        for k in acceptanceSetsKeys:
+        for k in sorted(acceptanceSetsKeys):
             acceptanceStateLabels = [stateLabelsAcceptance[l] for l in acceptanceLabels if (k in l)]
             accSetOfStates = [s for s in F.states() if _acceptanceIndex(s) in acceptanceStateLabels]
             generalizedAcceptanceSets.append(frozenset(F.states().difference(accSetOfStates)))
 
         # if there are no acceptance sets, we need to make all states accepting
         if len(generalizedAcceptanceSets) == 0:
-            for s in F.states():
+            for s in sorted(F.states()):
                 F.makeFinalState(s)
         else:
             # set the first acceptance set as accepting states
-            for s in generalizedAcceptanceSets[0]:
+            for s in sorted(generalizedAcceptanceSets[0]):
                 F.makeFinalState(s)
             # add all following ones as transformations
             F = F.addGeneralizedBuchiAcceptanceSets(generalizedAcceptanceSets[1:])
