@@ -9,6 +9,7 @@ from dataflow.maxplus.starclosure import starClosure
 from fractions import Fraction
 from  dataflow.maxplus.algebra import MP_MAX, MP_PLUS, MP_MINUS, MP_LARGER, MP_MINUSINFINITY, MP_MINUSINFINITY_STR, MPAlgebraException
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TTimeStamp, TMPVectorList, TTimeStampList
+TThroughputValue = Union[Fraction,Literal['infinite']]
 
 class MPException(Exception):
     pass
@@ -170,14 +171,42 @@ def mpEigenValue(M: TMPMatrix) -> Union[None,Fraction]:
         return None
     return max(cycleMeans)
 
+def lambdaToThroughput(lmbd: Fraction|None) -> TThroughputValue:
+    if lmbd is None:
+        return "infinite"
+    if not lmbd > Fraction(0.0):
+        return "infinite"
+    return Fraction(1.0) / lmbd
+
+
 def mpThroughput(M: TMPMatrix) -> Union[Fraction,Literal["infinite"]]:
     '''Return the maximal throughput of a system with state matrix M.'''
     vLambda = mpEigenValue(M)
-    if vLambda is None:
-        return "infinite"
-    if not vLambda> Fraction(0.0):
-        return "infinite"
-    return Fraction(1.0) / vLambda
+    return lambdaToThroughput(vLambda)
+
+def mpGeneralizedThroughput(M: TMPMatrix) -> List[TThroughputValue]:
+    '''Return the maximal throughput of a system with state matrix M for each 
+    of the state vector element separately .'''
+    size = len(M)
+    evs, g_evs = mpEigenVectors(M)
+    vLambdas: List[TTimeStamp] = [MP_MINUSINFINITY for _ in range(size)]
+    for ev in evs:
+        lmbd = ev[1]
+        v = ev[0]
+        for k in range(size):
+            if not v[k]==MP_MINUSINFINITY:
+                if MP_LARGER(lmbd, vLambdas[k]):
+                    vLambdas[k] = lmbd
+    for gev in g_evs:
+        lmbds = gev[1]
+        v = gev[0]
+        for k in range(size):
+            if not v[k]==MP_MINUSINFINITY:
+                if MP_LARGER(lmbds[k], vLambdas[k]):
+                    vLambdas[k] = lmbds[k]
+
+    return [lambdaToThroughput(l) for l in vLambdas]
+
 
 def _normalizedLongestPaths(gr: pyg.digraph, rootnode: Any, cycleMeansMap: Dict[Any,TTimeStamp]) -> Tuple[Dict[Any,TTimeStamp],Dict[Any,TTimeStamp]]:
 

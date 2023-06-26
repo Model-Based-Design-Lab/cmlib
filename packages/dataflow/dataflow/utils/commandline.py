@@ -9,7 +9,7 @@ from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.utils.utils import printXmlTrace, printXmlGanttChart, parseInputTraces, parseInitialState, requireNumberOfIterations, parseNumberOfIterations, requirePeriod, getSquareMatrix, requireSequenceOfMatricesAndPossiblyVectorSequence, determineStateSpaceLabels, parseSequences, validateEventSequences, requireParameterInteger, requireOneEventSequence, requireParameterMPValue, fractionToFloatList, fractionToFloatOptionalLList
 from dataflow.maxplus.maxplus import mpTransposeMatrix
 from dataflow.maxplus.utils.printing import printMPVectorList, mpPrettyVectorToString, mpPrettyValue, mpElementToString, prettyPrintMPMatrix
-from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_MATRIX_MODEL, OP_SDF_STATE_SPACE_MATRICES_MODEL, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
+from dataflow.utils.operations import DataflowOperations, MPMatrixOperations, Operations, OperationDescriptions, OP_SDF_THROUGHPUT, OP_SDF_THROUGHPUT_OUTPUT, OP_SDF_DEADLOCK, OP_SDF_REP_VECTOR, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY, OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_STATE_MATRIX_MODEL, OP_SDF_STATE_SPACE_MATRICES_MODEL, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED, OP_MPM_EVENT_SEQUENCES, OP_MPM_VECTOR_SEQUENCES, OP_MPM_MATRICES, OP_MPM_EIGENVALUE, OP_MPM_EIGENVECTORS, OP_MPM_PRECEDENCEGRAPH, OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ, OP_MPM_STAR_CLOSURE, OP_MPM_MULTIPLY, OP_MPM_MULTIPLY_TRANSFORM, OP_MPM_VECTOR_TRACE, OP_MPM_VECTOR_TRACE_TRANSFORM, OP_MPM_VECTOR_TRACE_XML,OP_MPM_CONVOLUTION, OP_MPM_CONVOLUTION_TRANSFORM, OP_MPM_MAXIMUM, OP_MPM_MAXIMUM_TRANSFORM, OP_MPM_DELAY_SEQUENCE, OP_MPM_SCALE_SEQUENCE, OP_MPM_INPUT_LABELS, OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS
 import sys
 
 
@@ -28,7 +28,7 @@ def main():
             else:
                 print("List of operations:\n\t- {}".format("\n\t- ".join(Operations)))
         else:            
-            print("{}: {}".format(options.opHelp, OperationDescriptions[Operations.index(options.opHelp)]))        
+            print(f"{options.opHelp}: {OperationDescriptions[Operations.index(options.opHelp)]}")
         exit(1)
 
     parser = argparse.ArgumentParser(description='Perform operations on dataflow graphs.\nhttps://computationalmodeling.info')
@@ -47,6 +47,8 @@ def main():
                         help="the sequences to operate on")
     parser.add_argument('-pa', '--parameter', dest='parameter',
                         help="parameter for the operation")
+    parser.add_argument('-ou', '--output', dest='output',
+                        help="selected output for the operation")
     parser.add_argument('-ni', '--numberofiterations', dest='numberofiterations',
                         help="number of iterations to analyze")
     parser.add_argument('-og', '--outputgraph', dest='outputGraph',
@@ -55,23 +57,23 @@ def main():
     args = parser.parse_args(remainder)
 
     if args.operation not in Operations:
-        sys.stderr.write("Unknown operation: {}\n".format(args.operation))
+        sys.stderr.write(f"Unknown operation: {args.operation}\n")
         sys.stderr.write("Operation should be one of: {}.\n".format(", ".join(Operations)))
         exit(1)
 
     dsl = None
     if args.dataflow_graph_or_mpmatrix:
         try:
-            with open(args.dataflow_graph_or_mpmatrix, 'r') as sdfMpmFile:
+            with open(args.dataflow_graph_or_mpmatrix, 'r', encoding='utf-8') as sdfMpmFile:
                 dsl = sdfMpmFile.read()
-        except FileNotFoundError as e:
-            sys.stderr.write("File does not exist: {}.\n".format(args.dataflow_graph_or_mpmatrix))
+        except FileNotFoundError:
+            sys.stderr.write(f"File does not exist: {args.dataflow_graph_or_mpmatrix}.\n")
             exit(1)
 
     try:
         process(args, dsl)
     except Exception as e:
-        sys.stderr.write("{}\n".format(e))
+        sys.stderr.write(f"{e}\n")
         # in final version comment out following line
         # raise e
         exit(1)
@@ -116,6 +118,14 @@ def processDataflowOperation(args, dsl):
         print('Throughput:')
         print(G.throughput())
 
+    # throughput of an output
+    if args.operation == OP_SDF_THROUGHPUT_OUTPUT:
+        if args.output is None:
+            raise Exception("Please specify output with -ou option.")
+        print(f'Throughput of output: {args.output}:')
+        print(G.throughputOutput(args.output))
+
+
     # repetitionvector
     if args.operation == OP_SDF_REP_VECTOR:
         print('Repetition Vector:')
@@ -125,7 +135,7 @@ def processDataflowOperation(args, dsl):
             print('There is an inconsistent cycle between the following actors: {}'.format(', '.join(rates)))
         else:
             for a in G.actors():
-                print('{}: {}'.format(a, rates[a]))
+                print(f'{a}: {rates[a]}')
 
     # deadlock
     if args.operation == OP_SDF_DEADLOCK:
@@ -248,7 +258,8 @@ def processDataflowOperation(args, dsl):
         ni = requireNumberOfIterations(args)
 
         # create name for artificial input to actor a
-        inpName = lambda a: '_zb_{}'.format(a)
+        def inpName(a):
+            return f'_zb_{a}'
 
         # determine the repetition vector for the extended graph
         reps = G.repetitionVector()
@@ -300,23 +311,23 @@ def processMaxPlusOperation(args, dsl):
     # eigenvalue
     if args.operation == OP_MPM_EIGENVALUE:
         mat = getSquareMatrix(Matrices, args)
-        print("The largest eigenvalue of matrix {} is:".format(mat))
+        print(f"The largest eigenvalue of matrix {mat} is:")
         print(mpPrettyValue(Matrices[mat].eigenvalue()))
 
     # eigenvectors
     if args.operation == OP_MPM_EIGENVECTORS:
         mat = getSquareMatrix(Matrices, args)
         (ev, gev) = Matrices[mat].eigenvectors()
-        print("The eigenvectors of matrix {} are:".format(mat))
+        print(f"The eigenvectors of matrix {mat} are:")
         if len(ev)==0:
             print('None')
         else:
             for v in ev:
-                print('{}, with eigenvalue: {}'.format(mpPrettyVectorToString(v[0]), mpPrettyValue(v[1])))
+                print(f'{mpPrettyVectorToString(v[0])}, with eigenvalue: {mpPrettyValue(v[1])}')
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
-                print('{}, with generalized eigenvalue: {}'.format(mpPrettyVectorToString(v[0]), mpPrettyVectorToString(v[1])))
+                print(f'{mpPrettyVectorToString(v[0])}, with generalized eigenvalue: {mpPrettyVectorToString(v[1])}')
 
     # precedence graph
     if args.operation == OP_MPM_PRECEDENCEGRAPH:
@@ -326,7 +337,7 @@ def processMaxPlusOperation(args, dsl):
         print(", ".join(g.nodes()))
         print("The edges of the precedence graph are:")
         for e in g.edges():
-            print("{} --- {} ---> {}".format(e[0], g.edge_weight(e), e[1]))
+            print(f"{e[0]} --- {g.edge_weight(e)} ---> {e[1]}")
 
     # precedence graph graphviz
     if args.operation == OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ:
@@ -415,7 +426,7 @@ def processMaxPlusOperation(args, dsl):
         labels = []
         for s in sequences:
             if not (s in VectorSequences or s in EventSequences):
-                raise Exception("Unknown vector or event sequence {}.".format(s))
+                raise Exception(f"Unknown vector or event sequence {s}.")
             if s in VectorSequences:
                 vs = VectorSequences[s]
                 for n in range(vs.vectorLength()):
@@ -426,7 +437,7 @@ def processMaxPlusOperation(args, dsl):
                 labels.append(s)
                 traceLen = ms.length() if traceLen is None else min(traceLen, ms.length())
             else:
-                raise Exception("Sequence {} is unknown.".format(s))
+                raise Exception(f"Sequence {s} is unknown.")
 
         # collect the actual trace
         vt = []
@@ -475,7 +486,7 @@ def processMaxPlusOperation(args, dsl):
         delay = requireParameterInteger(args)
         seq = requireOneEventSequence(EventSequences, args)
         res = EventSequences[seq].delay(delay)
-        print("The {}-delayed sequence of {} is:".format(delay, seq))
+        print(f"The {delay}-delayed sequence of {seq} is:")
         print(res)
 
     #'scalesequence'
@@ -483,7 +494,7 @@ def processMaxPlusOperation(args, dsl):
         scale = requireParameterMPValue(args)
         seq = requireOneEventSequence(EventSequences, args)
         res = EventSequences[seq].scale(scale)
-        print("The scaled sequence of {} by scaling factor {} is:".format(seq, mpElementToString(scale)))
+        print(f"The scaled sequence of {seq} by scaling factor {mpElementToString(scale)} is:")
         print(res)
 
 

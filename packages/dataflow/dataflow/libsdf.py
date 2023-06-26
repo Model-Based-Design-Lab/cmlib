@@ -1,14 +1,13 @@
 import copy
-from typing import Literal, Tuple,Any,Set,Union
 from functools import reduce
 from io import StringIO
-from typing import Dict, List, Optional
+from typing import Tuple, Any, Set, Union, Dict, List, Optional
+from fractions import Fraction
 from dataflow.libsdfgrammar import parseSDFDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
-from dataflow.maxplus.maxplus import mpThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpSplitSequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
-from dataflow.maxplus.algebra import MP_MINUSINFINITY
+from dataflow.maxplus.maxplus import TThroughputValue, mpThroughput, mpGeneralizedThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpSplitSequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
+from dataflow.maxplus.algebra import MP_MINUSINFINITY, MP_LARGER
 from dataflow.libmpm import MaxPlusMatrixModel
-from fractions import Fraction
 
 
 
@@ -23,6 +22,7 @@ TActorList = List[str]
 TChannelList = List[str]
 TActorSpecs = Dict[str,Any]
 TChannelSpecs = Dict[str,Any]
+
 
 def _splitMatrix(M: TMPMatrix, n: int)->Tuple[TMPMatrix,TMPMatrix,TMPMatrix,TMPMatrix]:
     '''Split matrix into state-space A,B,C,D matrices assuming a state size n.'''
@@ -316,6 +316,11 @@ class DataflowGraph(object):
     def listOfOutputsStr(self)->str:
         '''Return a string representation of the list of outputs.'''
         return ', '.join(self._outputs)
+
+    def indexOfOutput(self, output: str)->int:
+        '''Return the index of output in the list of outputs.'''
+        return self._outputs.index(output)
+
 
     def stateElementLabels(self)->List[str]:
         '''Return a list state element labels for the max-plus state-space representation of the graph.'''
@@ -630,9 +635,9 @@ class DataflowGraph(object):
                             comp.append(ca)
             _findIntegerRates(comp, rates)
         # convert fractional rates to integer rates
-        return _makeIntegerRates(rates)  
+        return _makeIntegerRates(rates) 
 
-    def throughput(self)->Union[Fraction,Literal['infinite']]:
+    def throughput(self)->TThroughputValue:
         '''
         Compute throughput of the graph
         '''
@@ -640,6 +645,29 @@ class DataflowGraph(object):
         _, ssr = self.stateSpaceMatrices()
         # compute throughput from the state matrix
         return mpThroughput(ssr[0])
+
+    def throughputOutput(self, output: str)->TThroughputValue:
+        '''
+        Compute throughput of the graph
+        '''
+        # compute state-space representation
+        _, ssr = self.stateSpaceMatrices()
+        # compute throughput from the state matrix
+        tp: List[TThroughputValue] = mpGeneralizedThroughput(ssr[0])
+        i = self.indexOfOutput(output)
+        # find the minimum in tp for all non-minus-infinity elements in row number i of the C matrix
+        min_val: TThroughputValue = "infinite"
+        Cr = ssr[2][i]
+        for k, crv in enumerate(Cr):
+            if not crv == MP_MINUSINFINITY:
+                t: TThroughputValue = tp[k]
+                if min_val=="infinite":
+                    min_val = t
+                elif not t=="infinite":
+                    if t < min_val:
+                        min_val = t
+        return min_val
+
 
     def deadlock(self)->bool:
         '''
@@ -796,7 +824,7 @@ class DataflowGraph(object):
         Matrices = {'A': MaxPlusMatrixModel.fromMatrix(SSM[0]), 'B': MaxPlusMatrixModel.fromMatrix(SSM[1]), 'C': MaxPlusMatrixModel.fromMatrix(SSM[2]), 'D': MaxPlusMatrixModel.fromMatrix(SSM[3]) }
 
         stateVectorSize = self.numberOfInitialTokens()
-        repetition_vector = self.repetitionVector()
+        repetition_vector: Dict[str,int] = self.repetitionVector() # type: ignore
         inputVectorSize = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
 
         if x0 is None:
