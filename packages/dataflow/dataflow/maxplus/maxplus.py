@@ -171,7 +171,7 @@ def mpEigenValue(M: TMPMatrix) -> Union[None,Fraction]:
         return None
     return max(cycleMeans)
 
-def lambdaToThroughput(lmbd: Fraction|None) -> TThroughputValue:
+def lambdaToThroughput(lmbd: Union[Fraction,None]) -> TThroughputValue:
     if lmbd is None:
         return "infinite"
     if not lmbd > Fraction(0.0):
