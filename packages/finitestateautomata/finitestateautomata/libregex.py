@@ -23,6 +23,9 @@ class RegExTerm(object):
     def __init__(self):
         pass
 
+    def __hash__(self):
+        return str(self).__hash__()
+
     # parse expression. return expression and remainder of the string
     @staticmethod
     def fromString(s: str)->Tuple['RegExTerm',str]:
@@ -72,7 +75,7 @@ class RegExTerm(object):
 
     def __str__(self)->str:
         raise RegExException("to be filled in subclasses")
- 
+
     def simplify(self)->'RegExTerm':
         '''Return a simplified expression.'''
         return self
@@ -110,7 +113,7 @@ class RegExTerm(object):
             return False
         else:
             return self.__eq__same_class__(other)
-    
+
     def __eq__same_class__(self, other)->bool:
         raise RegExException("to be filled in subclasses to support sorting")
 
@@ -118,17 +121,17 @@ class RegExTerm(object):
         if not type(self) == type(other):
             return type(self).__name__ < type(other).__name__
         return self.__lt__same_class__(other)
-    
+
     def __lt__same_class__(self, other)->bool:
         raise RegExException("to be filled in subclasses to support sorting")
-    
+
 
     @staticmethod
     def fromFSA(A: Automaton)->'RegExTerm':
 
         # map a vertex to a tuple
-        # - set of vertices with backward transition, 
-        # - set of vertices with forward transition, 
+        # - set of vertices with backward transition,
+        # - set of vertices with forward transition,
         # - a dict with for every forward next vertex, a set of regular expressions with which the transition is labelled
         verticesMap: Dict[str,Tuple[Set[str],Set[str],Dict[str,Set['RegExTerm']]]]
 
@@ -172,15 +175,15 @@ class RegExTerm(object):
                 # there is no cycle
                 return None
 
-        # create a graph 
+        # create a graph
         states: List[str] = A.statesInBFSOrder()
         verticesMap = dict()
-        
+
         # add all states
         for s in A.states():
             # incoming states, outgoing states, map of outgoing states to sets of alternative REs
             verticesMap[s] = (set(), set(), dict())
-        
+
         # add all edges
         for t in A.transitions():
             _addTransition(t[0], t[2], RegExTermLetter(t[1]))
@@ -294,7 +297,7 @@ class RegExTermEmptyWord(RegExTerm):
 
 
 class RegExTermConcatenation(RegExTerm):
-    
+
     _expressions: List[RegExTerm]
 
     def __init__(self, expressions: List[RegExTerm]):
@@ -374,7 +377,7 @@ class RegExTermConcatenation(RegExTerm):
         # build a new automaton
         result = Automaton()
         stateMap = dict()
-        # add all states 
+        # add all states
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
@@ -417,7 +420,7 @@ class RegExTermConcatenation(RegExTerm):
         # build a new automaton
         result = Automaton()
         stateMap = dict()
-        # add all states 
+        # add all states
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
@@ -450,7 +453,7 @@ class RegExTermConcatenation(RegExTerm):
 class RegExTermAlternatives(RegExTerm):
 
     _expressions: List[RegExTerm]
-    
+
     def __init__(self, expressions: List[RegExTerm]):
         self._expressions = expressions
 
@@ -502,7 +505,7 @@ class RegExTermAlternatives(RegExTerm):
         # build a new automaton
         result = Automaton()
         stateMap = dict()
-        # add all states 
+        # add all states
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
@@ -530,7 +533,7 @@ class RegExTermAlternatives(RegExTerm):
         # build a new automaton
         result = Automaton()
         stateMap = dict()
-        # add all states 
+        # add all states
         for a in exprNBA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
@@ -575,7 +578,7 @@ class RegExTermAlternatives(RegExTerm):
 class RegExTermKleene(RegExTerm):
 
     _expression: RegExTerm
-    
+
     def __init__(self, expression: RegExTerm):
         self._expression = expression
 
@@ -643,7 +646,7 @@ class RegExTermKleene(RegExTerm):
 class RegExTermOmega(RegExTerm):
 
     _expression: RegExTerm
-    
+
     def __init__(self, expression: RegExTerm):
         self._expression = expression
 
@@ -699,9 +702,9 @@ class RegExTermOmega(RegExTerm):
         return self._expression.__lt__(other._expression)
 
 class RegExTermLetter(RegExTerm):
-    
+
     _letter: str
-    
+
 
     def __init__(self, letter: str):
         self._letter = letter
@@ -729,7 +732,7 @@ class RegExTermLetter(RegExTerm):
         return "'"+self._letter.replace("'", "\\'")+"'"
 
     def _asFSA(self)->Automaton:
-        
+
         result = Automaton()
         si = result.addStateUnique("S")
         sf = result.addStateUnique("S")
@@ -805,7 +808,7 @@ class RegEx(object):
         name = match.group('name')
 
         (regex, _) = RegExTerm.fromString(match.group('regex'))
-  
+
         return (name, RegEx(name, regex))
 
     @staticmethod
