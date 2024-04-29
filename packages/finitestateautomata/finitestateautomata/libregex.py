@@ -125,6 +125,9 @@ class RegExTerm(object):
     def __lt__same_class__(self, other)->bool:
         raise RegExException("to be filled in subclasses to support sorting")
 
+    def __hash__(self) -> int:
+        raise Exception("to be filled in subclasses")
+
 
     @staticmethod
     def fromFSA(A: Automaton)->'RegExTerm':
@@ -263,6 +266,10 @@ class RegExTermEmptySet(RegExTerm):
     def __lt__same_class__(self, other)->bool:
         return False
 
+    def __hash__(self) -> int:
+        return 1
+
+
 
 
 class RegExTermEmptyWord(RegExTerm):
@@ -295,6 +302,8 @@ class RegExTermEmptyWord(RegExTerm):
     def __lt__same_class__(self, other)->bool:
         return False
 
+    def __hash__(self) -> int:
+        return 2
 
 class RegExTermConcatenation(RegExTerm):
 
@@ -349,6 +358,8 @@ class RegExTermConcatenation(RegExTerm):
                 return True
         return False
 
+    def __hash__(self) -> int:
+        return hash((3, hash(tuple(self._expressions))))
 
 
 
@@ -574,6 +585,9 @@ class RegExTermAlternatives(RegExTerm):
                 return True
         return False
 
+    def __hash__(self) -> int:
+        return hash((4, hash(tuple(self._expressions))))
+
 
 class RegExTermKleene(RegExTerm):
 
@@ -643,6 +657,10 @@ class RegExTermKleene(RegExTerm):
     def __lt__same_class__(self, other)->bool:
         return self._expression.__lt__(other._expression)
 
+    def __hash__(self) -> int:
+        return hash((5, self._expression))
+
+
 class RegExTermOmega(RegExTerm):
 
     _expression: RegExTerm
@@ -701,6 +719,10 @@ class RegExTermOmega(RegExTerm):
     def __lt__same_class__(self, other)->bool:
         return self._expression.__lt__(other._expression)
 
+    def __hash__(self) -> int:
+        return hash((6, self._expression))
+
+
 class RegExTermLetter(RegExTerm):
 
     _letter: str
@@ -748,6 +770,8 @@ class RegExTermLetter(RegExTerm):
     def __lt__same_class__(self, other)->bool:
         return self._letter < other._letter
 
+    def __hash__(self) -> int:
+        return hash((7, self._letter))
 
 class RegEx(object):
 
