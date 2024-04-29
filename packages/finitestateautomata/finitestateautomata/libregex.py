@@ -23,9 +23,6 @@ class RegExTerm(object):
     def __init__(self):
         pass
 
-    def __hash__(self):
-        return str(self).__hash__()
-
     # parse expression. return expression and remainder of the string
     @staticmethod
     def fromString(s: str)->Tuple['RegExTerm',str]:
