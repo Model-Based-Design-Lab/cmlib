@@ -30,7 +30,7 @@ class Automaton(object):
         self._initialStates = set()
         self._finalStates = set()
         self._generalizedAcceptanceSets = dict()
-    
+
     def addState(self, s: str):
         '''Add a state.'''
         self._states.add(s)
@@ -165,7 +165,7 @@ class Automaton(object):
 
         # get the individual symbols from the input string
         symbols = [] if word=='' else word.split(',')
-        
+
         # loop invariant: maintain set of states reachable by the symbols processed so far and corresponding paths
         # initialize to the epsilon closure of the initial states.
         currentStates: Set[str]
@@ -190,11 +190,11 @@ class Automaton(object):
 
     def accepts(self, word: str)->bool:
         """
-            Check if the automaton accepts the given word (a single string of symbols separated by commas).            
+            Check if the automaton accepts the given word (a single string of symbols separated by commas).
         """
         res, _ = self.acceptsWithPath(word)
         return res
-    
+
     def isDeterministic(self)->bool:
         '''Check if the automaton is deterministic.'''
         if len(self._initialStates) > 1:
@@ -497,7 +497,7 @@ class Automaton(object):
                         for tPrime in A.nextStates(t, symbol):
                             result.addTransition(
                                 prodState(s, t), symbol, prodState(sPrime, tPrime))
-        
+
         return result
 
     def languageEmpty(self)->Tuple[bool,Optional[List[str]],Optional[List[str]]]:
@@ -560,7 +560,7 @@ class Automaton(object):
 
         # Step 2, check for each reachable accepting state if there is a cycle with a non-empty word that returns to it
         for s in sorted(reachableFinalStates):
-            # to ensure that the cycle word is non-empty, first determine the states reachable from s with a non-epsilon symbol, and remember that symbol for each state 
+            # to ensure that the cycle word is non-empty, first determine the states reachable from s with a non-epsilon symbol, and remember that symbol for each state
             sClosure = self.epsilonClosure(set([s]))
             finalPlusSymbolReachableStates: Set[str] = set()
             singleSymbol: Dict[str,List[str]] = dict()
@@ -682,7 +682,7 @@ class Automaton(object):
         p_f = None
         if len(states_f):
             p_f = frozenset(states_f)
-            partitions.add(p_f) 
+            partitions.add(p_f)
         p_nf = None
         if len(states_nf):
             p_nf = frozenset(states_nf)
@@ -715,7 +715,7 @@ class Automaton(object):
                             equivSet.add(s2)
                         else:
                             remainingSet.add(s2)
-                
+
                 # if not, split the class
                 if len(equivSet) == len(eClass):
                     _createPartition(newPartitions, partitionMap, equivSet)
@@ -730,7 +730,7 @@ class Automaton(object):
 
     def minimize(self)->'Automaton':
         '''Implements a partition refinement strategy to reduce the size of the FSA.'''
-        
+
         def setAsState(ss): return "{" + (",".join(sorted(ss))) + "}"
 
         # remove unreachable states
@@ -740,7 +740,7 @@ class Automaton(object):
         partitions, partitionMap = interim._partitionRefinement()
 
         result = Automaton()
- 
+
         # make states
         for p in partitions:
             ns = setAsState(p)
@@ -771,7 +771,7 @@ class Automaton(object):
 
     def minimizeBuchi(self)->'Automaton':
         '''Implements a partition refinement strategy to reduce the size of the Büchi automaton.'''
-        
+
         # eliminate states from which not all acceptance sets are reachable
         interim = self.eliminateStatesWithoutOutgoingTransitions()
         return  interim.minimize()
@@ -781,7 +781,7 @@ class Automaton(object):
         result = list()
         self._breadthFirstSearch(lambda s: result.append(s))
         return result
-        
+
     def relabelStates(self)->'Automaton':
         '''Return the automaton with states relabeled 'S' with a number in a breadth first manner.'''
 
@@ -807,24 +807,28 @@ class Automaton(object):
         for f in self._finalStates:
             result.makeFinalState(stateDict[f])
 
-        for s in self._epsilonTransitions.keys():
-            for t in self._epsilonTransitions[s]:
+        if self.hasGeneralizedAcceptanceSets():
+            for gas, acceptance_set in self._generalizedAcceptanceSets.items():
+                result.addGeneralizedBuchiAcceptanceSet(gas, set(map(lambda s: stateDict[s], acceptance_set)))
+
+        for s, e_trans in self._epsilonTransitions.items():
+            for t in e_trans:
                 result.addEpsilonTransition(stateDict[s], stateDict[t])
 
-        for s in self._transitions.keys():
-            for symbol in self._transitions[s].keys():
-                for t in self._transitions[s][symbol]:
+        for s, trans in self._transitions.items():
+            for symbol, s_trans in trans.items():
+                for t in s_trans:
                     result.addTransition(stateDict[s], symbol, stateDict[t])
         return result
 
     def eliminateEpsilonTransitions(self)->'Automaton':
         '''Eliminate epsilon transitions from the automaton.'''
-        
+
         result = Automaton()
-        
+
         for s in self._states:
             result.addState(s)
-        
+
         for s in self._transitions.keys():
             for symbol in self._transitions[s].keys():
                 for t in self._transitions[s][symbol]:
@@ -915,7 +919,7 @@ class Automaton(object):
         if name is None or fsa is None:
             exit(1)
         return name, fsa
-        
+
     def reachableStates(self)->Set[str]:
         ''' return a set of all states reachable from an initial state '''
         result, _, _ = self.reachableStatesWithWordsAndPaths()
@@ -973,13 +977,19 @@ class Automaton(object):
                         if not t in result:
                             statesToExplore.add(t)
             # check regular transitions
-            for t in self._transitions:
-                for symbol in self._transitions[t]:
-                    for u in self._transitions[t][symbol]:
+            for t, trans in self._transitions.items():
+                for symbol in trans:
+                    for u in trans[symbol]:
                         if u == s:
                             if not t in result:
                                 statesToExplore.add(t)
         return result
+
+    def addGeneralizedBuchiAcceptanceSet(self, N: str, A:AbstractSet[str]):
+        '''
+        add a generalized acceptance set A named N
+        '''
+        self._generalizedAcceptanceSets[N] = set(A)
 
     def addGeneralizedBuchiAcceptanceSets(self, A:Iterable[AbstractSet[str]])->'Automaton':
         '''
@@ -995,12 +1005,12 @@ class Automaton(object):
 
         def _newState(s: str, n: int)->str:
             return "({},F{})".format(s,str(n))
-       
+
         stateMap:Dict[str,str] = dict()
 
         # create a copy of every state for every acceptance set.
         # label final state accordingly
-        # add transitions to state in same layer for non-accepting source states 
+        # add transitions to state in same layer for non-accepting source states
         # or state in next layer if it is accepting
         res = Automaton()
         acceptanceSets:List[AbstractSet[str]] = []
@@ -1123,7 +1133,7 @@ class Automaton(object):
             return set()
         return frozenset(self._transitions[state].keys())
 
-    
+
     def outgoingSymbolsSet(self, setOfStates: Set[str])->AbstractSet[str]:
         '''Return the set of outgoing symbols from any state from setOfStates.'''
         res = set()
@@ -1196,7 +1206,7 @@ class Automaton(object):
         resPaths: Dict[str,List[str]] = dict()
         for s in postEpsilonReachableStates:
             resPaths[s] = (afterSymbolPaths[postPaths[s][0]])[:-1] + postPaths[s]
-        
+
         return postEpsilonReachableStates, resPaths
 
 
