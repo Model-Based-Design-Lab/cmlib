@@ -35,3 +35,7 @@ self.function_test(lambda: self.model.executeSteps(15), "executeSteps_15")
 ```
 
 The ```Incorrect_behavior_tests()``` function requires a lambda function and an expected result as inputs. This is done to ensure that the engineer adding incorrect tests do not have to check the output file for the correctness of the fault message.
+
+## Updating Test Reference Output
+
+If the reference output JSON files of the test need to be updated, this can be achieved by deleting the old reference files and running the test. It will regenerate the reference output.
