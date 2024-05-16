@@ -1250,7 +1250,7 @@ class Automaton:
         if len(generalized_sets)>0:
             if state in self._final_states:
                 generalized_sets.add('default')
-            output.write(f" [{", ".join(generalized_sets)}]")
+            output.write(f" [{', '.join(generalized_sets)}]")
 
     def outgoing_symbols(self, state: str)->AbstractSet[str]:
         '''Return the set of outgoing symbols from state.'''
