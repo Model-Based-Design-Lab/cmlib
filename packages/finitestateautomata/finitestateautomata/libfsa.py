@@ -1463,5 +1463,5 @@ class Automaton:
             visit(s)
 
     def __str__(self)->str:
-        return f"({self._states}, {self._initial_states}, {self.\
-            _final_states}, {self._transitions})"
+        return f"({self._states}, {self._initial_states}, " \
+            f"{self._final_states}, {self._transitions})"
