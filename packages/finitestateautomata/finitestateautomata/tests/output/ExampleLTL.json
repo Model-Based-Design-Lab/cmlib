@@ -3,28 +3,28 @@
         "_states": "[((S1,A0),F0), ((S2,A0),F0), ((S2,A1),F0)]",
         "_transitions": {
             "((S1,A0),F0)": {
-                "d": "[((S1,A0),F0), ((S2,A1),F0)]",
+                "a": "[((S2,A1),F0)]",
                 "b": "[((S2,A1),F0)]",
                 "c": "[((S1,A0),F0), ((S2,A1),F0)]",
-                "a": "[((S2,A1),F0)]"
+                "d": "[((S1,A0),F0), ((S2,A1),F0)]"
             },
             "((S2,A0),F0)": {
-                "c": "[((S1,A0),F0), ((S2,A1),F0)]",
-                "d": "[((S1,A0),F0), ((S2,A1),F0)]",
+                "a": "[((S2,A1),F0)]",
                 "b": "[((S2,A1),F0)]",
-                "a": "[((S2,A1),F0)]"
+                "c": "[((S1,A0),F0), ((S2,A1),F0)]",
+                "d": "[((S1,A0),F0), ((S2,A1),F0)]"
             },
             "((S2,A1),F0)": {
-                "c": "[((S1,A0),F0), ((S2,A1),F0)]",
-                "d": "[((S1,A0),F0), ((S2,A1),F0)]",
+                "a": "[((S2,A1),F0)]",
                 "b": "[((S2,A1),F0)]",
-                "a": "[((S2,A1),F0)]"
+                "c": "[((S1,A0),F0), ((S2,A1),F0)]",
+                "d": "[((S1,A0),F0), ((S2,A1),F0)]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[((S1,A0),F0)]",
-        "_finalStates": "[((S1,A0),F0), ((S2,A0),F0)]",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[((S1,A0),F0)]",
+        "_final_states": "[((S1,A0),F0), ((S2,A0),F0)]",
+        "_generalized_acceptance_sets": {}
     },
     "convert_to_DSL": "ltl formula TestName = G ((not (p)) or (F (q)))"
 }

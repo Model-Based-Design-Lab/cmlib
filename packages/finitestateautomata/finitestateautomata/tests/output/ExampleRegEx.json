@@ -15,16 +15,16 @@
                 "f": "[S111]"
             }
         },
-        "_epsilonTransitions": {
+        "_epsilon_transitions": {
             "S12": "[S21]",
             "S111": "[S211]",
             "S21": "[S41, S5]",
             "S211": "[S31, S41]",
             "S41": "[S21, S211]"
         },
-        "_initialStates": "[S, S2, S3, S4, S41]",
-        "_finalStates": "[S1, S11, S4, S41]",
-        "_generalizedAcceptanceSets": {}
+        "_initial_states": "[S, S2, S3, S4, S41]",
+        "_final_states": "[S1, S11, S4, S41]",
+        "_generalized_acceptance_sets": {}
     },
     "convert_to_DSL": "regular expression TestName = (d*+f*)*+\\o+\\e+a+b"
 }

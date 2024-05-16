@@ -18,10 +18,10 @@
                 "+,\"*@": "[(S1,S1)]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[(S0,S0)]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[(S0,S0)]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "eliminateEpsilon": {
         "_states": "[S0, S1]",
@@ -34,10 +34,10 @@
                 "b": "[S0]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[S0]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[S0]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "complete": {
         "_states": "[S, S0, S1]",
@@ -58,10 +58,10 @@
                 "b": "[S]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[S0]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[S0]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "complement": {
         "_states": "[S, {S0,S1}, {S0}, {S1}]",
@@ -87,18 +87,18 @@
                 "b": "[S]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[{S0}]",
-        "_finalStates": "[S, {S0,S1}, {S0}, {S1}]",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[{S0}]",
+        "_final_states": "[S, {S0,S1}, {S0}, {S1}]",
+        "_generalized_acceptance_sets": {}
     },
     "minimize": {
         "_states": "",
         "_transitions": {},
-        "_epsilonTransitions": {},
-        "_initialStates": "",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "convert_to_DFA": {
         "_states": "[{S0,S1}, {S0}, {S1}]",
@@ -107,19 +107,19 @@
                 "+,\"*@": "[{S1}]"
             },
             "{S1}": {
-                "b": "[{S0}]",
-                "+*@": "[{S0,S1}]"
+                "+*@": "[{S0,S1}]",
+                "b": "[{S0}]"
             },
             "{S0,S1}": {
-                "b": "[{S0}]",
                 "+*@": "[{S0,S1}]",
+                "b": "[{S0}]",
                 "+,\"*@": "[{S1}]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[{S0}]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[{S0}]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "relabel": {
         "_states": "[S1, S2]",
@@ -132,10 +132,10 @@
                 "b": "[S1]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[S1]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[S1]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "convert_to_DSL": "finite state automaton TestName {\n\tS0 initial -- \"+,\\\"*@\" --> S1\n\tS1 -- \"+*@\" --> S1\n\tS1 -- \"+*@\", b --> S0\n}\n",
     "languageIncluded_refModel": "[True, None]",
@@ -161,10 +161,10 @@
                 "a": "[(S0,S1)]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[(S0,S0)]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[(S0,S0)]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "languageEmptyBuchi": "[True, None, None, None, None]",
     "productBuchi": {
@@ -178,17 +178,17 @@
                 "+,\"*@": "[((S1,S1),F0)]"
             }
         },
-        "_epsilonTransitions": {},
-        "_initialStates": "[((S0,S0),F0)]",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "[((S0,S0),F0)]",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     },
     "minimizeBuchi": {
         "_states": "",
         "_transitions": {},
-        "_epsilonTransitions": {},
-        "_initialStates": "",
-        "_finalStates": "",
-        "_generalizedAcceptanceSets": {}
+        "_epsilon_transitions": {},
+        "_initial_states": "",
+        "_final_states": "",
+        "_generalized_acceptance_sets": {}
     }
 }

@@ -1015,9 +1015,9 @@ class Automaton:
         factory = {}
         factory['Init'] = Automaton
         factory['addTransitionPossiblyEpsilon'] = lambda fsa, s, t, symbol: \
-            fsa.addEpsilonTransition(s, t) if symbol == \
-                Automaton._epsilonSymbol else fsa.addTransition(s, symbol, t)
-        factory['AddEpsilonTransition'] = lambda fsa, s, t : fsa.addEpsilonTransition(s, t)
+            fsa.add_epsilon_transition(s, t) if symbol == \
+                Automaton._epsilonSymbol else fsa.add_transition(s, symbol, t)
+        factory['AddEpsilonTransition'] = lambda fsa, s, t : fsa.add_epsilon_transition(s, t)
         factory['AddState'] = Automaton._parsing_add_state_with_labels
         name, fsa = parse_fsa_dsl(dsl_string, factory)
         if name is None or fsa is None:
@@ -1136,9 +1136,9 @@ class Automaton:
         n = len(acceptance_sets)
 
         # create states
-        for n in range(n):
+        for nn in range(n):
             for s in self._states:
-                ns = _new_state(s,n)
+                ns = _new_state(s,nn)
                 state_map[ns] = s
                 res.add_state(ns)
 
@@ -1147,26 +1147,26 @@ class Automaton:
             res.make_initial_state(_new_state(s,0))
 
         # set final state s
-        for n in range(n):
-            for s in acceptance_sets[n]:
-                res.make_final_state(_new_state(s,n))
+        for nn in range(n):
+            for s in acceptance_sets[nn]:
+                res.make_final_state(_new_state(s,nn))
 
         # add transitions
-        for n in range(n):
-            nxt = (n+1)%n
+        for nn in range(n):
+            nxt = (nn+1)%n
             for s, trans in self._transitions.items():
                 for symbol, s_trans in trans.items():
                     for t in s_trans:
-                        if s in acceptance_sets[n]:
-                            res.add_transition(_new_state(s,n), symbol, _new_state(t,nxt))
+                        if s in acceptance_sets[nn]:
+                            res.add_transition(_new_state(s,nn), symbol, _new_state(t,nxt))
                         else:
-                            res.add_transition(_new_state(s,n), symbol, _new_state(t,n))
+                            res.add_transition(_new_state(s,nn), symbol, _new_state(t,nn))
             for s, s_trans in self._epsilon_transitions.items():
                 for t in s_trans:
-                    if s in acceptance_sets[n]:
-                        res.add_epsilon_transition(_new_state(s,n), _new_state(t,nxt))
+                    if s in acceptance_sets[nn]:
+                        res.add_epsilon_transition(_new_state(s,nn), _new_state(t,nxt))
                     else:
-                        res.add_epsilon_transition(_new_state(s,n), _new_state(t,n))
+                        res.add_epsilon_transition(_new_state(s,nn), _new_state(t,nn))
 
         return res, state_map
 
@@ -1194,6 +1194,7 @@ class Automaton:
             for s in self._states:
                 state_map[s] = s
             return self, state_map
+
         return self.add_generalized_buchi_acceptance_sets_with_state_map(\
             list(self._generalized_acceptance_sets.values()))
 
