@@ -8,7 +8,6 @@ from dataflow.libmpmgrammar import parseMPMDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
 import pygraph.classes.digraph  as pyg
 
-# Represent a finite event sequence, i.e., a list of time stamps
 class MPMException(mp.MPException):
     pass
 
@@ -21,7 +20,7 @@ class EventSequenceModel(object):
     def __init__(self, seq: mp.TTimeStampList = []):
         # _sequence captures the event sequence
         self._sequence = seq
-    
+
     def validate(self):
         # no checks needed
         pass
@@ -238,7 +237,7 @@ class MaxPlusMatrixModel(object):
     def precedenceGraph(self) -> pyg.digraph:
         '''Determine the precedence graph of the matrix.'''
         return mp.mpPrecedenceGraph(self._rows, self._precedenceGraphLabels())
-            
+
     def precedenceGraphGraphviz(self) -> str:
         '''Return a Graphviz representation of the precedence graph as a string.'''
         return mp.mpPrecedenceGraphGraphviz(self._rows, self._precedenceGraphLabels())
@@ -257,7 +256,7 @@ class MaxPlusMatrixModel(object):
             return VectorSequenceModel(mp.mpMultiplyMatrixVectorSequence(self._rows, matOrVs._vectors))
         else:
             return MaxPlusMatrixModel(mp.mpMultiplyMatrices(self._rows, matOrVs._rows))
-        
+
     def vectorTraceClosed(self, x0: mp.TMPVector, ni: int) -> mp.TMPVectorList:
         '''
         Compute a vector trace of state vectors of the matrix in this model. Requires that the matrix is square.
@@ -285,9 +284,9 @@ class MaxPlusMatrixModel(object):
         Parameters
         ----------
         `matrices` : dictionary that maps the strings 'A', 'B', 'C' and 'D' to four MaxPlusMatrixModels representing state space matrices
-        
+
         `x0`: the initial state vector, or `None` to default to the zero vector as the initial state
-        
+
         `ni`: the number of iterations to compute, or `None` to compute the maximum number of iterations that can be computed given the input data
 
         `inputs`: a list of input event sequences
@@ -295,7 +294,7 @@ class MaxPlusMatrixModel(object):
         `useEndingState`: boolean that determines if the state vector before, or after the iteration is used.
 
         '''
-        
+
         def _validate(mat: Dict[str,'MaxPlusMatrixModel'])->None:
             if not ('A' in mat and 'B' in mat and 'C' in mat and 'D' in mat):
                 raise MPMValidateException('Expected matrices A, B, C and D')
@@ -396,12 +395,12 @@ class MaxPlusMatrixModel(object):
     def multiplySequence(matrices: List[Union['MaxPlusMatrixModel',VectorSequenceModel]])->Union['MaxPlusMatrixModel',VectorSequenceModel]:
         '''Multiply the sequence of matrices, possibly ending with a vector sequence.'''
         return reduce(lambda prod, mat: prod.multiply(mat), matrices)
-        
+
     @staticmethod
     def fromDSL(dslString: str)-> Tuple[str,Dict[str,'MaxPlusMatrixModel'],Dict[str,VectorSequenceModel],Dict[str,EventSequenceModel]]:
         '''
         Parse dslString and extract model name, matrices, vector sequences and event sequences.
-        Raise an exception if the parsing fails. 
+        Raise an exception if the parsing fails.
         '''
 
         factory = dict()
@@ -474,7 +473,7 @@ class MaxPlusMatrixModel(object):
                 for es in eSequences:
                     esm: EventSequenceModel = allInstances[es]  # type: ignore
                     output.write("{} = {}".format(es, pv(esm.sequence())))
-        
+
         result = output.getvalue()
         output.close()
         return result

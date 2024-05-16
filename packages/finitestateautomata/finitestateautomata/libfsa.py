@@ -1,11 +1,21 @@
+import copy
 from functools import reduce
 from io import StringIO
 import re
+import sys
 from typing import AbstractSet, Callable, Dict, Iterable, List, Optional,Set, Tuple
-from finitestateautomata.libfsagrammar import parseFSADSL
+from finitestateautomata.libfsagrammar import parse_fsa_dsl
 
 
-class Automaton(object):
+class FSAException(Exception):
+    ''' Exceptions related to FSA '''
+    pass
+
+class Automaton:
+
+    """
+    Represents variants of Finite State Automata.
+    """
 
     _epsilonSymbol:str = '#'
 
@@ -14,234 +24,265 @@ class Automaton(object):
     # map from states to map from symbol to set of next states
     _transitions: Dict[str,Dict[str,Set[str]]]
     # map from states to set of epsilon next states
-    _epsilonTransitions: Dict[str,Set[str]]
+    _epsilon_transitions: Dict[str,Set[str]]
     # set of initial states
-    _initialStates: Set[str]
+    _initial_states: Set[str]
     # set of final states
-    _finalStates: Set[str]
+    _final_states: Set[str]
     # map from a name to a set of states forming an acceptance set
     # note the the set of final states acts as one of the generalized acceptance sets
-    _generalizedAcceptanceSets: Dict[str,Set[str]]
+    _generalized_acceptance_sets: Dict[str,Set[str]]
 
     def __init__(self):
         self._states = set()
-        self._transitions = dict()
-        self._epsilonTransitions = dict()
-        self._initialStates = set()
-        self._finalStates = set()
-        self._generalizedAcceptanceSets = dict()
+        self._transitions = {}
+        self._epsilon_transitions = {}
+        self._initial_states = set()
+        self._final_states = set()
+        self._generalized_acceptance_sets = {}
 
-    def addState(self, s: str):
+    def add_state(self, s: str):
         '''Add a state.'''
         self._states.add(s)
 
-    def addStates(self, setOfStates: Set[str]):
+    def add_states(self, set_of_states: Set[str]):
         '''Add a set of states.'''
-        self._states.update(setOfStates)
+        self._states.update(set_of_states)
 
     def states(self)->AbstractSet[str]:
         '''Returns the (non-modifiable) set of states.'''
         return frozenset(self._states)
 
-    def addTransition(self, srcState: str, symbol: str, dstState: str):
+    def add_transition(self, src_state: str, symbol: str, dst_state: str):
         '''Add a transition from srcState to dstState, labelled with symbol.'''
-        self.addState(srcState)
-        self.addState(dstState)
+        self.add_state(src_state)
+        self.add_state(dst_state)
         # update the transitions
-        if not srcState in self._transitions.keys():
-            self._transitions[srcState] = dict()
-        if not symbol in self._transitions[srcState].keys():
-            self._transitions[srcState][symbol] = set()
-        self._transitions[srcState][symbol].add(dstState)
+        if not src_state in self._transitions:
+            self._transitions[src_state] = {}
+        if not symbol in self._transitions[src_state].keys():
+            self._transitions[src_state][symbol] = set()
+        self._transitions[src_state][symbol].add(dst_state)
 
-    def hasProperTransitionFromState(self, srcState: str)->bool:
+    def has_proper_transition_from_state(self, src_state: str)->bool:
         '''Returns whether srcState has any labelled outgoing transition'''
-        if srcState in self._transitions.keys():
-            return len(self._transitions[srcState]) > 0
-        else:
-            return False
+        if src_state in self._transitions:
+            return len(self._transitions[src_state]) > 0
+        return False
 
-    def hasProperTransitionFromStateWithSymbol(self, srcState: str, symbol: str)->bool:
+    def has_proper_transition_from_state_with_symbol(self, src_state: str, symbol: str)->bool:
         '''Returns whether srcState has any outgoing transition labelled symbol.'''
-        if self.hasProperTransitionFromState(srcState):
-            return symbol in self._transitions[srcState].keys()
-        else:
-            return False
+        if self.has_proper_transition_from_state(src_state):
+            return symbol in self._transitions[src_state].keys()
+        return False
 
     def transitions(self)->Set[Tuple[str,str,str]]:
-        '''Returns a set with all transition from some state s1 to some s2 labelled a as tuples (s1,a,s2).'''
+        '''
+        Returns a set with all transitions from some state s1 to some s2
+        labelled a as tuples (s1,a,s2).
+        '''
         result = set()
-        for src in self._transitions:
-            for symbol in self._transitions[src]:
-                for dst in self._transitions[src][symbol]:
+        for src, trans in self._transitions.items():
+            for symbol, states in trans.items():
+                for dst in states:
                     result.add((src, symbol, dst))
         return result
 
-    def groupedTransitions(self)->Set[Tuple[str,str,str]]:
-        '''Returns a set with all transition from some state s1 to some state s2 a as tuples (s1,labels,s2), where labels is a string with all symbols for which there is such a transition joined with commas, including '#' if there is an epsilon transition from s1 to s2.'''
+    def grouped_transitions(self)->Set[Tuple[str,str,str]]:
+        '''
+        Returns a set with all transition from some state s1 to some state s2 a
+        as tuples (s1,labels,s2), where labels is a string with all symbols for
+        which there is such a transition joined with commas, including '#' if
+        there is an epsilon transition from s1 to s2.
+        '''
         result = set()
         trans = self.transitions()
-        epsTrans = self.epsilonTransitions()
-        statePairs = set([(t[0], t[2]) for t in trans])
-        statePairs.update(epsTrans)
+        eps_trans = self.epsilon_transitions()
+        state_pairs = {(t[0], t[2]) for t in trans}
+        state_pairs.update(eps_trans)
 
-        for p in statePairs:
+        for p in state_pairs:
             symbols = [t[1] for t in {u for u in trans if u[0]==p[0] and u[2]==p[1]}]
-            if (p[0], p[1]) in epsTrans:
+            if (p[0], p[1]) in eps_trans:
                 symbols.append(self._epsilonSymbol)
             # sort
-            sortedSymbols = sorted(symbols)
-            result.add((p[0], ','.join(sortedSymbols), p[1]))
+            sorted_symbols = sorted(symbols)
+            result.add((p[0], ','.join(sorted_symbols), p[1]))
         return result
 
-    def addEpsilonTransition(self, srcState: str, dstState: str):
+    def add_epsilon_transition(self, src_state: str, dst_state: str):
         '''Add an epsilon transition from srcState to dstState.'''
-        self.addState(srcState)
-        self.addState(dstState)
-        if not srcState in self._epsilonTransitions.keys():
-            self._epsilonTransitions[srcState] = set()
-        self._epsilonTransitions[srcState].add(dstState)
+        self.add_state(src_state)
+        self.add_state(dst_state)
+        if not src_state in self._epsilon_transitions:
+            self._epsilon_transitions[src_state] = set()
+        self._epsilon_transitions[src_state].add(dst_state)
 
-    def epsilonTransitions(self)->Set[Tuple[str,str]]:
-        '''Return a set with for each epsilon transition a tuple withe the source state and the destination state.'''
+    def epsilon_transitions(self)->Set[Tuple[str,str]]:
+        '''
+        Return a set with for each epsilon transition a tuple withe the source
+        state and the destination state.
+        '''
         result = set()
-        for src in self._epsilonTransitions:
-            for dst in self._epsilonTransitions[src]:
+        for src, eps_trans in self._epsilon_transitions.items():
+            for dst in eps_trans:
                 result.add((src, dst))
         return result
 
-    def makeInitialState(self, s: str):
+    def make_initial_state(self, s: str):
         '''Make s an initial state. Assumes s is already a state of the automaton.'''
         if not s in self._states:
-            raise Exception("{} is not a state of the automaton".format(s))
-        self._initialStates.add(s)
+            raise FSAException(f"{s} is not a state of the automaton")
+        self._initial_states.add(s)
 
-    def initialStates(self)->AbstractSet[str]:
+    def is_initial_state(self, s: str):
+        '''Check if s is an initial state. Assumes s is a state of the automaton.'''
+        return s in self._initial_states
+
+    def initial_states(self)->AbstractSet[str]:
         '''Return the (non-modifiable) set of initial states.'''
-        return frozenset(self._initialStates)
+        return frozenset(self._initial_states)
 
-    def makeFinalState(self, s: str, acceptanceSets: Optional[Set[str]] = None):
-        '''Make state s a final state. If the optional acceptanceSets is provided, s is added to the given acceptance sets. s is assumed to be a state of the automaton.'''
+    def make_final_state(self, s: str, acceptance_sets: Optional[Set[str]] = None):
+        '''
+        Make state s a final state. If the optional acceptanceSets is provided,
+        s is added to the given acceptance sets. s is assumed to be a state of
+        the automaton.
+        '''
         if not s in self._states:
-            raise Exception("{} is not a state of the automaton".format(s))
-        if acceptanceSets is None:
-            self._finalStates.add(s)
+            raise FSAException(f"{s} is not a state of the automaton")
+        if acceptance_sets is None:
+            self._final_states.add(s)
         else:
-            for a in acceptanceSets:
+            for a in acceptance_sets:
                 if a=='default':
-                    self._finalStates.add(s)
+                    self._final_states.add(s)
                 else:
-                    if not a in self._generalizedAcceptanceSets:
-                        self._generalizedAcceptanceSets[a] = set()
-                    self._generalizedAcceptanceSets[a].add(s)
+                    if not a in self._generalized_acceptance_sets:
+                        self._generalized_acceptance_sets[a] = set()
+                    self._generalized_acceptance_sets[a].add(s)
 
-    def clearInitialStates(self):
+    def is_final_state(self, s: str):
+        '''Check if s is a final state. Assumes s is a state of the automaton.'''
+        return s in self._final_states
+
+    def generalized_acceptance_sets(self)-> Dict[str,Set[str]]:
+        '''return generalized acceptance sets'''
+        return copy.deepcopy(self._generalized_acceptance_sets)
+
+    def clear_initial_states(self):
         '''Make all states non-initial.'''
-        self._initialStates = set()
+        self._initial_states = set()
 
-    def clearFinalStates(self):
+    def clear_final_states(self):
         '''Make all states non-final, remove all generalized acceptance sets.'''
-        self._finalStates = set()
-        self._generalizedAcceptanceSets = dict()
+        self._final_states = set()
+        self._generalized_acceptance_sets = {}
 
-    def finalStates(self)->AbstractSet[str]:
+    def final_states(self)->AbstractSet[str]:
         '''Return the (non-modifiable) set of final states.'''
-        return frozenset(self._finalStates)
+        return frozenset(self._final_states)
 
-    def makeNonFinalState(self, s: str):
+    def make_non_final_state(self, s: str):
         '''Make s a non-final state. Assumes s is a state of the automaton.'''
         if not s in self._states:
-            raise Exception("{} is not a state of the automaton".format(s))
-        if s in self._finalStates:
-            self._finalStates.remove(s)
+            raise FSAException(f"{s} is not a state of the automaton")
+        if s in self._final_states:
+            self._final_states.remove(s)
 
-    def acceptsWithPath(self, word: str)->Tuple[bool,Optional[List[str]]]:
+    def accepts_with_path(self, word: str)->Tuple[bool,Optional[List[str]]]:
         """
-            Check if the automaton accepts the given word (a single string of symbols separated by commas).
+            Check if the automaton accepts the given word (a single string of
+            symbols separated by commas).
             Returns a tuple with:
             - boolean indicating if the word is accepted
-            - if the previous result is True, the second element is a list of states with an accepting path for the give word. If the word is not accepted, None is returned.
+            - if the previous result is True, the second element is a list of
+              states with an accepting path for the give word. If the word is
+              not accepted, None is returned.
         """
 
         # get the individual symbols from the input string
         symbols = [] if word=='' else word.split(',')
 
-        # loop invariant: maintain set of states reachable by the symbols processed so far and corresponding paths
+        # loop invariant: maintain set of states reachable by the symbols
+        # processed so far and corresponding paths
         # initialize to the epsilon closure of the initial states.
-        currentStates: Set[str]
-        currentPaths: Dict[str,List[str]]
-        currentStates, currentPaths = self.epsilonClosureWithPaths(self._initialStates)
+        current_states: Set[str]
+        current_paths: Dict[str,List[str]]
+        current_states, current_paths = self.epsilon_closure_with_paths(self._initial_states)
 
         for symbol in symbols:
-            currentStates, paths = self.setNextStatesEpsilonClosureWithPaths(currentStates, symbol)
-            newPaths: Dict[str,List[str]] = dict()
-            for s in currentStates:
-                newPaths[s] = (currentPaths[paths[s][0]])[:-1] + paths[s]
-            currentPaths = newPaths
+            current_states, paths = self.set_next_states_epsilon_closure_with_paths(current_states,
+                symbol)
+            new_paths: Dict[str,List[str]] = {}
+            for s in current_states:
+                new_paths[s] = (current_paths[paths[s][0]])[:-1] + paths[s]
+            current_paths = new_paths
 
-        reachableFinalStates = currentStates.intersection(self._finalStates)
-        res = len(reachableFinalStates) != 0
+        reachable_final_states = current_states.intersection(self._final_states)
+        res = len(reachable_final_states) != 0
         if res:
             # take arbitrary reachable state
-            s = next(iter(reachableFinalStates))
-            return res, currentPaths[s]
-        else:
-            return res, None
+            s = next(iter(reachable_final_states))
+            return res, current_paths[s]
+        return res, None
 
     def accepts(self, word: str)->bool:
         """
-            Check if the automaton accepts the given word (a single string of symbols separated by commas).
+            Check if the automaton accepts the given word (a single string of
+            symbols separated by commas).
         """
-        res, _ = self.acceptsWithPath(word)
+        res, _ = self.accepts_with_path(word)
         return res
 
-    def isDeterministic(self)->bool:
+    def is_deterministic(self)->bool:
         '''Check if the automaton is deterministic.'''
-        if len(self._initialStates) > 1:
+        if len(self._initial_states) > 1:
             return False
-        if len(self._epsilonTransitions.keys()) > 0:
+        if len(self._epsilon_transitions.keys()) > 0:
             return False
         for symbols in self._transitions.values():
-            for nextStates in symbols.values():
-                if len(nextStates) > 1:
+            for next_states in symbols.values():
+                if len(next_states) > 1:
                     return False
         return True
 
-    def asDFA(self)->'Automaton':
+    def as_dfa(self)->'Automaton':
         '''Convert to a deterministic automaton.'''
         result = Automaton()
 
         # convert set of states to string
-        def setAsState(ss: AbstractSet[str]): return "{" + (",".join(sorted(ss))) + "}"
+        def set_as_state(ss: AbstractSet[str]):
+            return "{" + (",".join(sorted(ss))) + "}"
 
         # determine the set of reachable states
-        statesExplored: Set[AbstractSet[str]] = set()
-        statesToExplore: Set[AbstractSet[str]] = set()
-        statesToExplore.add(
-            frozenset(self.epsilonClosure(self._initialStates)))
+        states_explored: Set[AbstractSet[str]] = set()
+        states_to_explore: Set[AbstractSet[str]] = set()
+        states_to_explore.add(
+            frozenset(self.epsilon_closure(self._initial_states)))
 
-        while statesToExplore != set():
-            state = statesToExplore.pop()
-            statesExplored.add(state)
-            result.addState(setAsState(state))
+        while states_to_explore != set():
+            state = states_to_explore.pop()
+            states_explored.add(state)
+            result.add_state(set_as_state(state))
             symbols = reduce(lambda _symbol, _state: _symbol.union(
-                self.outgoingSymbols(_state)), state, set())
+                self.outgoing_symbols(_state)), state, set())
             for s in symbols:
-                _nextState = frozenset(self.epsilonClosure(
-                    self._setNextStates(state, s)))
-                if not _nextState in statesExplored:
-                    statesToExplore.add(_nextState)
-                result.addTransition(setAsState(state), s,
-                                     setAsState(_nextState))
+                _next_state = frozenset(self.epsilon_closure(
+                    self._set_next_states(state, s)))
+                if not _next_state in states_explored:
+                    states_to_explore.add(_next_state)
+                result.add_transition(set_as_state(state), s,
+                                     set_as_state(_next_state))
 
         # determine the initial state
-        result.makeInitialState(setAsState(
-            frozenset(self.epsilonClosure(self._initialStates))))
+        result.make_initial_state(set_as_state(
+            frozenset(self.epsilon_closure(self._initial_states))))
 
         # determine the final states
-        for s in statesExplored:
-            if any(t in self._finalStates for t in s):
-                result.makeFinalState(setAsState(s))
+        for s in states_explored:
+            if any(t in self._final_states for t in s):
+                result.make_final_state(set_as_state(s))
 
         return result
 
@@ -257,404 +298,458 @@ class Automaton(object):
 
         result = Automaton()
 
-        sinkStateAdded = False
-        sinkState = None
+        sink_state_added = False
+        sink_state = None
 
         alphabet = self.alphabet()
         for s in sorted(self._states):
-            result.addState(s)
-            if s in self._initialStates:
-                result.makeInitialState(s)
-            if s in self._finalStates:
-                result.makeFinalState(s)
+            result.add_state(s)
+            if s in self._initial_states:
+                result.make_initial_state(s)
+            if s in self._final_states:
+                result.make_final_state(s)
 
             for symbol in sorted(alphabet):
-                if self.hasProperTransitionFromStateWithSymbol(s, symbol):
+                if self.has_proper_transition_from_state_with_symbol(s, symbol):
                     for t in sorted(self._transitions[s][symbol]):
-                        result.addTransition(s, symbol, t)
+                        result.add_transition(s, symbol, t)
                 else:
-                    if not sinkStateAdded:
-                        sinkStateAdded = True
-                        sinkState = result.addStateUnique("S")
-                    result.addTransition(s, symbol, sinkState)  # type: ignore
+                    if not sink_state_added:
+                        sink_state_added = True
+                        sink_state = result.add_state_unique("S")
+                    result.add_transition(s, symbol, sink_state)  # type: ignore
 
         # if a new state was added it needs outgoing transitions to itself
-        if sinkStateAdded:
+        if sink_state_added:
             for symbol in sorted(alphabet):
-                result.addTransition(sinkState, symbol, sinkState)  # type: ignore
+                result.add_transition(sink_state, symbol, sink_state)  # type: ignore
 
         return result
 
     def complement(self)->'Automaton':
         '''Returns the complement of the automaton.'''
         # obtain a deterministic, complete automaton first
-        result = self.asDFA().complete()
+        result = self.as_dfa().complete()
         # invert the accepting set
-        for s in result._states:
-            if s in result._finalStates:
-                result.makeNonFinalState(s)
+        for s in result.states():
+            if s in result.final_states():
+                result.make_non_final_state(s)
             else:
-                result.makeFinalState(s)
+                result.make_final_state(s)
         return result
 
-    def product(self, A: 'Automaton')->'Automaton':
-        '''Return the product automaton with automaton A. The automata synchronize on transitions with symbols common to their alphabets. The automata can independently make transitions on symbols that do not occur in the alphabet of the other automaton.'''
+    def product(self, a: 'Automaton')->'Automaton':
+        '''
+        Return the product automaton with automaton A. The automata
+        synchronize on transitions with symbols common to their alphabets. The
+        automata can independently make transitions on symbols that do not
+        occur in the alphabet of the other automaton.
+        '''
         result = Automaton()
 
         # figure out the alphabet situation
-        myAlphabet = self.alphabet()
-        herAlphabet = A.alphabet()
-        sharedAlphabet = myAlphabet.intersection(herAlphabet)
-        myPrivateAlphabet = myAlphabet.difference(sharedAlphabet)
-        herPrivateAlphabet = herAlphabet.difference(sharedAlphabet)
+        my_alphabet = self.alphabet()
+        their_alphabet = a.alphabet()
+        shared_alphabet = my_alphabet.intersection(their_alphabet)
+        my_private_alphabet = my_alphabet.difference(shared_alphabet)
+        their_private_alphabet = their_alphabet.difference(shared_alphabet)
 
-        def prodState(s, t): return "({},{})".format(s, t)
+        def prod_state(s, t):
+            return f"({s},{t})"
 
         # create the cartesian product states
-        for s in self._states:
-            for t in A._states:
-                newState = prodState(s, t)
-                result.addState(newState)
-                if s in self._initialStates and t in A._initialStates:
-                    result.makeInitialState(newState)
-                if s in self._finalStates and t in A._finalStates:
-                    result.makeFinalState(newState)
+        for s in self.states():
+            for t in a.states():
+                new_state = prod_state(s, t)
+                result.add_state(new_state)
+                if s in self._initial_states and a.is_initial_state(t):
+                    result.make_initial_state(new_state)
+                if s in self._final_states and a.is_final_state(t):
+                    result.make_final_state(new_state)
 
         # create the transitions
         for s in self._states:
-            for t in A._states:
+            for t in a.states():
                 # my private alphabet transitions
-                for symbol in myPrivateAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        result.addTransition(
-                            prodState(s, t), symbol, prodState(sPrime, t))
+                for symbol in my_private_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        result.add_transition(
+                            prod_state(s, t), symbol, prod_state(s_prime, t))
                 # my epsilon transitions
-                for sPrime in self.nextEpsilonStates(s):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(sPrime, t))
-                # her private alphabet transitions
-                for symbol in herPrivateAlphabet:
-                    for tPrime in A.nextStates(t, symbol):
-                        result.addTransition(
-                            prodState(s, t), symbol, prodState(s, tPrime))
-                # her epsilon transitions
-                for tPrime in A.nextEpsilonStates(t):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(s, tPrime))
+                for s_prime in self.next_epsilon_states(s):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s_prime, t))
+                # their private alphabet transitions
+                for symbol in their_private_alphabet:
+                    for t_prime in a.next_states(t, symbol):
+                        result.add_transition(
+                            prod_state(s, t), symbol, prod_state(s, t_prime))
+                # their epsilon transitions
+                for t_prime in a.next_epsilon_states(t):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s, t_prime))
                 # our common transitions
-                for symbol in sharedAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        for tPrime in A.nextStates(t, symbol):
-                            result.addTransition(
-                                prodState(s, t), symbol, prodState(sPrime, tPrime))
+                for symbol in shared_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        for t_prime in a.next_states(t, symbol):
+                            result.add_transition(
+                                prod_state(s, t), symbol, prod_state(s_prime, t_prime))
         return result
 
-    def strictProduct(self, A: 'Automaton')->'Automaton':
-        '''Return the 'strict' product automaton with automaton A. The automata synchronize on transitions with symbols common to their alphabets. The automata cannot make transitions on symbols that do not occur in the alphabet of the other automaton.'''
+    def strict_product(self, a: 'Automaton')->'Automaton':
+        '''
+        Return the 'strict' product automaton with automaton A. The automata
+        synchronize on transitions with symbols common to their alphabets. The
+        automata cannot make transitions on symbols that do not occur in the
+        alphabet of the other automaton.
+        '''
 
         result = Automaton()
 
         # figure out the alphabet situation
-        myAlphabet = self.alphabet()
-        herAlphabet = A.alphabet()
-        sharedAlphabet = myAlphabet.intersection(herAlphabet)
+        my_alphabet = self.alphabet()
+        their_alphabet = a.alphabet()
+        shared_alphabet = my_alphabet.intersection(their_alphabet)
 
-        def prodState(s, t): return "({},{})".format(s, t)
+        def prod_state(s, t):
+            return f"({s},{t})"
 
         # create the cartesian product states
         for s in self._states:
-            for t in A._states:
-                newState = prodState(s, t)
-                result.addState(newState)
-                if s in self._initialStates and t in A._initialStates:
-                    result.makeInitialState(newState)
-                if s in self._finalStates and t in A._finalStates:
-                    result.makeFinalState(newState)
+            for t in a.states():
+                new_state = prod_state(s, t)
+                result.add_state(new_state)
+                if s in self._initial_states and a.is_initial_state(t):
+                    result.make_initial_state(new_state)
+                if s in self._final_states and a.is_final_state(t):
+                    result.make_final_state(new_state)
 
         # create the transitions
         for s in self._states:
-            for t in A._states:
+            for t in a.states():
                 # my epsilon transitions
-                for sPrime in self.nextEpsilonStates(s):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(sPrime, t))
+                for s_prime in self.next_epsilon_states(s):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s_prime, t))
                 # her epsilon transitions
-                for tPrime in A.nextEpsilonStates(t):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(s, tPrime))
+                for t_prime in a.next_epsilon_states(t):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s, t_prime))
                 # our common transitions
-                for symbol in sharedAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        for tPrime in A.nextStates(t, symbol):
-                            result.addTransition(
-                                prodState(s, t), symbol, prodState(sPrime, tPrime))
+                for symbol in shared_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        for t_prime in a.next_states(t, symbol):
+                            result.add_transition(
+                                prod_state(s, t), symbol, prod_state(s_prime, t_prime))
         return result
 
-    def productBuchi(self, A: 'Automaton')->'Automaton':
-        '''Return the product Büchi automaton with Büchi automaton A. The automata synchronize on transitions with symbols common to their alphabets. The automata can independently make transitions on symbols that do not occur in the alphabet of the other automaton.'''
+    def product_buchi(self, a: 'Automaton')->'Automaton':
+        '''
+        Return the product Büchi automaton with Büchi automaton A. The
+        automata synchronize on transitions with symbols common to their
+        alphabets. The automata can independently make transitions on symbols
+        that do not occur in the alphabet of the other automaton.
+        '''
         result = Automaton()
 
         # figure out the alphabet situation
-        myAlphabet = self.alphabet()
-        herAlphabet = A.alphabet()
-        sharedAlphabet = myAlphabet.intersection(herAlphabet)
-        myPrivateAlphabet = myAlphabet.difference(sharedAlphabet)
-        herPrivateAlphabet = herAlphabet.difference(sharedAlphabet)
+        my_alphabet = self.alphabet()
+        their_alphabet = a.alphabet()
+        shared_alphabet = my_alphabet.intersection(their_alphabet)
+        my_private_alphabet = my_alphabet.difference(shared_alphabet)
+        their_private_alphabet = their_alphabet.difference(shared_alphabet)
 
-        def prodState(s, t): return "({},{})".format(s, t)
+        def prod_state(s, t):
+            return f"({s},{t})"
 
         # create the cartesian product states
-        herAcceptanceSet = set()
+        their_acceptance_set = set()
         for s in self._states:
-            for t in A._states:
-                newState = prodState(s, t)
-                result.addState(newState)
-                if s in self._initialStates and t in A._initialStates:
-                    result.makeInitialState(newState)
+            for t in a.states():
+                new_state = prod_state(s, t)
+                result.add_state(new_state)
+                if s in self._initial_states and a.is_initial_state(t):
+                    result.make_initial_state(new_state)
                 # take the acceptance conditions from self
                 # record the acceptance conditions from her to be added later
-                if s in self._finalStates:
-                    result.makeFinalState(newState)
-                if t in A._finalStates:
-                    herAcceptanceSet.add(newState)
+                if s in self._final_states:
+                    result.make_final_state(new_state)
+                if a.is_final_state(t):
+                    their_acceptance_set.add(new_state)
 
         # create the transitions
         for s in self._states:
-            for t in A._states:
+            for t in a.states():
                 # my private alphabet transitions
-                for symbol in myPrivateAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        result.addTransition(
-                            prodState(s, t), symbol, prodState(sPrime, t))
+                for symbol in my_private_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        result.add_transition(
+                            prod_state(s, t), symbol, prod_state(s_prime, t))
                 # my epsilon transitions
-                for sPrime in self.nextEpsilonStates(s):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(sPrime, t))
-                # her private alphabet transitions
-                for symbol in herPrivateAlphabet:
-                    for tPrime in A.nextStates(t, symbol):
-                        result.addTransition(
-                            prodState(s, t), symbol, prodState(s, tPrime))
-                # her epsilon transitions
-                for tPrime in A.nextEpsilonStates(t):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(s, tPrime))
+                for s_prime in self.next_epsilon_states(s):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s_prime, t))
+                # their private alphabet transitions
+                for symbol in their_private_alphabet:
+                    for t_prime in a.next_states(t, symbol):
+                        result.add_transition(
+                            prod_state(s, t), symbol, prod_state(s, t_prime))
+                # their epsilon transitions
+                for t_prime in a.next_epsilon_states(t):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s, t_prime))
                 # our common transitions
-                for symbol in sharedAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        for tPrime in A.nextStates(t, symbol):
-                            result.addTransition(
-                                prodState(s, t), symbol, prodState(sPrime, tPrime))
-        return result.addGeneralizedBuchiAcceptanceSets(set([frozenset(herAcceptanceSet)]))
+                for symbol in shared_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        for t_prime in a.next_states(t, symbol):
+                            result.add_transition(
+                                prod_state(s, t), symbol, prod_state(s_prime, t_prime))
+        return result.add_generalized_buchi_acceptance_sets(set([frozenset(their_acceptance_set)]))
 
-    def strictProductBuchi(self, A: 'Automaton')->'Automaton':
-        '''Return the 'strict' product Büchi automaton with büchi automaton A. The automata synchronize on transitions with symbols common to their alphabets. The automata cannot make transitions on symbols that do not occur in the alphabet of the other automaton.'''
+    def strict_product_buchi(self, a: 'Automaton')->'Automaton':
+        '''
+        Return the 'strict' product Büchi automaton with büchi automaton A.
+        The automata synchronize on transitions with symbols common to their
+        alphabets. The automata cannot make transitions on symbols that do not
+        occur in the alphabet of the other automaton.
+        '''
         result = Automaton()
 
         # figure out the alphabet situation
-        myAlphabet = self.alphabet()
-        herAlphabet = A.alphabet()
-        sharedAlphabet = myAlphabet.intersection(herAlphabet)
+        my_alphabet = self.alphabet()
+        their_alphabet = a.alphabet()
+        shared_alphabet = my_alphabet.intersection(their_alphabet)
 
-        def prodState(s, t): return "({},{})".format(s, t)
+        def prod_state(s, t):
+            return f"({s},{t})"
 
         # create the cartesian product states
         # herAcceptanceSet = set()
         for s in self._states:
-            for t in A._states:
-                newState = prodState(s, t)
-                result.addState(newState)
-                if s in self._initialStates and t in A._initialStates:
-                    result.makeInitialState(newState)
+            for t in a.states():
+                new_state = prod_state(s, t)
+                result.add_state(new_state)
+                if s in self._initial_states and a.is_initial_state(t):
+                    result.make_initial_state(new_state)
                 # determine the generalized acceptance sets
-                acceptanceSets = set()
-                if s in self._finalStates:
-                    acceptanceSets.add("A")
-                if t in A._finalStates:
-                    acceptanceSets.add("B")
-                for accSet in self._generalizedAcceptanceSets.keys():
-                    if s in self._generalizedAcceptanceSets[accSet]:
-                        acceptanceSets.add("A_" + accSet)
-                for accSet in A._generalizedAcceptanceSets.keys():
-                    if s in A._generalizedAcceptanceSets[accSet]:
-                        acceptanceSets.add("B_" + accSet)
-                result.makeFinalState(newState, acceptanceSets)
+                acceptance_sets = set()
+                if s in self._final_states:
+                    acceptance_sets.add("A")
+                if a.is_final_state(t):
+                    acceptance_sets.add("B")
+                for acc_set, acc_set_states in self._generalized_acceptance_sets.items():
+                    if s in acc_set_states:
+                        acceptance_sets.add("A_" + acc_set)
+                for acc_set, acc_set_states in a.generalized_acceptance_sets().items():
+                    if s in acc_set_states:
+                        acceptance_sets.add("B_" + acc_set)
+                result.make_final_state(new_state, acceptance_sets)
 
         # create the transitions
         for s in self._states:
-            for t in A._states:
+            for t in a.states():
                 # my epsilon transitions
-                for sPrime in self.nextEpsilonStates(s):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(sPrime, t))
+                for s_prime in self.next_epsilon_states(s):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s_prime, t))
                 # her epsilon transitions
-                for tPrime in A.nextEpsilonStates(t):
-                    result.addEpsilonTransition(
-                        prodState(s, t), prodState(s, tPrime))
+                for t_prime in a.next_epsilon_states(t):
+                    result.add_epsilon_transition(
+                        prod_state(s, t), prod_state(s, t_prime))
                 # our common transitions
-                for symbol in sharedAlphabet:
-                    for sPrime in self.nextStates(s, symbol):
-                        for tPrime in A.nextStates(t, symbol):
-                            result.addTransition(
-                                prodState(s, t), symbol, prodState(sPrime, tPrime))
+                for symbol in shared_alphabet:
+                    for s_prime in self.next_states(s, symbol):
+                        for t_prime in a.next_states(t, symbol):
+                            result.add_transition(
+                                prod_state(s, t), symbol, prod_state(s_prime, t_prime))
 
         return result
 
-    def languageEmpty(self)->Tuple[bool,Optional[List[str]],Optional[List[str]]]:
-        ''' Checks if the FSA language is empty. Returns in addition to a Boolean, an accepted word and path if the language is not empty.'''
+    def language_empty(self)->Tuple[bool,Optional[List[str]],Optional[List[str]]]:
+        '''
+        Checks if the FSA language is empty. Returns in addition to a Boolean,
+        an accepted word and path if the language is not empty.
+        '''
 
         # explore if a final state is reachable from an initial state
 
         # check if one of the initial states is final
-        for s in sorted(self._initialStates):
-            if s in self._finalStates:
+        for s in sorted(self._initial_states):
+            if s in self._final_states:
                 return (False, [], [s])
 
         # non-final states that remain to be explored
-        statesToExplore = sorted(list(self._initialStates))
+        states_to_explore = sorted(list(self._initial_states))
         # invariant: states that have already been explored, should all be keys in backTrack
-        statesExplored: Set[str] = set()
+        states_explored: Set[str] = set()
         # keep track of incoming symbol and state
-        backTrack: Dict[str,Tuple[str,str]] = dict()
-        while len(statesToExplore) > 0:
-            state = statesToExplore.pop(0)
-            statesExplored.add(state)
+        back_track: Dict[str,Tuple[str,str]] = {}
+        while len(states_to_explore) > 0:
+            state = states_to_explore.pop(0)
+            states_explored.add(state)
             # for all epsilon transitions
-            for s in sorted(self.nextEpsilonStates(state)):
-                if not s in statesExplored:
-                    statesToExplore.append(s)
-                    backTrack[s] = (self._epsilonSymbol, state)
-                    if s in self._finalStates:
-                        word, path = self._traceAcceptingWordAndPath(s, backTrack)
+            for s in sorted(self.next_epsilon_states(state)):
+                if not s in states_explored:
+                    states_to_explore.append(s)
+                    back_track[s] = (self._epsilonSymbol, state)
+                    if s in self._final_states:
+                        word, path = self._trace_accepting_word_and_path(s, back_track)
                         return False, word, path
 
             # for all symbol transitions
-            for symbol in sorted(self.outgoingSymbols(state)):
-                for s in sorted(self.nextStates(state, symbol)):
-                    if not s in statesExplored:
-                        statesToExplore.append(s)
-                        backTrack[s] = (symbol, state)
-                    if s in self._finalStates:
-                        word, path = self._traceAcceptingWordAndPath(s, backTrack)
+            for symbol in sorted(self.outgoing_symbols(state)):
+                for s in sorted(self.next_states(state, symbol)):
+                    if not s in states_explored:
+                        states_to_explore.append(s)
+                        back_track[s] = (symbol, state)
+                    if s in self._final_states:
+                        word, path = self._trace_accepting_word_and_path(s, back_track)
                         return False, word, path
         # no final state was reached
         return (True, None, None)
 
-    def languageEmptyBuchi(self)->Tuple[bool,Optional[List[str]],Optional[List[str]],Optional[List[str]],Optional[List[str]]]:
-        ''' Checks if the Buchi language is empty. Returns an accepted word 9prefix, repetition) and path (prefix, repetition) if the language is not empty.'''
+    def language_empty_buchi(self)-> \
+        Tuple[bool,Optional[List[str]],Optional[List[str]],Optional[List[str]],Optional[List[str]]]:
+        '''
+        Checks if the Buchi language is empty. Returns an accepted word
+        9prefix, repetition) and path (prefix, repetition) if the language is
+        not empty.
+        '''
 
         # Step 1: find all reachable accepting states and determine a word sigma that leads to it
 
         # Step 2: For each accepting state s do:
-        #   - find all states that can be reached with one non-epsilon symbol and remember that symbol a (needed to ensure the final result is an infinite word)
+        #   - find all states that can be reached with one non-epsilon symbol
+        #     and remember that symbol a (needed to ensure the final result is
+        #     an infinite word)
         #   - check if s can be reached from any of those states by a word tau
-        #   - (TODO: it may be OK to stop searching when we reaching any of the accepting states we already covered)
+        #   - (TODO: it may be OK to stop searching when we reaching any of the
+        #     accepting states we already covered)
         #   - if yes, the automaton accepts the word (sigma)(a tau)**
 
         # Step 1, determine the reachable accepting states
-        reachableStates: Set[str]
+        reachable_states: Set[str]
         words: Dict[str,List[str]]
         paths: Dict[str,List[str]]
-        reachableStates, words, paths = self.reachableStatesWithWordsAndPaths()
-        reachableFinalStates: Set[str] = reachableStates.intersection(self._finalStates)
+        reachable_states, words, paths = self.reachable_states_with_words_and_paths()
+        reachable_final_states: Set[str] = reachable_states.intersection(self._final_states)
 
-        # Step 2, check for each reachable accepting state if there is a cycle with a non-empty word that returns to it
-        for s in sorted(reachableFinalStates):
-            # to ensure that the cycle word is non-empty, first determine the states reachable from s with a non-epsilon symbol, and remember that symbol for each state
-            sClosure = self.epsilonClosure(set([s]))
-            finalPlusSymbolReachableStates: Set[str] = set()
-            singleSymbol: Dict[str,List[str]] = dict()
-            for t in sorted(sClosure):
-                for symbol in sorted(self.outgoingSymbols(t)):
-                    states = self.epsilonClosure(self.nextStates(t, symbol))
-                    finalPlusSymbolReachableStates.update(states)
+        # Step 2, check for each reachable accepting state if there is a cycle
+        # with a non-empty word that returns to it
+        for s in sorted(reachable_final_states):
+            # to ensure that the cycle word is non-empty, first determine the
+            # states reachable from s with a non-epsilon symbol, and remember
+            # that symbol for each state
+            s_closure = self.epsilon_closure(set([s]))
+            final_plus_symbol_reachable_states: Set[str] = set()
+            single_symbol: Dict[str,List[str]] = {}
+            for t in sorted(s_closure):
+                for symbol in sorted(self.outgoing_symbols(t)):
+                    states = self.epsilon_closure(self.next_states(t, symbol))
+                    final_plus_symbol_reachable_states.update(states)
                     for u in sorted(states):
-                        singleSymbol[u] = [symbol]
+                        single_symbol[u] = [symbol]
 
             # test if s is reachable from any state in finalPlusSymbolReachableStates
-            cycleReachableStates, cycleWords, cyclePaths = self.reachableStatesWithWordsAndPaths(finalPlusSymbolReachableStates, singleSymbol)
-            if s in cycleReachableStates:
-                return (False, words[s], cycleWords[s], paths[s], cyclePaths[s])
+            cycle_reachable_states, cycle_words, cycle_paths = \
+                self.reachable_states_with_words_and_paths(final_plus_symbol_reachable_states,
+                                                      single_symbol)
+            if s in cycle_reachable_states:
+                return (False, words[s], cycle_words[s], paths[s], cycle_paths[s])
 
         # No Cycle found
         return (True, None, None, None, None)
 
-    def languageIncluded(self, A: 'Automaton')->Tuple[bool,Optional[List[str]]]:
-        '''Check if the language of the automaton is included in the language of automaton A.
-        If not, a word is returned that is in the language of the automaton, but not in the language of A'''
-        AC = A.complement()
-        P = AC.strictProduct(self)
-        boolResult, word, _ = P.languageEmpty()
-        return (boolResult, word)
+    def language_included(self, a: 'Automaton')->Tuple[bool,Optional[List[str]]]:
+        '''
+        Check if the language of the automaton is included in the language of automaton A.
+        If not, a word is returned that is in the language of the automaton,
+        but not in the language of A
+        '''
+        a_c = a.complement()
+        p = a_c.strict_product(self)
+        bool_result, word, _ = p.language_empty()
+        return (bool_result, word)
 
-    def subAutomaton(self, states: Set[str])->'Automaton':
+    def sub_automaton(self, states: Set[str])->'Automaton':
         ''' return a sub-automaton containing only the states in the set states '''
 
         result = Automaton()
         # make states
         for s in self._states.intersection(states):
-            result.addState(s)
-            if s in self._initialStates:
-                result.makeInitialState(s)
-            if s in self._finalStates:
-                result.makeFinalState(s)
+            result.add_state(s)
+            if s in self._initial_states:
+                result.make_initial_state(s)
+            if s in self._final_states:
+                result.make_final_state(s)
 
         # make epsilon transitions
-        for s in self._epsilonTransitions.keys():
+        for s, e_trans in self._epsilon_transitions.items():
             if s in states:
-                for t in self._epsilonTransitions[s]:
+                for t in e_trans:
                     if t in states:
-                        result.addEpsilonTransition(s, t)
+                        result.add_epsilon_transition(s, t)
 
         # make regular transitions
-        for s in self._transitions.keys():
+        for s, trans in self._transitions.items():
             if s in states:
-                for symbol in self._transitions[s]:
-                    for t in self._transitions[s][symbol]:
+                for symbol in trans:
+                    for t in trans[symbol]:
                         if t in states:
-                            result.addTransition(s, symbol, t)
+                            result.add_transition(s, symbol, t)
 
         return result
 
-    def eliminateReachability(self)-> 'Automaton':
-        '''Reduce the size of the automaton by removing unreachable states and states from which no final state is reachable.'''
+    def eliminate_reachability(self)-> 'Automaton':
+        '''
+        Reduce the size of the automaton by removing unreachable states and
+        states from which no final state is reachable.
+        '''
 
         # remove unreachable states
-        states = self.reachableStates().intersection(self.reachableStatesFinal())
-        return self.subAutomaton(states)
+        states = self.reachable_states().intersection(self.reachable_states_final())
+        return self.sub_automaton(states)
 
-    def eliminateStatesWithoutOutgoingTransitions(self)-> 'Automaton':
-        '''Return an automaton where all states without outgoing transitions are removed. For Büchi automata this results in an equivalent automaton.'''
-        toEliminate: Set[str] = set()
+    def eliminate_states_without_outgoing_transitions(self)-> 'Automaton':
+        '''
+        Return an automaton where all states without outgoing transitions
+        are removed. For Büchi automata this results in an equivalent automaton.
+        '''
+        to_eliminate: Set[str] = set()
         for s in self._states:
-            if len(self.outgoingSymbolsWithEpsilon(s)) ==0:
-                toEliminate.add(s)
+            if len(self.outgoing_symbols_with_epsilon(s)) ==0:
+                to_eliminate.add(s)
 
-        if len(toEliminate) ==0:
+        if len(to_eliminate) ==0:
             return self
 
-        return self.subAutomaton(self._states.difference(toEliminate)).eliminateStatesWithoutOutgoingTransitions()
+        return self.sub_automaton(self._states.difference(to_eliminate)). \
+            eliminate_states_without_outgoing_transitions()
 
-    def _partitionRefinement(self)->Tuple[Set[AbstractSet[str]],Dict[str,AbstractSet[str]]]:
+    def partition_refinement(self)->Tuple[Set[AbstractSet[str]],Dict[str,AbstractSet[str]]]:
         '''Return equivalence classes according to a partition refinement process.'''
 
-        def _createPartition(partitions: Set[AbstractSet[str]], partitionMap: Dict[str,AbstractSet[str]], setOfStates: Set[str]):
-            '''Create a partition for setOfStates, add it to partitions and update the partition map accordingly.'''
-            fSetOfStates = frozenset(setOfStates)
-            partitions.add(fSetOfStates)
-            for s in setOfStates:
-                partitionMap[s] = fSetOfStates
+        def _create_partition(partitions: Set[AbstractSet[str]], \
+                              partition_map: Dict[str,AbstractSet[str]], set_of_states: Set[str]):
+            '''
+            Create a partition for setOfStates, add it to partitions and
+            update the partition map accordingly.
+            '''
+            f_set_of_states = frozenset(set_of_states)
+            partitions.add(f_set_of_states)
+            for s in set_of_states:
+                partition_map[s] = f_set_of_states
 
-        def _partitionRefinementEdgesEquivalent(s1: str, s2: str)->bool:
+        def _partition_refinement_edges_equivalent(s1: str, s2: str)->bool:
             '''Check if states s1 and s2 are considered equivalent.'''
 
             # s1 and s2 are equivalent if for every s1-a->C, s2-a->C and vice versa
             labels: Set[str] = set()
-            labels.update(self.outgoingSymbolsSet(self.epsilonClosure(set([s1]))))
-            labels.update(self.outgoingSymbolsSet(self.epsilonClosure(set([s2]))))
+            labels.update(self.outgoing_symbols_set(self.epsilon_closure(set([s1]))))
+            labels.update(self.outgoing_symbols_set(self.epsilon_closure(set([s2]))))
 
-            ecs1 = self.epsilonClosure(set([s1]))
-            ecs2 = self.epsilonClosure(set([s2]))
+            ecs1 = self.epsilon_closure(set([s1]))
+            ecs2 = self.epsilon_closure(set([s2]))
 
             # for every label, compare outgoing edges
             for l in labels:
@@ -662,11 +757,11 @@ class Automaton(object):
                 cs1: Set[AbstractSet[str]] = set()
                 cs2: Set[AbstractSet[str]] = set()
                 for t in ecs1:
-                    for s in self.epsilonClosure(self.nextStates(t, l)):
-                        cs1.add(partitionMap[s])
+                    for s in self.epsilon_closure(self.next_states(t, l)):
+                        cs1.add(partition_map[s])
                 for t in ecs2:
-                    for s in self.epsilonClosure(self.nextStates(t, l)):
-                        cs2.add(partitionMap[s])
+                    for s in self.epsilon_closure(self.next_states(t, l)):
+                        cs2.add(partition_map[s])
                 # compare classes
                 if cs1 != cs2:
                     return False
@@ -676,11 +771,11 @@ class Automaton(object):
         # make initial partition on states that agree on final-ness
         partitions: Set[AbstractSet[str]] = set()
         # final are states from which a final state is reachable with epsilon moves
-        states_f = self._backwardEpsilonClosure(self._finalStates)
+        states_f = self.backward_epsilon_closure(self._final_states)
         # non-final, others
         states_nf = self._states.difference(states_f)
         p_f = None
-        if len(states_f):
+        if states_f:
             p_f = frozenset(states_f)
             partitions.add(p_f)
         p_nf = None
@@ -688,207 +783,214 @@ class Automaton(object):
             p_nf = frozenset(states_nf)
             partitions.add(p_nf)
 
-        partitionMap: Dict[str,AbstractSet[str]] = dict()
+        partition_map: Dict[str,AbstractSet[str]] = {}
         for s in states_f:
-            partitionMap[s] = p_f  # type: ignore I'm sure p_f is not None here
+            partition_map[s] = p_f  # type: ignore I'm sure p_f is not None here
         for s in states_nf:
-            partitionMap[s] = p_nf  # type: ignore I'm sure p_nf is not None here
+            partition_map[s] = p_nf  # type: ignore I'm sure p_nf is not None here
 
-        oldPartitions: Set[AbstractSet[str]] = set()
+        old_partitions: Set[AbstractSet[str]] = set()
 
-        while len(oldPartitions) != len(partitions):
+        while len(old_partitions) != len(partitions):
             # print(partitions)
-            newPartitions: Set[AbstractSet[str]] = set()
-            for eClass in partitions:
+            new_partitions: Set[AbstractSet[str]] = set()
+            for e_class in partitions:
                 # pick arbitrary state from class
-                s1 = next(iter(eClass))
+                s1 = next(iter(e_class))
 
-                equivSet: Set[str] = set()
-                remainingSet: Set[str] = set()
-                equivSet.add(s1)
+                equiv_set: Set[str] = set()
+                remaining_set: Set[str] = set()
+                equiv_set.add(s1)
 
                 # check whether all other states can go with the same labels to
                 # the same set of other equivalence classes.
-                for s2 in eClass:
+                for s2 in e_class:
                     if s2 != s1:
-                        if _partitionRefinementEdgesEquivalent(s1, s2):
-                            equivSet.add(s2)
+                        if _partition_refinement_edges_equivalent(s1, s2):
+                            equiv_set.add(s2)
                         else:
-                            remainingSet.add(s2)
+                            remaining_set.add(s2)
 
                 # if not, split the class
-                if len(equivSet) == len(eClass):
-                    _createPartition(newPartitions, partitionMap, equivSet)
+                if len(equiv_set) == len(e_class):
+                    _create_partition(new_partitions, partition_map, equiv_set)
                 else:
-                    _createPartition(newPartitions, partitionMap, equivSet)
-                    _createPartition(newPartitions, partitionMap, remainingSet)
+                    _create_partition(new_partitions, partition_map, equiv_set)
+                    _create_partition(new_partitions, partition_map, remaining_set)
 
-            oldPartitions = partitions
-            partitions = newPartitions
+            old_partitions = partitions
+            partitions = new_partitions
 
-        return partitions, partitionMap
+        return partitions, partition_map
 
     def minimize(self)->'Automaton':
         '''Implements a partition refinement strategy to reduce the size of the FSA.'''
 
-        def setAsState(ss): return "{" + (",".join(sorted(ss))) + "}"
+        def set_as_state(ss):
+            return "{" + (",".join(sorted(ss))) + "}"
 
         # remove unreachable states
         # remove states from which final states are not reachable
-        interim = self.eliminateReachability()
+        interim = self.eliminate_reachability()
         # find equivalent states through partition refinement.
-        partitions, partitionMap = interim._partitionRefinement()
+        partitions, partition_map = interim.partition_refinement()
 
         result = Automaton()
 
         # make states
         for p in partitions:
-            ns = setAsState(p)
-            result.addState(ns)
+            ns = set_as_state(p)
+            result.add_state(ns)
             s = next(iter(p))
-            if s in interim._backwardEpsilonClosure(interim._finalStates):
-                result.makeFinalState(ns)
+            if s in interim.backward_epsilon_closure(set(interim.final_states())):
+                result.make_final_state(ns)
 
             # determine initial states
             # a partition is initial if one of its states was initial
             for s in p:
-                if s in interim._initialStates:
-                    result.makeInitialState(ns)
+                if s in interim.initial_states():
+                    result.make_initial_state(ns)
 
         # make transitions
         for p in partitions:
             # take a representative state
             s = next(iter(p))
-            for t in interim.epsilonClosure(set([s])):
-                for symbol in interim.outgoingSymbols(t):
-                    for u in interim.nextStates(t, symbol):
-                        result.addTransition(setAsState(partitionMap[s]), symbol, setAsState(partitionMap[u]))
-                if t in interim._epsilonTransitions:
-                    for u in interim._epsilonTransitions[t]:
-                        if partitionMap[s] != partitionMap[u]:
-                            result.addEpsilonTransition(setAsState(partitionMap[s]), setAsState(partitionMap[u]))
+            for t in interim.epsilon_closure(set([s])):
+                for symbol in interim.outgoing_symbols(t):
+                    for u in interim.next_states(t, symbol):
+                        result.add_transition(set_as_state(partition_map[s]), \
+                                              symbol, set_as_state(partition_map[u]))
+                if t in interim._epsilon_transitions:
+                    for u in interim._epsilon_transitions[t]:
+                        if partition_map[s] != partition_map[u]:
+                            result.add_epsilon_transition(set_as_state(partition_map[s]), \
+                                set_as_state(partition_map[u]))
         return result
 
-    def minimizeBuchi(self)->'Automaton':
+    def minimize_buchi(self)->'Automaton':
         '''Implements a partition refinement strategy to reduce the size of the Büchi automaton.'''
 
         # eliminate states from which not all acceptance sets are reachable
-        interim = self.eliminateStatesWithoutOutgoingTransitions()
+        interim = self.eliminate_states_without_outgoing_transitions()
         return  interim.minimize()
 
-    def statesInBFSOrder(self)->List[str]:
+    def states_in_bfs_order(self)->List[str]:
         '''Return a list of state in breadth-first order'''
-        result = list()
-        self._breadthFirstSearch(lambda s: result.append(s))
+        result = []
+        self._breadth_first_search(result.append)
         return result
 
-    def relabelStates(self)->'Automaton':
-        '''Return the automaton with states relabeled 'S' with a number in a breadth first manner.'''
+    def relabel_states(self)->'Automaton':
+        '''
+        Return the automaton with states relabeled 'S' with a number in a
+        breadth first manner.
+        '''
 
-        def _stateName(n:int)->str:
-            return "S{}".format(n)
+        def _state_name(n:int)->str:
+            return f"S{n}"
 
-        def _createState(s: str):
+        def _create_state(s: str):
             nonlocal n
-            newState = _stateName(n)
-            stateDict[s] = newState
-            result.addState(newState)
+            new_state = _state_name(n)
+            state_dict[s] = new_state
+            result.add_state(new_state)
             n += 1
 
         result = Automaton()
-        stateDict = dict()
+        state_dict = {}
         n = 1
 
-        self._breadthFirstSearch(_createState)
+        self._breadth_first_search(_create_state)
 
-        for i in self._initialStates:
-            result.makeInitialState(stateDict[i])
+        for i in self._initial_states:
+            result.make_initial_state(state_dict[i])
 
-        for f in self._finalStates:
-            result.makeFinalState(stateDict[f])
+        for f in self._final_states:
+            result.make_final_state(state_dict[f])
 
-        if self.hasGeneralizedAcceptanceSets():
-            for gas, acceptance_set in self._generalizedAcceptanceSets.items():
-                result.addGeneralizedBuchiAcceptanceSet(gas, set(map(lambda s: stateDict[s], acceptance_set)))
+        if self.has_generalized_acceptance_sets():
+            for gas, acceptance_set in self._generalized_acceptance_sets.items():
+                result.add_generalized_buchi_acceptance_set(gas, \
+                        set(map(lambda s: state_dict[s], acceptance_set)))
 
-        for s, e_trans in self._epsilonTransitions.items():
+        for s, e_trans in self._epsilon_transitions.items():
             for t in e_trans:
-                result.addEpsilonTransition(stateDict[s], stateDict[t])
+                result.add_epsilon_transition(state_dict[s], state_dict[t])
 
         for s, trans in self._transitions.items():
             for symbol, s_trans in trans.items():
                 for t in s_trans:
-                    result.addTransition(stateDict[s], symbol, stateDict[t])
+                    result.add_transition(state_dict[s], symbol, state_dict[t])
         return result
 
-    def eliminateEpsilonTransitions(self)->'Automaton':
+    def eliminate_epsilon_transitions(self)->'Automaton':
         '''Eliminate epsilon transitions from the automaton.'''
 
         result = Automaton()
 
         for s in self._states:
-            result.addState(s)
+            result.add_state(s)
 
-        for s in self._transitions.keys():
-            for symbol in self._transitions[s].keys():
-                for t in self._transitions[s][symbol]:
+        for s, trans in self._transitions.items():
+            for symbol, s_trans in trans.items():
+                for t in s_trans:
                     # for u in self.epsilonClosure(set([t])):
-                    for v in self._backwardEpsilonClosure(set([s])):
-                        result.addTransition(v, symbol, t)
+                    for v in self.backward_epsilon_closure(set([s])):
+                        result.add_transition(v, symbol, t)
 
         for s in self._states:
-            if s in self._initialStates:
-                result.makeInitialState(s)
+            if s in self._initial_states:
+                result.make_initial_state(s)
                 # for t in self.epsilonClosure(set([s])):
                 #     result.makeInitialState(t)
-            if s in self._finalStates:
-                for t in self._backwardEpsilonClosure(set([s])):
-                    result.makeFinalState(t)
+            if s in self._final_states:
+                for t in self.backward_epsilon_closure(set([s])):
+                    result.make_final_state(t)
         return result
 
 
-    def _asDSLSymbol(self, symbol: str)->str:
+    def _as_dsl_symbol(self, symbol: str)->str:
         '''Escape quotes.'''
         if re.match(r"[a-zA-Z][a-zA-Z0-9]*", symbol):
             return symbol
         return '"' + symbol.replace('"', '\\"') + '"'
 
-    def asDSL(self, name: str)->str:
+    def as_dsl(self, name: str)->str:
         '''Return a string representing the automaton in the domain-specific language,'''
 
-        def _addStateWithAttributes(u: str, statesOutput:Set[str], output: StringIO):
+        def _add_state_with_attributes(u: str, states_output:Set[str], output: StringIO):
             output.write(u)
-            if not u in statesOutput:
+            if not u in states_output:
                 # if it is the first time we are using this state, add its attributes
-                self._dslOutputStateAttributes(u, output)
-                statesOutput.add(u)
+                self._dsl_output_state_attributes(u, output)
+                states_output.add(u)
 
         # keep track of the states that have been output
-        statesOutput: Set[str] = set()
+        states_output: Set[str] = set()
         # create string writer for the output
         output = StringIO()
         # write header
-        output.write("finite state automaton {} {{\n".format(name))
+        output.write(f"finite state automaton {name} {{\n")
         # for all transitions (collecting multiple transitions into one)
-        for (s, symbols, t) in sorted(self._dslMultiSymbolTransitions()):
+        for (s, symbols, t) in sorted(self._dsl_multi_symbol_transitions()):
             # write the transition
             output.write("\t")
-            _addStateWithAttributes(s, statesOutput, output)
+            _add_state_with_attributes(s, states_output, output)
             if len(symbols)==1 and self._epsilonSymbol in symbols:
                 output.write(" ----> ")
             else:
                 output.write(" -- ")
-                output.write(", ".join([self._asDSLSymbol(symbol) for symbol in sorted(symbols)]))
+                output.write(", ".join([self._as_dsl_symbol(symbol) for symbol in sorted(symbols)]))
                 output.write(" --> ")
-            _addStateWithAttributes(t, statesOutput, output)
+            _add_state_with_attributes(t, states_output, output)
             output.write("\n")
         # write the remaining states without transitions
-        remainingStates = self._states.difference(statesOutput)
-        if len(remainingStates):
+        remaining_states = self._states.difference(states_output)
+        if len(remaining_states):
             output.write("\tstates\n")
-            for s in remainingStates:
+            for s in remaining_states:
                 output.write("\t")
-                _addStateWithAttributes(s, statesOutput, output)
+                _add_state_with_attributes(s, states_output, output)
                 output.write("\n")
         output.write("}\n")
         result = output.getvalue()
@@ -896,261 +998,284 @@ class Automaton(object):
         return result
 
     @staticmethod
-    def _ParsingAddStateWithLabels(fsa: 'Automaton', s: str, labels:Set[str], acceptanceSets:Set[str]):
+    def _parsing_add_state_with_labels(fsa: 'Automaton', s: str, \
+                                       labels:Set[str], acceptance_sets:Set[str]):
         '''Add a state with the given attributes.'''
-        fsa.addState(s)
+        fsa.add_state(s)
         for attr in labels:
-            if attr == 'initial' or attr == 'i':
-                fsa.makeInitialState(s)
-            if attr == 'final' or attr == 'f':
-                fsa.makeFinalState(s, acceptanceSets)
+            if attr in ('initial', 'i'):
+                fsa.make_initial_state(s)
+            if attr in ('final', 'f'):
+                fsa.make_final_state(s, acceptance_sets)
 
     @staticmethod
-    def fromDSL(dslString)->Tuple[str,'Automaton']:
+    def from_dsl(dsl_string)->Tuple[str,'Automaton']:
         '''Create an automaton from the DSL string.'''
 
-        factory = dict()
-        factory['Init'] = lambda : Automaton()
+        factory = {}
+        factory['Init'] = Automaton
         factory['addTransitionPossiblyEpsilon'] = lambda fsa, s, t, symbol: \
-            fsa.addEpsilonTransition(s, t) if symbol == Automaton._epsilonSymbol else fsa.addTransition(s, symbol, t)
+            fsa.addEpsilonTransition(s, t) if symbol == \
+                Automaton._epsilonSymbol else fsa.addTransition(s, symbol, t)
         factory['AddEpsilonTransition'] = lambda fsa, s, t : fsa.addEpsilonTransition(s, t)
-        factory['AddState'] = lambda fsa, s, labels, acceptanceSets: Automaton._ParsingAddStateWithLabels(fsa, s, labels, acceptanceSets)
-        name, fsa = parseFSADSL(dslString, factory)
+        factory['AddState'] = Automaton._parsing_add_state_with_labels
+        name, fsa = parse_fsa_dsl(dsl_string, factory)
         if name is None or fsa is None:
-            exit(1)
+            sys.exit(1)
         return name, fsa
 
-    def reachableStates(self)->Set[str]:
+    def reachable_states(self)->Set[str]:
         ''' return a set of all states reachable from an initial state '''
-        result, _, _ = self.reachableStatesWithWordsAndPaths()
+        result, _, _ = self.reachable_states_with_words_and_paths()
         return result
 
-    def reachableStatesWithWordsAndPaths(self, startingStates:Optional[Iterable[str]]=None, startingWords:Optional[Dict[str,List[str]]]=None, startingPaths=None)->Tuple[Set[str],Dict[str,List[str]],Dict[str,List[str]]]:
-        ''' return a set of all states reachable from any state in startingStates and for each a word and a path by which is is reached. If startingStates is omitted, the initial states are used'''
-        if startingStates is None:
-            startingStates = sorted(self._initialStates)
+    def reachable_states_with_words_and_paths(self, \
+            starting_states:Optional[Iterable[str]]=None, \
+            starting_words:Optional[Dict[str,List[str]]]=None, \
+            starting_paths=None)->Tuple[Set[str],Dict[str,List[str]],Dict[str,List[str]]]:
+        '''
+        return a set of all states reachable from any state in startingStates
+        and for each a word and a path by which is is reached. If
+        startingStates is omitted, the initial states are used
+        '''
+        if starting_states is None:
+            starting_states = sorted(self._initial_states)
         result = set()
         words: Dict[str,List[str]]
-        if startingWords is None:
-            words = dict()
-            for  s in startingStates:
+        if starting_words is None:
+            words = {}
+            for  s in starting_states:
                 words[s] = []
         else:
-            words = startingWords
-        if startingPaths is None:
-            paths = dict()
-            for  s in startingStates:
+            words = starting_words
+        if starting_paths is None:
+            paths = {}
+            for  s in starting_states:
                 paths[s] = [s]
         else:
-            paths = startingPaths
-        statesToExplore = sorted(list(startingStates))
-        while len(statesToExplore) > 0:
-            s = statesToExplore.pop()
+            paths = starting_paths
+        states_to_explore = sorted(list(starting_states))
+        while len(states_to_explore) > 0:
+            s = states_to_explore.pop()
             result.add(s)
-            if s in self._epsilonTransitions:
-                for t in sorted(self._epsilonTransitions[s]):
+            if s in self._epsilon_transitions:
+                for t in sorted(self._epsilon_transitions[s]):
                     if not t in result:
-                        statesToExplore.append(t)
+                        states_to_explore.append(t)
                         words[t] = words[s]
                         paths[t] = paths[s] +[t]
             if s in self._transitions:
                 for symbol in sorted(self._transitions[s]):
                     for t in sorted(self._transitions[s][symbol]):
                         if not t in result:
-                            statesToExplore.append(t)
+                            states_to_explore.append(t)
                             words[t] = words[s] + [symbol]
                             paths[t] = paths[s] + [t]
 
         return result, words, paths
 
-    def reachableStatesFinal(self)->Set[str]:
+    def reachable_states_final(self)->Set[str]:
         ''' return the set of all states from which a final state is reachable '''
         result: Set[str] = set()
-        statesToExplore = set(self._finalStates)
-        while statesToExplore != set():
-            s = statesToExplore.pop()
+        states_to_explore = set(self._final_states)
+        while states_to_explore != set():
+            s = states_to_explore.pop()
             result.add(s)
             # check epsilon transitions
-            for t in self._epsilonTransitions:
-                for u in self._epsilonTransitions[t]:
+            for t, trans in self._epsilon_transitions.items():
+                for u in trans:
                     if u == s:
                         if not t in result:
-                            statesToExplore.add(t)
+                            states_to_explore.add(t)
             # check regular transitions
             for t, trans in self._transitions.items():
                 for symbol in trans:
                     for u in trans[symbol]:
                         if u == s:
                             if not t in result:
-                                statesToExplore.add(t)
+                                states_to_explore.add(t)
         return result
 
-    def addGeneralizedBuchiAcceptanceSet(self, N: str, A:AbstractSet[str]):
+    def add_generalized_buchi_acceptance_set(self, n: str, a:AbstractSet[str]):
         '''
         add a generalized acceptance set A named N
         '''
-        self._generalizedAcceptanceSets[N] = set(A)
+        self._generalized_acceptance_sets[n] = set(a)
 
-    def addGeneralizedBuchiAcceptanceSets(self, A:Iterable[AbstractSet[str]])->'Automaton':
+    def add_generalized_buchi_acceptance_sets(self, a:Iterable[AbstractSet[str]])->'Automaton':
         '''
-        return a new non-generalized Büchi automaton with the added generalized acceptance sets incorporated
+        return a new non-generalized Büchi automaton with the added generalized
+        acceptance sets incorporated
         '''
-        res, _ = self.addGeneralizedBuchiAcceptanceSetsWithStateMap(A)
+        res, _ = self.add_generalized_buchi_acceptance_sets_with_state_map(a)
         return res
 
-    def addGeneralizedBuchiAcceptanceSetsWithStateMap(self, A:Iterable[AbstractSet[str]])->Tuple['Automaton',Dict[str,str]]:
+    def add_generalized_buchi_acceptance_sets_with_state_map(self, \
+            a:Iterable[AbstractSet[str]])->Tuple['Automaton',Dict[str,str]]:
         '''
-        return a new non-generalized Büchi automaton with the added generalized acceptance sets incorporated and a map linking the new states to the original states
+        return a new non-generalized Büchi automaton with the added generalized
+        acceptance sets incorporated and a map linking the new states to the
+        original states
         '''
 
-        def _newState(s: str, n: int)->str:
-            return "({},F{})".format(s,str(n))
+        def _new_state(s: str, n: int)->str:
+            return f"({s},F{str(n)})"
 
-        stateMap:Dict[str,str] = dict()
+        state_map:Dict[str,str] = {}
 
         # create a copy of every state for every acceptance set.
         # label final state accordingly
         # add transitions to state in same layer for non-accepting source states
         # or state in next layer if it is accepting
         res = Automaton()
-        acceptanceSets:List[AbstractSet[str]] = []
-        if len(self._finalStates) > 0:
-            acceptanceSets.append(self._finalStates)
-        for a in A:
-            acceptanceSets.append(a)
-        N = len(acceptanceSets)
+        acceptance_sets:List[AbstractSet[str]] = []
+        if len(self._final_states) > 0:
+            acceptance_sets.append(self._final_states)
+        for aa in a:
+            acceptance_sets.append(aa)
+        n = len(acceptance_sets)
 
         # create states
-        for n in range(N):
+        for n in range(n):
             for s in self._states:
-                ns = _newState(s,n)
-                stateMap[ns] = s
-                res.addState(ns)
+                ns = _new_state(s,n)
+                state_map[ns] = s
+                res.add_state(ns)
 
         # set initial states
-        for s in self._initialStates:
-            res.makeInitialState(_newState(s,0))
+        for s in self._initial_states:
+            res.make_initial_state(_new_state(s,0))
 
         # set final state s
-        for n in range(N):
-            for s in acceptanceSets[n]:
-                res.makeFinalState(_newState(s,n))
+        for n in range(n):
+            for s in acceptance_sets[n]:
+                res.make_final_state(_new_state(s,n))
 
         # add transitions
-        for n in range(N):
-            nxt = (n+1)%N
-            for s in self._transitions:
-                for symbol in self._transitions[s]:
-                    for t in self._transitions[s][symbol]:
-                        if (s in acceptanceSets[n]):
-                            res.addTransition(_newState(s,n), symbol, _newState(t,nxt))
+        for n in range(n):
+            nxt = (n+1)%n
+            for s, trans in self._transitions.items():
+                for symbol, s_trans in trans.items():
+                    for t in s_trans:
+                        if s in acceptance_sets[n]:
+                            res.add_transition(_new_state(s,n), symbol, _new_state(t,nxt))
                         else:
-                            res.addTransition(_newState(s,n), symbol, _newState(t,n))
-            for s in self._epsilonTransitions:
-                for t in self._epsilonTransitions[s]:
-                    if (s in acceptanceSets[n]):
-                        res.addEpsilonTransition(_newState(s,n), _newState(t,nxt))
+                            res.add_transition(_new_state(s,n), symbol, _new_state(t,n))
+            for s, s_trans in self._epsilon_transitions.items():
+                for t in s_trans:
+                    if s in acceptance_sets[n]:
+                        res.add_epsilon_transition(_new_state(s,n), _new_state(t,nxt))
                     else:
-                        res.addEpsilonTransition(_newState(s,n), _newState(t,n))
+                        res.add_epsilon_transition(_new_state(s,n), _new_state(t,n))
 
-        return res, stateMap
+        return res, state_map
 
-    def hasGeneralizedAcceptanceSets(self)->bool:
+    def has_generalized_acceptance_sets(self)->bool:
         '''Test if the automaton has generalized acceptance sets.'''
-        return len(self._generalizedAcceptanceSets) > 0
+        return len(self._generalized_acceptance_sets) > 0
 
 
-    def asRegularBuchiAutomaton(self)->'Automaton':
-        '''Convert to an equivalent regular Büchi automaton, i.e., without generalized acceptance sets.'''
-        res, _ = self.asRegularBuchiAutomatonWithStateMap()
+    def as_regular_buchi_automaton(self)->'Automaton':
+        '''
+        Convert to an equivalent regular Büchi automaton, i.e., without
+        generalized acceptance sets.
+        '''
+        res, _ = self.as_regular_buchi_automaton_with_state_map()
         return res
 
-    def asRegularBuchiAutomatonWithStateMap(self)->Tuple['Automaton',Dict[str,str]]:
-        '''Convert to an equivalent regular Büchi automaton, i.e., without generalized acceptance sets. Return automaton and a map relating the states in the new automaton to states in the old automaton.'''
-        if len(self._generalizedAcceptanceSets) == 0:
-            stateMap = dict()
+    def as_regular_buchi_automaton_with_state_map(self)->Tuple['Automaton',Dict[str,str]]:
+        '''
+        Convert to an equivalent regular Büchi automaton, i.e., without
+        generalized acceptance sets. Return automaton and a map relating the
+        states in the new automaton to states in the old automaton.
+        '''
+        if len(self._generalized_acceptance_sets) == 0:
+            state_map = {}
             for s in self._states:
-                stateMap[s] = s
-            return self, stateMap
-        return self.addGeneralizedBuchiAcceptanceSetsWithStateMap(list(self._generalizedAcceptanceSets.values()))
+                state_map[s] = s
+            return self, state_map
+        return self.add_generalized_buchi_acceptance_sets_with_state_map(\
+            list(self._generalized_acceptance_sets.values()))
 
-    def _dslMultiSymbolTransitions(self)->Set[Tuple[str,Tuple[str],str]]:
+    def _dsl_multi_symbol_transitions(self)->Set[Tuple[str,Tuple[str],str]]:
         '''collect common transitions into multi-labels, including epsilon transitions'''
-        reorg = dict()
+        reorg = {}
 
 		# handle all regular transitions
-        for s in self._transitions.keys():
+        for s, trans in self._transitions.items():
 			# ensure s is a key in reorg
-            if not s in reorg.keys():
-                reorg[s] = dict()
+            if not s in reorg:
+                reorg[s] = {}
 
 			# for all transitions from s collect the symbols going to states t
-            for symbol in self._transitions[s]:
-                for t in self._transitions[s][symbol]:
+            for symbol, s_trans in trans.items():
+                for t in s_trans:
 					# ensure that t is a key in reorg[s]
-                    if not t in reorg[s].keys():
+                    if not t in reorg[s]:
                         reorg[s][t] = set()
 					# add the symbol to the set
                     reorg[s][t].add(symbol)
 
 		# handle all epsilon transitions
-        for s in self._epsilonTransitions.keys():
+        for s, eps_s in self._epsilon_transitions.items():
 			# ensure s is a key in reorg
-            if not s in reorg.keys():
-                reorg[s] = dict()
-            for t in self._epsilonTransitions[s]:
+            if not s in reorg:
+                reorg[s] = {}
+            for t in eps_s:
 				# ensure that t is a key in reorg[s]
-                if not t in reorg[s].keys():
+                if not t in reorg[s]:
                     reorg[s][t] = set()
 				# add the symbol to the set
                 reorg[s][t].add(self._epsilonSymbol)
 
 		# create the results
         result: Set[Tuple[str,Tuple[str],str]] = set()
-        for s in reorg.keys():
-            for t in reorg[s].keys():
-                result.add((s, tuple(sorted(reorg[s][t])), t))
+        for s, ss in reorg.items():
+            for t in ss:
+                result.add((s, tuple(sorted(ss[t])), t)) # type: ignore
         return result
 
-    def _dslOutputStateAttributes(self, state: str, output: StringIO):
+    def _dsl_output_state_attributes(self, state: str, output: StringIO):
         '''Output state attributes to output'''
-        if state in self._initialStates:
+        if state in self._initial_states:
             output.write(" initial")
-            if state in self._finalStates:
+            if state in self._final_states:
                 output.write("; final")
             return
-        generalizedSets = {a for a in self._generalizedAcceptanceSets if state in self._generalizedAcceptanceSets[a]}
-        if state in self._finalStates or len(generalizedSets)>0:
+        generalized_sets = {a for a, a_s in self._generalized_acceptance_sets.items() if \
+             state in a_s}
+        if state in self._final_states or len(generalized_sets)>0:
             output.write(" final")
-        if len(generalizedSets)>0:
-            if state in self._finalStates:
-                generalizedSets.add('default')
-            output.write(" [{}]".format(", ".join(generalizedSets)))
+        if len(generalized_sets)>0:
+            if state in self._final_states:
+                generalized_sets.add('default')
+            output.write(f" [{", ".join(generalized_sets)}]")
 
-    def outgoingSymbols(self, state: str)->AbstractSet[str]:
+    def outgoing_symbols(self, state: str)->AbstractSet[str]:
         '''Return the set of outgoing symbols from state.'''
         if not state in self._transitions:
             return set()
         return frozenset(self._transitions[state].keys())
 
 
-    def outgoingSymbolsSet(self, setOfStates: Set[str])->AbstractSet[str]:
+    def outgoing_symbols_set(self, set_of_states: Set[str])->AbstractSet[str]:
         '''Return the set of outgoing symbols from any state from setOfStates.'''
         res = set()
-        for s in setOfStates:
-            res.update(self.outgoingSymbols(s))
+        for s in set_of_states:
+            res.update(self.outgoing_symbols(s))
         return frozenset(res)
 
-    def outgoingSymbolsWithEpsilon(self, state: str)->AbstractSet[str]:
+    def outgoing_symbols_with_epsilon(self, state: str)->AbstractSet[str]:
         '''Return the set of outgoing symbols from state, including # for epsilon transitions.'''
-        result = set(self.outgoingSymbols(state))
-        if state in self._epsilonTransitions:
+        result = set(self.outgoing_symbols(state))
+        if state in self._epsilon_transitions:
             result.add(Automaton._epsilonSymbol)
         return frozenset(result)
 
-    def nextStates(self, state: str, symbol: str)->Set[str]:
+    def next_states(self, state: str, symbol: str)->Set[str]:
         """
-            Return the set of states reachable from 'state' by a transition labelled 'symbol', where symbol is a non-epsilon symbol.
+        Return the set of states reachable from 'state' by a transition
+        labelled 'symbol', where symbol is a non-epsilon symbol.
         """
         if not state in self._transitions:
             return set()
@@ -1158,161 +1283,184 @@ class Automaton(object):
             return set()
         return self._transitions[state][symbol]
 
-    def nextStatesWithEpsilon(self, state: str, symbol: str)->Set[str]:
+    def next_states_with_epsilon(self, state: str, symbol: str)->Set[str]:
         """
-            Return the set of states reachable from 'state' by a transition labelled 'symbol', where symbol can be an epsilon symbol.
+        Return the set of states reachable from 'state' by a transition
+        labelled 'symbol', where symbol can be an epsilon symbol.
         """
         if symbol == Automaton._epsilonSymbol:
-            return self._epsilonTransitions[state]
-        else:
-            if not state in self._transitions:
-                return set()
-            if not symbol in self._transitions[state]:
-                return set()
-            return self._transitions[state][symbol]
-
-    def nextEpsilonStates(self, state: str)->Set[str]:
-        """
-            Return the set of states reachable from 'state' by a single epsilon transition.
-        """
-        if not state in self._epsilonTransitions:
+            return self._epsilon_transitions[state]
+        if not state in self._transitions:
             return set()
-        return self._epsilonTransitions[state]
+        if not symbol in self._transitions[state]:
+            return set()
+        return self._transitions[state][symbol]
 
-    def nextStatesEpsilonClosureWithPaths(self, state: str, symbol: str)->Tuple[Set[str],Dict[str,List[str]]]:
+    def next_epsilon_states(self, state: str)->Set[str]:
         """
-            Return the set of states reachable from 'state' by a sequence of transitions including an arbitrary number of epsilon transitions and one 'symbol' transition, where symbol is not epsilon.
-            Returns a tuple with:
-            - a set of states thus reachable
-            - a dictionary with for every reachable state s, a path starting in 'state' and ending in s.
+        Return the set of states reachable from 'state' by a single epsilon transition.
         """
-        return self.setNextStatesEpsilonClosureWithPaths(set([state]), symbol)
+        if not state in self._epsilon_transitions:
+            return set()
+        return self._epsilon_transitions[state]
 
-    def setNextStatesEpsilonClosureWithPaths(self, states: Set[str], symbol: str) -> Tuple[Set[str],Dict[str,List[str]]]:
+    def next_states_epsilon_closure_with_paths(self, state: str, symbol: str)-> \
+        Tuple[Set[str],Dict[str,List[str]]]:
         """
-            Return the set of states reachable from a state from 'states' by a sequence of transitions including an arbitrary number of epsilon transitions and one 'symbol' transition, where symbol is not epsilon.
-            Returns a tuple with:
-            - a set of states thus reachable
-            - a dictionary with for every reachable state s, a path starting in a state from 'states' and ending in s.
+        Return the set of states reachable from 'state' by a sequence of
+        transitions including an arbitrary number of epsilon transitions and
+        one 'symbol' transition, where symbol is not epsilon.
+        Returns a tuple with:
+        - a set of states thus reachable
+        - a dictionary with for every reachable state s, a path starting in
+          'state' and ending in s.
         """
-        preEpsilonReachableStates, prePaths = self.epsilonClosureWithPaths(states)
-        afterSymbolStates: Set[str] = set()
-        afterSymbolPaths: Dict[str,List[str]] = dict()
-        for s in preEpsilonReachableStates:
-            for t in self.nextStates(s, symbol):
-                afterSymbolStates.add(t)
-                afterSymbolPaths[t] = prePaths[s] + [t]
-        postEpsilonReachableStates, postPaths = self.epsilonClosureWithPaths(afterSymbolStates)
-        resPaths: Dict[str,List[str]] = dict()
-        for s in postEpsilonReachableStates:
-            resPaths[s] = (afterSymbolPaths[postPaths[s][0]])[:-1] + postPaths[s]
+        return self.set_next_states_epsilon_closure_with_paths(set([state]), symbol)
 
-        return postEpsilonReachableStates, resPaths
+    def set_next_states_epsilon_closure_with_paths(self, states: Set[str], symbol: str) -> \
+        Tuple[Set[str],Dict[str,List[str]]]:
+        """
+        Return the set of states reachable from a state from 'states' by a
+        sequence of transitions including an arbitrary number of epsilon
+        transitions and one 'symbol' transition, where symbol is not epsilon.
+        Returns a tuple with:
+        - a set of states thus reachable
+        - a dictionary with for every reachable state s, a path starting in a
+          state from 'states' and ending in s.
+        """
+        pre_epsilon_reachable_states, pre_paths = self.epsilon_closure_with_paths(states)
+        after_symbol_states: Set[str] = set()
+        after_symbol_paths: Dict[str,List[str]] = {}
+        for s in pre_epsilon_reachable_states:
+            for t in self.next_states(s, symbol):
+                after_symbol_states.add(t)
+                after_symbol_paths[t] = pre_paths[s] + [t]
+        post_epsilon_reachable_states, post_paths = \
+            self.epsilon_closure_with_paths(after_symbol_states)
+        res_paths: Dict[str,List[str]] = {}
+        for s in post_epsilon_reachable_states:
+            res_paths[s] = (after_symbol_paths[post_paths[s][0]])[:-1] + post_paths[s]
+
+        return post_epsilon_reachable_states, res_paths
 
 
-    def _setNextStates(self, states: AbstractSet[str], symbol: str)->Set[str]:
+    def _set_next_states(self, states: AbstractSet[str], symbol: str)->Set[str]:
         '''Return the set of states reachable from a state in states with a symbol transition.'''
-        nStates = set()
+        n_states = set()
         for s in states:
-            nStates.update(self.nextStates(s, symbol))
-        return nStates
+            n_states.update(self.next_states(s, symbol))
+        return n_states
 
-    def addStateUnique(self, state: str)->str:
-        '''Add a state named state, but ensure that it is unique by potentially modifying the name.'''
+    def add_state_unique(self, state: str)->str:
+        '''Add a state named state, but ensure that it is unique by potentially
+        modifying the name.'''
         if not state in self._states:
-            self.addState(state)
+            self.add_state(state)
             return state
         n = 1
         while state+str(n) in self._states:
             n += 1
-        newState = state+str(n)
-        self.addState(newState)
-        return newState
+        new_state = state+str(n)
+        self.add_state(new_state)
+        return new_state
 
-    def epsilonClosureWithPaths(self, setOfStates: Set[str])->Tuple[Set[str],Dict[str,List[str]]]:
+    def epsilon_closure_with_paths(self, set_of_states: Set[str])-> \
+        Tuple[Set[str],Dict[str,List[str]]]:
         """
-            Determine the epsilon closure of the given set of states. Return a tuple with:
-            - the set of states reachable by zero or more epsilon transitions
-            - a dictionary that maps each of the reachable states s to a path of states starting from one of the states in the initial set and ending in s.
+        Determine the epsilon closure of the given set of states. Return a tuple with:
+        - the set of states reachable by zero or more epsilon transitions
+        - a dictionary that maps each of the reachable states s to a path
+            of states starting from one of the states in the initial set and
+            ending in s.
         """
-        res = setOfStates
-        paths = dict()
-        for s in setOfStates:
+        res = set_of_states
+        paths = {}
+        for s in set_of_states:
             paths[s] = [s]
         n = 0
         while n < len(res):
             n = len(res)
-            newRes = res.copy()
+            new_res = res.copy()
             for s in res:
-                if s in self._epsilonTransitions:
-                    newStates = self._epsilonTransitions[s]
-                    newRes.update(newStates)
-                    for t in newStates:
+                if s in self._epsilon_transitions:
+                    new_states = self._epsilon_transitions[s]
+                    new_res.update(new_states)
+                    for t in new_states:
                         if t not in paths:
                             paths[t] = paths[s] + [t]
-            res = newRes
+            res = new_res
         return res, paths
 
-    def epsilonClosure(self, setOfStates: Set[str])->Set[str]:
-        '''Determine the set of states reachable by epsilon transitions from any state in setOfStates.'''
-        res, _ = self.epsilonClosureWithPaths(setOfStates)
+    def epsilon_closure(self, set_of_states: Set[str])->Set[str]:
+        '''Determine the set of states reachable by epsilon transitions from
+        any state in setOfStates.'''
+        res, _ = self.epsilon_closure_with_paths(set_of_states)
         return res
 
-    def _backwardEpsilonClosure(self, setOfStates: Set[str])->Set[str]:
+    def backward_epsilon_closure(self, set_of_states: Set[str])->Set[str]:
         """
-            Determine the backward epsilon closure of the given set of states. Return a set of states reachable by zero or more epsilon transitions taken backward.
+        Determine the backward epsilon closure of the given set of states.
+        Return a set of states reachable by zero or more epsilon transitions
+        taken backward.
         """
-        res = setOfStates
+        res = set_of_states
         n = 0
         while n < len(res):
             n = len(res)
-            newRes = res.copy()
+            new_res = res.copy()
             for s in res:
-                for t in self._epsilonTransitions:
-                    if s in self._epsilonTransitions[t]:
-                        newRes.add(t)
-            res = newRes
+                for t, eps_states in self._epsilon_transitions.items():
+                    if s in eps_states:
+                        new_res.add(t)
+            res = new_res
         return res
 
-    def _traceAcceptingWordAndPath(self, s: str, backTrack: Dict[str,Tuple[str,str]])->Tuple[List[str],List[str]]:
-        '''Reconstruct accepting word and path from state s tracking back to an initials tate using backTrack. Return bool for success and if successful word and path.'''
+    def _trace_accepting_word_and_path(self, s: str, back_track: \
+                                       Dict[str,Tuple[str,str]])->Tuple[List[str],List[str]]:
+        '''
+        Reconstruct accepting word and path from state s tracking back to an
+        initials tate using backTrack. Return bool for success and if
+        successful word and path.
+        '''
         word = []
         path = [s]
         t = s
-        while not t in self._initialStates:
-            (sym, t) = backTrack[t]
+        while not t in self._initial_states:
+            (sym, t) = back_track[t]
             if sym != self._epsilonSymbol:
                 word.insert(0, sym)
             path.insert(0, t)
         return (word, path)
 
-    def _successorStates(self, s:str)->Set[str]:
+    def _successor_states(self, s:str)->Set[str]:
         '''Return a set of successor states of s by any transition or epsilon transition.'''
         result = set()
         if s in self._transitions:
             for symbol in self._transitions[s]:
-                result.update(self.nextStates(s, symbol))
-        if s in self._epsilonTransitions:
-            result.update(self._epsilonTransitions[s])
+                result.update(self.next_states(s, symbol))
+        if s in self._epsilon_transitions:
+            result.update(self._epsilon_transitions[s])
         return result
 
-    def _breadthFirstSearch(self, visit: Callable[[str],None]):
-        visitedStates: Set[str] = set()
-        statesToVisit = sorted(list(self._initialStates))
-        setOfStatesToVisit = set(self._initialStates)
-        while len(statesToVisit) > 0:
-            s = statesToVisit.pop(0)
-            setOfStatesToVisit.remove(s)
+    def _breadth_first_search(self, visit: Callable[[str],None]):
+        visited_states: Set[str] = set()
+        states_to_visit = sorted(list(self._initial_states))
+        set_of_states_to_visit = set(self._initial_states)
+        while len(states_to_visit) > 0:
+            s = states_to_visit.pop(0)
+            set_of_states_to_visit.remove(s)
             visit(s)
-            visitedStates.add(s)
-            newStates = self._successorStates(s).difference(visitedStates).difference(setOfStatesToVisit)
-            for t in sorted(newStates):
-                statesToVisit.append(t)
-                setOfStatesToVisit.add(t)
+            visited_states.add(s)
+            new_states = self._successor_states(s).difference(visited_states). \
+                difference(set_of_states_to_visit)
+            for t in sorted(new_states):
+                states_to_visit.append(t)
+                set_of_states_to_visit.add(t)
 
         # remaining states in no particular order
-        for s in self._states.difference(visitedStates):
+        for s in self._states.difference(visited_states):
             visit(s)
 
     def __str__(self)->str:
-        return "({}, {}, {}, {})".format(self._states, self._initialStates, self._finalStates, self._transitions)
+        return f"({self._states}, {self._initial_states}, {self.\
+            _final_states}, {self._transitions})"

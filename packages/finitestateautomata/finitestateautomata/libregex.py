@@ -135,7 +135,7 @@ class RegExTerm(object):
         # - a dict with for every forward next vertex, a set of regular expressions with which the transition is labelled
         verticesMap: Dict[str,Tuple[Set[str],Set[str],Dict[str,Set['RegExTerm']]]]
 
-        def _addTransition(u: str, v: str, re: 'RegExTerm'):
+        def _add_transition(u: str, v: str, re: 'RegExTerm'):
             '''Add (to) transition u->v if it exists, or create transition.'''
             nonlocal verticesMap
             if not v in verticesMap[u][1]:
@@ -176,7 +176,7 @@ class RegExTerm(object):
                 return None
 
         # create a graph
-        states: List[str] = A.statesInBFSOrder()
+        states: List[str] = A.states_in_bfs_order()
         verticesMap = dict()
 
         # add all states
@@ -186,23 +186,23 @@ class RegExTerm(object):
 
         # add all edges
         for t in A.transitions():
-            _addTransition(t[0], t[2], RegExTermLetter(t[1]))
-        for t in A.epsilonTransitions():
-            _addTransition(t[0], t[1], RegExTermEmptyWord())
+            _add_transition(t[0], t[2], RegExTermLetter(t[1]))
+        for t in A.epsilon_transitions():
+            _add_transition(t[0], t[1], RegExTermEmptyWord())
 
         # make a single source connected to all initial states
         if '_src' in states:
             raise RegExException("Automaton has a clashing state name: '_src'")
         verticesMap['_src'] = (set(), set(), dict())
-        for s in A.initialStates():
-            _addTransition('_src', s, RegExTermEmptyWord())
+        for s in A.initial_states():
+            _add_transition('_src', s, RegExTermEmptyWord())
 
         # make a single sink, connected to all final states
         if '_snk' in states:
             raise RegExException("Automaton has a clashing state name: '_snk'")
         verticesMap['_snk'] = (set(), set(), dict())
-        for s in A.finalStates():
-            _addTransition(s, '_snk', RegExTermEmptyWord())
+        for s in A.final_states():
+            _add_transition(s, '_snk', RegExTermEmptyWord())
 
         # eliminate all nodes for all states of the FSA by bypassing pairs of incoming and outgoing edges
         for s in states:
@@ -221,7 +221,7 @@ class RegExTerm(object):
                     else:
                         reNew = RegExTermConcatenation([re1, re2])
                     # add (to) transition u->v
-                    _addTransition(u, v, reNew)
+                    _add_transition(u, v, reNew)
             for u in sIn:
                 # remove transition u->s
                 _removeTransition(u, s)
@@ -250,8 +250,8 @@ class RegExTermEmptySet(RegExTerm):
 
     def _asFSA(self)->Automaton:
         result = Automaton()
-        si = result.addStateUnique("S")
-        result.makeInitialState(si)
+        si = result.add_state_unique("S")
+        result.make_initial_state(si)
         return result
 
     def _asNBA(self)->Automaton:
@@ -288,9 +288,9 @@ class RegExTermEmptyWord(RegExTerm):
 
     def _asFSA(self)->Automaton:
         result = Automaton()
-        si = result.addStateUnique("S")
-        result.makeInitialState(si)
-        result.makeFinalState(si)
+        si = result.add_state_unique("S")
+        result.make_initial_state(si)
+        result.make_final_state(si)
         return result
 
     def __eq__same_class__(self, other)->bool:
@@ -389,28 +389,28 @@ class RegExTermConcatenation(RegExTerm):
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
-                ns = result.addStateUnique(s)
+                ns = result.add_state_unique(s)
                 stateMap[a][s] = ns
             # add all transitions
             for (src, symbol, dst) in sorted(a.transitions()):
-                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
+                result.add_transition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in sorted(a.epsilonTransitions()):
-                result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
+            for (src, dst) in sorted(a.epsilon_transitions()):
+                result.add_epsilon_transition(stateMap[a][src], stateMap[a][dst])
         # add initial states
-        for s in sorted(ia.initialStates()):
-            result.makeInitialState(stateMap[ia][s])
+        for s in sorted(ia.initial_states()):
+            result.make_initial_state(stateMap[ia][s])
         # add final states
-        for s in sorted(fa.finalStates()):
-            result.makeFinalState(stateMap[fa][s])
+        for s in sorted(fa.final_states()):
+            result.make_final_state(stateMap[fa][s])
         # connect automata, n to n+1 while n+1 < len exprFSA
         n = 0
         while n+1 < len(exprFSA):
             aa = exprFSA[n]
             ab = exprFSA[n+1]
-            for s in sorted(aa.finalStates()):
-                for t in sorted(ab.initialStates()):
-                    result.addEpsilonTransition(stateMap[aa][s], stateMap[ab][t])
+            for s in sorted(aa.final_states()):
+                for t in sorted(ab.initial_states()):
+                    result.add_epsilon_transition(stateMap[aa][s], stateMap[ab][t])
             n += 1
 
         return result
@@ -432,28 +432,28 @@ class RegExTermConcatenation(RegExTerm):
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
-                ns = result.addStateUnique(s)
+                ns = result.add_state_unique(s)
                 stateMap[a][s] = ns
             # add all transitions
             for (src, symbol, dst) in sorted(a.transitions()):
-                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
+                result.add_transition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in sorted(a.epsilonTransitions()):
-                result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
+            for (src, dst) in sorted(a.epsilon_transitions()):
+                result.add_epsilon_transition(stateMap[a][src], stateMap[a][dst])
         # add initial states
-        for s in sorted(ia.initialStates()):
-            result.makeInitialState(stateMap[ia][s])
+        for s in sorted(ia.initial_states()):
+            result.make_initial_state(stateMap[ia][s])
         # add final states
-        for s in sorted(fa.finalStates()):
-            result.makeFinalState(stateMap[fa][s])
+        for s in sorted(fa.final_states()):
+            result.make_final_state(stateMap[fa][s])
         # connect automata, n to n+1 while n+1 < len exprFSA
         n = 0
         while n+1 < len(exprFSA):
             aa = exprFSA[n]
             ab = exprFSA[n+1]
-            for s in sorted(aa.finalStates()):
-                for t in sorted(ab.initialStates()):
-                    result.addEpsilonTransition(stateMap[aa][s], stateMap[ab][t])
+            for s in sorted(aa.final_states()):
+                for t in sorted(ab.initial_states()):
+                    result.add_epsilon_transition(stateMap[aa][s], stateMap[ab][t])
             n += 1
 
         return result
@@ -517,20 +517,20 @@ class RegExTermAlternatives(RegExTerm):
         for a in exprFSA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
-                ns = result.addStateUnique(s)
+                ns = result.add_state_unique(s)
                 stateMap[a][s] = ns
             # add all transitions
             for (src, symbol, dst) in sorted(a.transitions()):
-                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
+                result.add_transition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in sorted(a.epsilonTransitions()):
-                result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
+            for (src, dst) in sorted(a.epsilon_transitions()):
+                result.add_epsilon_transition(stateMap[a][src], stateMap[a][dst])
             # add initial states
-            for s in sorted(a.initialStates()):
-                result.makeInitialState(stateMap[a][s])
+            for s in sorted(a.initial_states()):
+                result.make_initial_state(stateMap[a][s])
             # add final states
-            for s in sorted(a.finalStates()):
-                result.makeFinalState(stateMap[a][s])
+            for s in sorted(a.final_states()):
+                result.make_final_state(stateMap[a][s])
 
         return result
 
@@ -545,20 +545,20 @@ class RegExTermAlternatives(RegExTerm):
         for a in exprNBA:
             stateMap[a] = dict()
             for s in sorted(a.states()):
-                ns = result.addStateUnique(s)
+                ns = result.add_state_unique(s)
                 stateMap[a][s] = ns
             # add all transitions
             for (src, symbol, dst) in sorted(a.transitions()):
-                result.addTransition(stateMap[a][src], symbol, stateMap[a][dst])
+                result.add_transition(stateMap[a][src], symbol, stateMap[a][dst])
             # add all epsilon transitions
-            for (src, dst) in sorted(a.epsilonTransitions()):
-                result.addEpsilonTransition(stateMap[a][src], stateMap[a][dst])
+            for (src, dst) in sorted(a.epsilon_transitions()):
+                result.add_epsilon_transition(stateMap[a][src], stateMap[a][dst])
             # add initial states
-            for s in sorted(a.initialStates()):
-                result.makeInitialState(stateMap[a][s])
+            for s in sorted(a.initial_states()):
+                result.make_initial_state(stateMap[a][s])
             # add final states
-            for s in sorted(a.finalStates()):
-                result.makeFinalState(stateMap[a][s])
+            for s in sorted(a.final_states()):
+                result.make_final_state(stateMap[a][s])
 
         return result
 
@@ -632,19 +632,19 @@ class RegExTermKleene(RegExTerm):
         result = self._expression._asFSA()
 
         # add a new state that is initial and final
-        sif = result.addStateUnique("S")
+        sif = result.add_state_unique("S")
 
         # add feedback transitions
-        for s in sorted(result.initialStates()):
-            result.addEpsilonTransition(sif, s)
-        for s in sorted(result.finalStates()):
-            result.addEpsilonTransition(s, sif)
+        for s in sorted(result.initial_states()):
+            result.add_epsilon_transition(sif, s)
+        for s in sorted(result.final_states()):
+            result.add_epsilon_transition(s, sif)
 
         # make the new state the only initial state
-        result.clearInitialStates()
-        result.makeInitialState(sif)
-        result.clearFinalStates()
-        result.makeFinalState(sif)
+        result.clear_initial_states()
+        result.make_initial_state(sif)
+        result.clear_final_states()
+        result.make_final_state(sif)
 
         return result
 
@@ -704,9 +704,9 @@ class RegExTermOmega(RegExTerm):
         result = self._expression._asFSA()
 
         # add feedback transitions
-        for s in sorted(result.initialStates()):
-            for t in sorted(result.finalStates()):
-                result.addEpsilonTransition(t, s)
+        for s in sorted(result.initial_states()):
+            for t in sorted(result.final_states()):
+                result.add_epsilon_transition(t, s)
 
         return result
 
@@ -753,12 +753,12 @@ class RegExTermLetter(RegExTerm):
     def _asFSA(self)->Automaton:
 
         result = Automaton()
-        si = result.addStateUnique("S")
-        sf = result.addStateUnique("S")
+        si = result.add_state_unique("S")
+        sf = result.add_state_unique("S")
         symbol = self._letter.replace("'", "")
-        result.addTransition(si, symbol, sf)
-        result.makeInitialState(si)
-        result.makeFinalState(sf)
+        result.add_transition(si, symbol, sf)
+        result.make_initial_state(si)
+        result.make_final_state(sf)
         return result
 
     def __eq__same_class__(self, other)->bool:

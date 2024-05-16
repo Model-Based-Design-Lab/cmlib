@@ -25,7 +25,7 @@ Edge:
 
 EdgeSpecs:
 	annotations += EdgeAnnotation ((','|';') annotations += EdgeAnnotation)*
-	
+
 ;
 
 EdgeAnnotation:
@@ -38,8 +38,8 @@ State:
 
 
 UndecoratedState:
-		name=ID | 
-		stateSet = StateSet | 
+		name=ID |
+		stateSet = StateSet |
 		stateTuple = StateTuple
 ;
 
@@ -87,7 +87,7 @@ Comment:
 
 MetaModelFSA = metamodel_from_str(FSAGrammar, classes=[])
 
-def parseFSADSL(content: str, factory: Any)->Tuple[Optional[str], Optional[Any]]:
+def parse_fsa_dsl(content: str, factory: Any)->Tuple[Optional[str], Optional[Any]]:
     try:
         model =  MetaModelFSA.model_from_str(content)
     except TextXSyntaxError as err:
@@ -97,7 +97,7 @@ def parseFSADSL(content: str, factory: Any)->Tuple[Optional[str], Optional[Any]]
     for e in model.edges:
         parseEdge(e, fsa, factory)
     for s in model.states:
-        parseState(s, fsa, factory) 
+        parseState(s, fsa, factory)
 
     return (model.name, fsa)
 
@@ -109,7 +109,7 @@ def parseEdge(e, fsa, factory):
             factory['addTransitionPossiblyEpsilon'](fsa, srcState, dstState, symb)
     else:
         factory['AddEpsilonTransition'](fsa, srcState, dstState)
-    
+
 def parseState(s, fsa, factory):
     state = parseUndecoratedState(s.ustate)
     labels, acceptanceSets = parseStateSpecs(s.specs)
@@ -141,4 +141,3 @@ def parseStateSpecs(specs):
     if len(acceptanceSets) == 0:
         acceptanceSets.add('default')
     return labels, acceptanceSets
-    

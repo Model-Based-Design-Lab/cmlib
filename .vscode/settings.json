@@ -41,6 +41,7 @@
         "libdtmc",
         "libdtmcgrammar",
         "libfsa",
+        "libfsagrammar",
         "libltl",
         "libmpm",
         "libmpmgrammar",
