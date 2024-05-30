@@ -1,15 +1,19 @@
+"""This module provides all functionality related to dataflow models."""
+
 import copy
 from functools import reduce
 from io import StringIO
+import sys
 from typing import Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
 from dataflow.libsdfgrammar import parseSDFDSL
 from dataflow.maxplus.starclosure import PositiveCycleException
-from dataflow.maxplus.maxplus import TThroughputValue, mpThroughput, mpGeneralizedThroughput, mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, mpScaleVector, mpSplitSequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
-from dataflow.maxplus.algebra import MP_MINUSINFINITY, MP_LARGER
+from dataflow.maxplus.maxplus import TThroughputValue, mpThroughput, mpGeneralizedThroughput, \
+      mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, \
+      mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, \
+      mpScaleVector, mpSplitSequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
+from dataflow.maxplus.algebra import MP_MINUSINFINITY
 from dataflow.libmpm import MaxPlusMatrixModel
-
-
 
 # constants
 DEFAULT_ACTOR_EXECUTION_TIME = Fraction(1.0)
@@ -24,87 +28,93 @@ TActorSpecs = Dict[str,Any]
 TChannelSpecs = Dict[str,Any]
 
 
-def _splitMatrix(M: TMPMatrix, n: int)->Tuple[TMPMatrix,TMPMatrix,TMPMatrix,TMPMatrix]:
+def _split_matrix(matrix: TMPMatrix, n: int)->Tuple[TMPMatrix,TMPMatrix,TMPMatrix,TMPMatrix]:
     '''Split matrix into state-space A,B,C,D matrices assuming a state size n.'''
-    A: TMPMatrix = []
-    B: TMPMatrix = []
+    matrix_a: TMPMatrix = []
+    matrix_b: TMPMatrix = []
     for k in range(n):
-        A.append(M[k][:n])
-        B.append(M[k][n:])
-    C: TMPMatrix = []
-    D: TMPMatrix = []
-    for k in range(n, len(M)):
-        C.append(M[k][:n])
-        D.append(M[k][n:])
-    return (A, B, C, D)
+        matrix_a.append(matrix[k][:n])
+        matrix_b.append(matrix[k][n:])
+    matrix_c: TMPMatrix = []
+    matrix_d: TMPMatrix = []
+    for k in range(n, len(matrix)):
+        matrix_c.append(matrix[k][:n])
+        matrix_d.append(matrix[k][n:])
+    return (matrix_a, matrix_b, matrix_c, matrix_d)
 
 class SDFException(Exception):
-    pass
+    """Exceptions related to this module"""
 
 class SDFDeadlockException(SDFException):
-    pass
+    """Exception indicating a deadlock"""
 
 class SDFInconsistentException(SDFException):
-    pass
+    """Exception indicating an inconsistent dataflow graph"""
 
-class DataflowGraph(object):
+class DataflowGraph:
+    """Representation of dataflow graphs"""
 
-    _repetitionVector: Optional[Dict[str,int]]
-    _symbolicVector: List[str]
+    _repetition_vector: Optional[Dict[str,int]]
+    _symbolic_vector: List[str]
     _inputs: List[str]
     _outputs: List[str]
-    _actorsAndIO: TActorList # note that the list _actorsAndIO includes the inputs and outputs
+    _actors_and_io: TActorList # note that the list _actorsAndIO includes the inputs and outputs
     _channels: TChannelList
-    _actorSpecs: Dict[str,TActorSpecs]
-    _channelSpecs: Dict[str,TChannelSpecs]
-    _outChannels: Dict[str,Set[str]]
-    _inChannels: Dict[str,Set[str]]
-    _chanProducer: Dict[str,str]
-    _chanConsumer: Dict[str,str]
-    _inputSignals: Dict[str,TTimeStampList]
+    _actor_specs: Dict[str,TActorSpecs]
+    _channel_specs: Dict[str,TChannelSpecs]
+    _out_channels: Dict[str,Set[str]]
+    _in_channels: Dict[str,Set[str]]
+    _chan_producer: Dict[str,str]
+    _chan_consumer: Dict[str,str]
+    _input_signals: Dict[str,TTimeStampList]
 
     def __init__(self):
         # set of actors, including inputs and outputs!
-        self._actorsAndIO = list()
+        self._actors_and_io = []
         # set  of channels
-        self._channels = list()
+        self._channels = []
         # dict actors -> (spec -> value)
-        self._actorSpecs = dict()
+        self._actor_specs = {}
         # dict actor -> set of channels
-        self._outChannels = dict()
+        self._out_channels = {}
         # dict actor -> set of channels
-        self._inChannels = dict()
+        self._in_channels = {}
         # dict chan -> producing actor
-        self._chanProducer = dict()
+        self._chan_producer = {}
         # dict chan -> producing actor
-        self._chanConsumer = dict()
+        self._chan_consumer = {}
         # dict chan->(spec->value)
-        self._channelSpecs = dict()
+        self._channel_specs = {}
         # set of input 'actors'
-        self._inputs = list()
+        self._inputs = []
         # set of output 'actors'
-        self._outputs = list()
+        self._outputs = []
 
         # input signals
-        self._inputSignals = dict()
+        self._input_signals = {}
 
-        self._repetitionVector = None
+        self._repetition_vector = None
+
+        # initialized in _initialize_symbolic_time_stamps
+        self._symbolic_time_stamp_size = -1
+
 
     def copy(self)->'DataflowGraph':
         ''' Return a new DataflowGraph as a copy of thw one the method of which
         is called. '''
         return copy.deepcopy(self)
-        
+
     def actors(self)->TActorList:
         '''Return list of actors.'''
-        return self._actorsAndIO
+        return self._actors_and_io
 
     def channels(self)->TChannelList:
         '''Return list of channels.'''
         return self._channels
 
-    def actorsWithoutInputsOutputs(self)->TActorList:
-        return [a for a in self._actorsAndIO if not (a in self._inputs or a in self._outputs)]
+    def actors_without_inputs_outputs(self)->TActorList:
+        '''Return only proper actors, not inputs or outputs.'''
+        return [a for a in self._actors_and_io if not (a in self._inputs or a in self._outputs)]
 
     def inputs(self) -> List[str]:
         '''Return the inputs of the graph.'''
@@ -114,503 +124,523 @@ class DataflowGraph(object):
         '''Return the outputs of the graph.'''
         return self._outputs
 
-    def inputSignals(self)->Dict[str,TTimeStampList]:
+    def input_signals(self)->Dict[str,TTimeStampList]:
         '''Returns the inputs signals to the graph.'''
-        return self._inputSignals
+        return self._input_signals
 
-    def consumptionRate(self, ch: str)->int:
+    def consumption_rate(self, ch: str)->int:
         '''Get the consumption rate of the channel. Defaults to 1 if it is not specified.'''
-        if ch in self._channelSpecs:
-            if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                return self._channelSpecs[ch][CONS_RATE_SPEC_KEY]
+        if ch in self._channel_specs:
+            if CONS_RATE_SPEC_KEY in self._channel_specs[ch]:
+                return self._channel_specs[ch][CONS_RATE_SPEC_KEY]
         return 1
 
-    def productionRate(self, ch: str)->int:
+    def production_rate(self, ch: str)->int:
         '''Get the production rate of the channel. Defaults to 1 if it is not specified.'''
-        if ch in self._channelSpecs:
-            if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                return self._channelSpecs[ch][PROD_RATE_SPEC_KEY]
+        if ch in self._channel_specs:
+            if PROD_RATE_SPEC_KEY in self._channel_specs[ch]:
+                return self._channel_specs[ch][PROD_RATE_SPEC_KEY]
         return 1
 
     def repetitions(self, actor: str)->int:
         '''
-        Determine repetition vector entry for actor. An SDFInconsistentException is raised if the graph is inconsistent.
+        Determine repetition vector entry for actor. An
+        SDFInconsistentException is raised if the graph is inconsistent.
         '''
         # Compute the repetition vector if needed
-        if self._repetitionVector is None:
-            repVec = self.repetitionVector()
-            if isinstance(repVec, list):
+        if self._repetition_vector is None:
+            rep_vec = self.repetition_vector()
+            if isinstance(rep_vec, list):
                 raise SDFInconsistentException("Dataflow graph is inconsistent")
-            self._repetitionVector = repVec 
-        return self._repetitionVector[actor]
+            self._repetition_vector = rep_vec
+        return self._repetition_vector[actor]
 
-    def repetitionVectorSum(self)->int:
-        '''Determine the sum of the repetitions of all actors, inputs and outputs. An SDFInconsistentException is raised if the graph is inconsistent.'''
+    def repetition_vector_sum(self)->int:
+        '''Determine the sum of the repetitions of all actors, inputs and
+        outputs. An SDFInconsistentException is raised if the graph is
+        inconsistent.'''
         # Compute the repetition vector if needed
-        if self._repetitionVector is None:
-            repVec = self.repetitionVector()
-            if isinstance(repVec, list):
+        if self._repetition_vector is None:
+            rep_vec = self.repetition_vector()
+            if isinstance(rep_vec, list):
                 raise SDFInconsistentException("Dataflow graph is inconsistent")
-            self._repetitionVector = repVec
+            self._repetition_vector = rep_vec
         res: int = 0
-        for a in self._actorsAndIO:
-            res = res + self._repetitionVector[a]
+        for a in self._actors_and_io:
+            res = res + self._repetition_vector[a]
         return res
 
     def validate(self):
         '''
         Validate the dataflow model. Raises an exception on an invalid model. Returns nothing.
         '''
-        unreadInputs = set(self._inputs).difference(set(self._actorsAndIO))
-        if len(unreadInputs) > 0:
-            raise SDFException('Invalid model. The following inputs are not read: {}.'.format('. '.join(unreadInputs)))
-        unwrittenOutputs = set(self._outputs).difference(set(self._actorsAndIO))
-        if len(unwrittenOutputs) > 0:
-            raise SDFException('Invalid model. The following outputs are not written: {}.'.format('. '.join(unwrittenOutputs)))
+        unread_inputs = set(self._inputs).difference(set(self._actors_and_io))
+        if len(unread_inputs) > 0:
+            raise SDFException("Invalid model. The following inputs are not " \
+                               f"read: {', '.join(unread_inputs)}.")
+        unwritten_outputs = set(self._outputs).difference(set(self._actors_and_io))
+        if len(unwritten_outputs) > 0:
+            raise SDFException("Invalid model. The following outputs are not " \
+                               f"written: {', '.join(unwritten_outputs)}.")
 
-    def addActor(self, a: str, specs: TActorSpecs):
+    def add_actor(self, a: str, specs: TActorSpecs):
         '''Add actor to the graph with specs.'''
         # invalidate the cached repetition vector
-        self._repetitionVector = None
+        self._repetition_vector = None
         # add actor if it doesn't exist
-        if not a in self._actorsAndIO:
-            self._actorsAndIO.append(a)
-            self._actorSpecs[a] = dict()
+        if not a in self._actors_and_io:
+            self._actors_and_io.append(a)
+            self._actor_specs[a] = {}
         # add specs
         for s in specs:
-            self._actorSpecs[a][s] = specs[s]
+            self._actor_specs[a][s] = specs[s]
 
-    def addChannel(self, a: str, b: str, specs: TChannelSpecs):
+    def add_channel(self, a: str, b: str, specs: TChannelSpecs):
         '''Add channel from actor or input a to actor or output b to the graph with specs.'''
         # invalidate the cached repetition vector
-        self._repetitionVector = None
-        
-        chName: str
+        self._repetition_vector = None
+
+        ch_name: str
         if 'name' in specs:
-            chName = specs['name']
+            ch_name = specs['name']
         else:
-            chName = self._newChannelName()
-        if not a in self._outChannels:
-            self._outChannels[a] = set()
-        self._outChannels[a].add(chName)
-        if not b in self._inChannels:
-            self._inChannels[b] = set()
-        self._inChannels[b].add(chName)
+            ch_name = self._new_channel_name()
+        if not a in self._out_channels:
+            self._out_channels[a] = set()
+        self._out_channels[a].add(ch_name)
+        if not b in self._in_channels:
+            self._in_channels[b] = set()
+        self._in_channels[b].add(ch_name)
 
-        self._chanProducer[chName] = a
-        self. _chanConsumer[chName] = b
+        self._chan_producer[ch_name] = a
+        self. _chan_consumer[ch_name] = b
 
-        self._channels.append(chName)
-        self._channelSpecs[chName] = specs
+        self._channels.append(ch_name)
+        self._channel_specs[ch_name] = specs
 
-    def addInputPort(self, i: str):
+    def add_input_port(self, i: str):
         '''Add input port i.'''
-        self._repetitionVector = None
+        self._repetition_vector = None
         # input ports should be in _actorsAndIO with execution time 0.0
-        if not i in self._actorsAndIO:
-            self.addActor(i, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
+        if not i in self._actors_and_io:
+            self.add_actor(i, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
         else:
-            self._actorSpecs[i][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
+            self._actor_specs[i][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
         self._inputs.append(i)
 
-    def addOutputPort(self, o: str):
+    def add_output_port(self, o: str):
         '''Add input port i.'''
-        self._repetitionVector = None
+        self._repetition_vector = None
         # output ports should be in actors
-        if not o in self._actorsAndIO:
-            self.addActor(o, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
+        if not o in self._actors_and_io:
+            self.add_actor(o, {EXECUTION_TIME_SPEC_KEY: Fraction(0.0)})
         else:
-            self._actorSpecs[o][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
+            self._actor_specs[o][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
         self._outputs.append(o)
 
-    def addInputSignal(self, n: str, s: TTimeStampList):
+    def add_input_signal(self, n: str, s: TTimeStampList):
         '''Add input signal with name n and sequences s.'''
-        self._inputSignals[n] = s
+        self._input_signals[n] = s
 
-    def producerOfChannel(self, ch: str):
+    def producer_of_channel(self, ch: str):
         '''Get the producer to channel ch.'''
-        return self._chanProducer[ch]
+        return self._chan_producer[ch]
 
-    def consumerOfChannel(self, ch):
+    def consumer_of_channel(self, ch):
         '''Get the consumer from channel ch.'''
-        return self._chanConsumer[ch]
+        return self._chan_consumer[ch]
 
-    def _newChannelName(self)->str:
+    def _new_channel_name(self)->str:
         '''Generate a free channel name'''
-        fname = lambda m: 'ch'+str(m)
+        def fname(m):
+            return 'ch'+str(m)
         k = 1
-        while fname(k) in self._channelSpecs:
+        while fname(k) in self._channel_specs:
             k += 1
         return fname(k)
 
-    def executionTimeOfActor(self, a: str)->Fraction:
+    def execution_time_of_actor(self, a: str)->Fraction:
         '''Get the execution time of actor a'''
-        if not EXECUTION_TIME_SPEC_KEY in self._actorSpecs[a]:
+        if not EXECUTION_TIME_SPEC_KEY in self._actor_specs[a]:
             return DEFAULT_ACTOR_EXECUTION_TIME
-        return self._actorSpecs[a][EXECUTION_TIME_SPEC_KEY]
+        return self._actor_specs[a][EXECUTION_TIME_SPEC_KEY]
 
-    def specsOfActor(self, a: str)->Dict[str,Any]:
+    def specs_of_actor(self, a: str)->Dict[str,Any]:
         '''Return the specs of actor a.'''
-        return self._actorSpecs[a]
+        return self._actor_specs[a]
 
-    def numberOfInitialTokensOfChannel(self, ch: str)->int:
+    def number_of_initial_tokens_of_channel(self, ch: str)->int:
         '''Get the number of initial tokens on channel ch. Defaults to 0 if it is not specified.'''
-        if not INITIAL_TOKENS_SPEC_KEY in self._channelSpecs[ch]:
+        if not INITIAL_TOKENS_SPEC_KEY in self._channel_specs[ch]:
             return 0
-        return self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY]
+        return self._channel_specs[ch][INITIAL_TOKENS_SPEC_KEY]
 
-    def setNumberOfInitialTokensOfChannel(self, ch: str, it: int):
+    def set_number_of_initial_tokens_of_channel(self, ch: str, it: int):
         '''Set the number of initial tokens on channel ch to it.'''
-        self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY] = it
+        self._channel_specs[ch][INITIAL_TOKENS_SPEC_KEY] = it
 
-    def numberOfInitialTokens(self)->int:
+    def number_of_initial_tokens(self)->int:
         '''Get the total number of initial tokens in the graph.'''
-        return reduce(lambda sum, ch: sum + self.numberOfInitialTokensOfChannel(ch), self._channels, 0)
+        return reduce(lambda sum, ch: sum + self.number_of_initial_tokens_of_channel(ch), \
+                      self._channels, 0)
 
-    def numberOfInputs(self)->int:
+    def number_of_inputs(self)->int:
         '''Get the number of inputs of the graph.'''
         return len(self._inputs)
 
-    def numberOfOutputs(self)->int:
+    def number_of_outputs(self)->int:
         '''Get the number of outputs of the graph.'''
         return len(self._outputs)
 
-    def numberOfInputsInIteration(self)->int:
+    def number_of_inputs_in_iteration(self)->int:
         '''Get the total number of tokens consumed in one iteration.'''
         res: int = 0
         for i in self._inputs:
             res = res + self.repetitions(i)
         return res
-    
-    def channelSet(self)->Set[Tuple[str,str,int,int,int]]:
-        '''Return a set with a tuple for all channels of the graph, containing the actor producing to the channel, the actor consuming from the channel, the number of initial tokens on the channel, the consumption rate of the channel and the production rate of the channel.'''
+
+    def channel_set(self)->Set[Tuple[str,str,int,int,int]]:
+        '''Return a set with a tuple for all channels of the graph, containing the actor producing
+           to the channel, the actor consuming from the channel, the number of initial tokens on
+           the channel, the consumption rate of the channel and the production rate of the channel.
+        '''
         result: Set[Tuple[str,str,int,int,int]] = set()
         for ch in self._channels:
             result.add(
                 (
-                    self._chanProducer[ch], 
-                    self._chanConsumer[ch], 
-                    self.numberOfInitialTokensOfChannel(ch),
-                    self.consumptionRate(ch),
-                    self.productionRate(ch)
+                    self._chan_producer[ch],
+                    self._chan_consumer[ch],
+                    self.number_of_initial_tokens_of_channel(ch),
+                    self.consumption_rate(ch),
+                    self.production_rate(ch)
                 )
             )
         return result
 
-    def inChannels(self, a: str)->Set[str]:
+    def in_channels(self, a: str)->Set[str]:
         '''Returns the set of channels that actor a consumes from.'''
-        if a in self._inChannels:
-            return self._inChannels[a]
+        if a in self._in_channels:
+            return self._in_channels[a]
         return set()
 
-    def outChannels(self, a)->Set[str]:
+    def out_channels(self, a)->Set[str]:
         '''Returns the set of channels that actor a produces to.'''
-        if a in self._outChannels:
-            return self._outChannels[a]
+        if a in self._out_channels:
+            return self._out_channels[a]
         return set()
 
-    def listOfInputsStr(self)->str:
+    def list_of_inputs_str(self)->str:
         '''Return a string representation of the list of inputs.'''
         return ', '.join(self._inputs)
 
-    def listOfOutputsStr(self)->str:
+    def list_of_outputs_str(self)->str:
         '''Return a string representation of the list of outputs.'''
         return ', '.join(self._outputs)
 
-    def indexOfOutput(self, output: str)->int:
+    def index_of_output(self, output: str)->int:
         '''Return the index of output in the list of outputs.'''
         return self._outputs.index(output)
 
 
-    def stateElementLabels(self)->List[str]:
-        '''Return a list state element labels for the max-plus state-space representation of the graph.'''
+    def state_element_labels(self)->List[str]:
+        '''Return a list state element labels for the max-plus state-space representation
+        of the graph.'''
         res: List[str] = []
         for ch in self._channels:
-            for n in range(self.numberOfInitialTokensOfChannel(ch)):
-                res.append(self._readableInitialTokenLabel(ch, n))
+            for n in range(self.number_of_initial_tokens_of_channel(ch)):
+                res.append(self._readable_initial_token_label(ch, n))
         return res
 
-    def listOfStateElementsStr(self)->str:
-        '''Return a string representation of the list of state element labels for the max-plus state-space representation of the graph.'''
-        return ', '.join(self.stateElementLabels())
+    def list_of_state_elements_str(self)->str:
+        '''Return a string representation of the list of state element labels for the max-plus
+           state-space representation of the graph.'''
+        return ', '.join(self.state_element_labels())
 
-    def _initialTokenLabel(self, ch: str, n: int)->str:
-        '''Return a label for initial token number n on channel ch. Assumes n is between 1 and the number of initial tokens on the channel ch.'''
-        if self.numberOfInitialTokensOfChannel(ch) == 1:
+    def _initial_token_label(self, ch: str, n: int)->str:
+        '''Return a label for initial token number n on channel ch. Assumes n is between 1 and the
+        number of initial tokens on the channel ch.'''
+        if self.number_of_initial_tokens_of_channel(ch) == 1:
             return ch
         return ch+'_'+str(n+1)
 
-    def _inputTokenLabel(self, i: str, n: int)->str:
+    def _input_token_label(self, i: str, n: int)->str:
         '''Return a label for input token number n consumed from input i in one iteration.'''
         if self.repetitions(i) == 1:
             return i
         return i+'_'+str(n+1)
 
-    def _outputTokenLabel(self, o: str, n: int)->str:
+    def _output_token_label(self, o: str, n: int)->str:
         '''Return a label for output token number n produced to output o in one iteration.'''
         if self.repetitions(o) == 1:
             return o
         return o+'_'+str(n+1)
 
-    def _actorFiringLabel(self, a: str, n: int)->str:
+    def _actor_firing_label(self, a: str, n: int)->str:
         '''Return a label to represent firing number n of actor a in one iteration.'''
         if self.repetitions(a) == 1:
             return a
         return a+'_'+str(n+1)
 
-    def _readableInitialTokenLabel(self, ch: str, n: int)->str:
-        '''Return a label for initial token number n on channel ch using the actors connected to the channel. Assumes n is between 1 and the number of initial tokens on the channel ch.'''
-        if self.numberOfInitialTokensOfChannel(ch) < 2:
-            return '{}_{}'.format(self._chanProducer[ch], self. _chanConsumer[ch])
+    def _readable_initial_token_label(self, ch: str, n: int)->str:
+        '''Return a label for initial token number n on channel ch using the actors connected to
+        the channel. Assumes n is between 1 and the number of initial tokens on the channel ch.'''
+        if self.number_of_initial_tokens_of_channel(ch) < 2:
+            return f'{self._chan_producer[ch]}_{self._chan_consumer[ch]}'
         else:
-            return '{}_{}_{}'.format(self._chanProducer[ch], self. _chanConsumer[ch], n+1)
+            return f'{self._chan_producer[ch]}_{self. _chan_consumer[ch]}_{n+1}'
 
-    def _initializeSymbolicTimeStamps(self):
+    def _initialize_symbolic_time_stamps(self):
         '''Determine the symbolic time stamp size and the symbolic vector labels.'''
-        self._symbolicTimeStampSize = self.numberOfInitialTokens() + self.numberOfInputsInIteration()
-        self._symbolicVector = []
+        self._symbolic_time_stamp_size = self.number_of_initial_tokens() + \
+            self.number_of_inputs_in_iteration()
+        self._symbolic_vector = []
         for ch in self._channels:
-            for n in range(self.numberOfInitialTokensOfChannel(ch)):
-                self._symbolicVector.append(self._initialTokenLabel(ch, n))
+            for n in range(self.number_of_initial_tokens_of_channel(ch)):
+                self._symbolic_vector.append(self._initial_token_label(ch, n))
         for i in self._inputs:
             for n in range(self.repetitions(i)):
-                self._symbolicVector.append(self._inputTokenLabel(i, n))
+                self._symbolic_vector.append(self._input_token_label(i, n))
 
-    def _symbolicTimeStampMinusInfinity(self) -> TMPVector:
+    def _symbolic_time_stamp_minus_infinity(self) -> TMPVector:
         '''Return a symbolic time stamp vector with all -inf elements.'''
-        return [MP_MINUSINFINITY] * self._symbolicTimeStampSize
+        return [MP_MINUSINFINITY] * self._symbolic_time_stamp_size
 
-    def symbolicTimeStamp(self, t: str)->TMPVector:
-        '''Get the initial symbolic time stamp for the element labelled t, i.e., a corresponding unit vector.'''
-        res = self._symbolicTimeStampMinusInfinity()
-        res[self._symbolicVector.index(t)] = Fraction(0)
+    def symbolic_time_stamp(self, t: str)->TMPVector:
+        '''Get the initial symbolic time stamp for the element labelled t, i.e., a corresponding
+        unit vector.'''
+        res = self._symbolic_time_stamp_minus_infinity()
+        res[self._symbolic_vector.index(t)] = Fraction(0)
         return res
 
-    def _symbolicTimeStampMax(self, ts1: TMPVector, ts2: TMPVector)->TMPVector:
+    def _symbolic_time_stamp_max(self, ts1: TMPVector, ts2: TMPVector)->TMPVector:
         '''Determine the maximum of two symbolic time stamp vectors.'''
         return mpMaxVectors(ts1, ts2)
 
-    def _symbolicTimeStampScale(self, c: TTimeStamp, ts: TMPVector)->TMPVector:
+    def _symbolic_time_stamp_scale(self, c: TTimeStamp, ts: TMPVector)->TMPVector:
         '''Scale the symbolic time stamp vector.'''
         return mpScaleVector(c, ts)
 
-    def _symbolicFiring(self, a: str, n: int, timestamps:Dict[str,TMPVector])->bool:
-        '''Attempt to fire actor a for the n'th time in the symbolic simulation of the graph. Return if the actor could be fired successfully or not.'''
-        # TODO: this method seems a bit inefficient.
-        el: str = self._actorFiringLabel(a, n)
+    def _symbolic_firing(self, a: str, n: int, timestamps:Dict[str,TMPVector])->bool:
+        '''Attempt to fire actor a for the n'th time in the symbolic simulation of the graph.
+        Return if the actor could be fired successfully or not.'''
+        # FIXME: this method seems a bit inefficient.
+        el: str = self._actor_firing_label(a, n)
         if el in timestamps:
             # This firing already has a determined time stamp
             return False
         # check if the dependencies are complete
-        ts = self._symbolicTimeStampMinusInfinity()
-        for ch in self.inChannels(a):
-            cr = self.consumptionRate(ch)
+        ts = self._symbolic_time_stamp_minus_infinity()
+        for ch in self.in_channels(a):
+            cr = self.consumption_rate(ch)
             cons = cr * (n+1)
             # determine how many initial tokens are consumed in the firing
-            if self.numberOfInitialTokensOfChannel(ch) >= cons:
+            if self.number_of_initial_tokens_of_channel(ch) >= cons:
                 it = cons
             else:
-                it = self.numberOfInitialTokensOfChannel(ch)
-            
+                it = self.number_of_initial_tokens_of_channel(ch)
+
             # determine the symbolic time stamps of the combined initial tokens consumed
             for k in range(it):
-                ts = self._symbolicTimeStampMax(ts, timestamps[self._initialTokenLabel(ch, k)])
+                ts = self._symbolic_time_stamp_max(ts, timestamps[self._initial_token_label(ch, k)])
 
             # determine how many tokens remain to be produced by the producing actor
             rem = cons - it
-            b = self._chanProducer[ch]
-            pr = self.productionRate(ch)
+            b = self._chan_producer[ch]
+            pr = self.production_rate(ch)
             for k in range(rem):
                 # which firing produced token n ?
                 m = k // pr
-                elm = self._actorFiringLabel(b, m)
+                elm = self._actor_firing_label(b, m)
                 if not elm in timestamps:
                     # the production is not available yet
                     return False
-                ts = self._symbolicTimeStampMax(ts, self._symbolicTimeStampScale(self.executionTimeOfActor(b), timestamps[elm]))
+                ts = self._symbolic_time_stamp_max(ts, self._symbolic_time_stamp_scale( \
+                    self.execution_time_of_actor(b), timestamps[elm]))
         timestamps[el] = ts
         return True
 
-    def _symbolicCompletionTime(self, timestamps: Dict[str,TMPVector], a: str, n: int)->TMPVector:
+    def _symbolic_completion_time(self, timestamps: Dict[str,TMPVector], a: str, n: int)->TMPVector:
         '''Determine the symbolic completion time of firing n of actor a.'''
-        el = self._actorFiringLabel(a, n)
-        return self._symbolicTimeStampScale(self.executionTimeOfActor(a), timestamps[el])
+        el = self._actor_firing_label(a, n)
+        return self._symbolic_time_stamp_scale(self.execution_time_of_actor(a), timestamps[el])
 
-    def stateSpaceMatrices(self)->Tuple[TMPMatrix,Tuple[TMPMatrix,TMPMatrix,TMPMatrix,TMPMatrix]]:
+    def state_space_matrices(self)->Tuple[TMPMatrix,Tuple[TMPMatrix,TMPMatrix,TMPMatrix,TMPMatrix]]:
         '''
         Compute the trace matrix and the state-space, A, B, C, and D, matrices.
-        Returns a pair with 
+        Returns a pair with
         - the trace matrix (H) with a row for every actor firing in an iteration
         - a four-tuple with the state-space matrices, A, B, C and D.
         A SDFDeadlockException is raised if the graph deadlocks.
         '''
-        self._initializeSymbolicTimeStamps() 
-        timestamps: Dict[str,TMPVector] = dict()
+        self._initialize_symbolic_time_stamps()
+        timestamps: Dict[str,TMPVector] = {}
         # set the symbolic time stamps for all input tokens
         for i in self._inputs:
             for n in range(self.repetitions(i)):
-                el = self._inputTokenLabel(i, n)
-                timestamps[el] = self.symbolicTimeStamp(el)
+                el = self._input_token_label(i, n)
+                timestamps[el] = self.symbolic_time_stamp(el)
         # set the symbolic time stamps for all initial tokens on channels
         for ch in self._channels:
-            for n in range(self.numberOfInitialTokensOfChannel(ch)):
-                el = self._initialTokenLabel(ch, n)
-                timestamps[el] = self.symbolicTimeStamp(el)
+            for n in range(self.number_of_initial_tokens_of_channel(ch)):
+                el = self._initial_token_label(ch, n)
+                timestamps[el] = self.symbolic_time_stamp(el)
         # keep track of the number of firings of actors, inputs and outputs, initialize to 0
-        actorFirings: Dict[str,int] = dict()
-        for a in self._actorsAndIO:
-            actorFirings[a] = 0
-        
-        oldLen = len(timestamps)
+        actor_firings: Dict[str,int] = {}
+        for a in self._actors_and_io:
+            actor_firings[a] = 0
+
+        old_len = len(timestamps)
         # while we need to compute more symbolic time stamps to complete an iteration...
-        while len(timestamps)<self.repetitionVectorSum()+self.numberOfInitialTokens():
+        while len(timestamps)<self.repetition_vector_sum()+self.number_of_initial_tokens():
             # try to fire the actors, inputs and outputs one by one
-            for a in self._actorsAndIO:
+            for a in self._actors_and_io:
                 # only if it still needs firings to complete the iteration
-                if actorFirings[a] < self.repetitions(a):
+                if actor_firings[a] < self.repetitions(a):
                     # determine the label
-                    el = self._actorFiringLabel(a, actorFirings[a])
+                    el = self._actor_firing_label(a, actor_firings[a])
                     # and if we don't yet have it
                     if not el in timestamps:
                         # try to execute the symbolic firing
-                        if self._symbolicFiring(a, actorFirings[a], timestamps):
+                        if self._symbolic_firing(a, actor_firings[a], timestamps):
                             # it it succeeded, count the firing
-                            actorFirings[a] += 1
+                            actor_firings[a] += 1
             # check if we have made any progress
-            if len(timestamps) == oldLen:
+            if len(timestamps) == old_len:
                 # if not, there is a deadlock
                 raise SDFDeadlockException("The graph deadlocks.")
-            oldLen = len(timestamps)
-        
+            old_len = len(timestamps)
+
         # determine the combined state-space matrix [A B; C D]
-        A: TMPMatrix = []
+        matrix_a: TMPMatrix = []
         # first the rows corresponding to the new initial tokens
         for ch in self._channels:
-            nTokens = self.numberOfInitialTokensOfChannel(ch)
-            cr = self.consumptionRate(ch)
-            cons = cr*self.repetitions(self._chanConsumer[ch])
-            for n in range(nTokens):
-                if n < nTokens - cons:
+            n_tokens = self.number_of_initial_tokens_of_channel(ch)
+            cr = self.consumption_rate(ch)
+            cons = cr*self.repetitions(self._chan_consumer[ch])
+            for n in range(n_tokens):
+                if n < n_tokens - cons:
                     # a shifting token
-                    A.append(timestamps[self._initialTokenLabel(ch, n+cons)])
+                    matrix_a.append(timestamps[self._initial_token_label(ch, n+cons)])
                 else:
-                    inA = self._chanProducer[ch]
-                    m = (n + cons - nTokens ) // self.productionRate(ch)
-                    A.append(self._symbolicCompletionTime(timestamps, inA, m))
+                    in_a = self._chan_producer[ch]
+                    m = (n + cons - n_tokens ) // self.production_rate(ch)
+                    matrix_a.append(self._symbolic_completion_time(timestamps, in_a, m))
 
         # then the rows corresponding to the outputs
         for o in self._outputs:
             for n in range(self.repetitions(o)):
-                el = self._outputTokenLabel(o, n)
-                A.append(timestamps[el])
+                el = self._output_token_label(o, n)
+                matrix_a.append(timestamps[el])
 
         # determine the trace matrix H
-        H = []
-        for a in self._actorsAndIO:
+        matrix_h = []
+        for a in self._actors_and_io:
             # if a is a proper actor (not an input or output)
             if not (a in self._inputs or a in self._outputs):
                 for n in range(self.repetitions(a)):
-                    el = self._actorFiringLabel(a, n)
+                    el = self._actor_firing_label(a, n)
                     # add the symbolic starting time
-                    H.append(timestamps[el])
+                    matrix_h.append(timestamps[el])
 
-        return H, _splitMatrix(A, self.numberOfInitialTokens())
+        return matrix_h, _split_matrix(matrix_a, self.number_of_initial_tokens())
 
-    def repetitionVector(self) -> Union[Dict[str,int],List[str]]:
-        '''Determine the repetition vector of the graph. Returns None if the graph is inconsistent.'''
-        def _findIntegerRates(comp: List[str], rates: Dict[str,Fraction]):
+    def repetition_vector(self) -> Union[Dict[str,int],List[str]]:
+        '''Determine the repetition vector of the graph. Returns None if the graph is
+        inconsistent.'''
+        def _find_integer_rates(comp: List[str], rates: Dict[str,Fraction]):
             '''Make the rates of all actors in set comp least integer values.'''
-            # determine smallest scaling factor that makes fractional rates integer in the set comp of actors
+            # determine smallest scaling factor that makes fractional rates integer
+            # in the set comp of actors
             factor = Fraction(1,1)
             for a in comp:
                 # rate of a, scaled by current factor
-                scRate = factor*rates[a]
+                sc_rate = factor*rates[a]
                 # if it is still fractional, increase factor by denominator
-                if scRate.denominator > 1:
-                    factor = factor * scRate.denominator
+                if sc_rate.denominator > 1:
+                    factor = factor * sc_rate.denominator
             # now scale all rates by factor to make them integer
             for a in comp:
                 rates[a] = rates[a] * factor
 
-        def _makeIntegerRates(rates: Dict[str,Fraction])->Dict[str,int]:
+        def _make_integer_rates(rates: Dict[str,Fraction])->Dict[str,int]:
             '''Convert integers represented as Fraction type to integer type.'''
-            res = dict()
+            res = {}
             for a in rates:
                 res[a] = rates[a].numerator
             return res
 
-        def _getAncestorCycle(tree: Dict[str,str], node1: str, node2: str):
+        def _get_ancestor_cycle(tree: Dict[str,str], node1: str, node2: str):
 
-            def _findCommonAncestor(tree: Dict[str,str], node1: str, node2: str):
+            def _find_common_ancestor(tree: Dict[str,str], node1: str, node2: str):
 
-                def _isAncestor(tree: Dict[str,str], node1: str, node2: str):
+                def _is_ancestor(tree: Dict[str,str], node1: str, node2: str):
                     while node2 != node1 and node2 in tree:
                         node2 = tree[node2]
                     return node1 == node2
 
-                while not _isAncestor(tree, node1, node2):
+                while not _is_ancestor(tree, node1, node2):
                     node1 = tree[node1]
-                
+
                 return node1
 
-            def _ancestorPath(tree: Dict[str,str], node: str, parent: str):
+            def _ancestor_path(tree: Dict[str,str], node: str, parent: str):
                 res = []
                 while node != parent:
                     res.append(node)
                     node = tree[node]
                 res.append(parent)
-                return res                
+                return res
 
             # start from node 1 upward and check if node is ancestor of node2, nc first one
-            nc = _findCommonAncestor(tree, node1, node2)
-            res = _ancestorPath(tree, node1, nc)
+            nc = _find_common_ancestor(tree, node1, node2)
+            res = _ancestor_path(tree, node1, nc)
             res.reverse()
-            res.extend(_ancestorPath(tree, node2, nc)[:-1])
+            res.extend(_ancestor_path(tree, node2, nc)[:-1])
             return res
 
-        actors: List[str] = sorted(set(self._actorsAndIO))
-        
+        actors: List[str] = sorted(set(self._actors_and_io))
+
         # if there are no actors return trivial solution
         if len(actors)==0:
-            return dict()
-        
+            return {}
+
         # keep computed fractional rates
-        rates: Dict[str,Fraction] = dict()
-        
-        # while there are more actors to explore 
+        rates: Dict[str,Fraction] = {}
+
+        # while there are more actors to explore
         # this loop is used once for every unconnected part of the graph
         while len(actors)>0:
             # next actor a
             a = next(iter(actors))
-            
+
             # init to default rate
             rates[a] = Fraction(1,1)
-            
-            tree:Dict[str,str] = dict()
+
+            tree:Dict[str,str] = {}
             # actors to be processed, initialize with a
             proc: List[str] = list([a])
             # computed, initialize with a
             comp: List[str] = list([a])
-            
+
             while len(proc)>0:
                 # get next actor
                 b = next(iter(proc))
                 proc.remove(b)
                 actors.remove(b)
-                
+
                 # does b have outgoing channels?
-                if b in self._outChannels:
-                    for c in self._outChannels[b]:
-                        pr = self.productionRate(c)
-                        co = self.consumptionRate(c)
-                        ca = self._chanConsumer[c]
+                if b in self._out_channels:
+                    for c in self._out_channels[b]:
+                        pr = self.production_rate(c)
+                        co = self.consumption_rate(c)
+                        ca = self._chan_consumer[c]
                         # determine the fractional rate of the connected actor ca
                         rate = rates[b] * pr / co
                         # if ca already has a rate
                         if ca in rates:
                             if not rate == rates[ca]:
                                 # found inconsistent cycle
-                                return _getAncestorCycle(tree, ca, b)
+                                return _get_ancestor_cycle(tree, ca, b)
                         else:
                             # set b as parent of ca in the tree
                             tree[ca] = b
@@ -618,47 +648,47 @@ class DataflowGraph(object):
                             proc.append(ca)
                             comp.append(ca)
                 # does b have incoming channels?
-                if b in self._inChannels:
-                    for c in self._inChannels[b]:
-                        pr = self.productionRate(c)
-                        co = self.consumptionRate(c)
-                        ca = self._chanProducer[c]
+                if b in self._in_channels:
+                    for c in self._in_channels[b]:
+                        pr = self.production_rate(c)
+                        co = self.consumption_rate(c)
+                        ca = self._chan_producer[c]
                         rate = rates[b] * co / pr
                         if ca in rates:
                             if not rate == rates[ca]:
                                 # found an inconsistent cycle
-                                return _getAncestorCycle(tree, ca, b)
+                                return _get_ancestor_cycle(tree, ca, b)
                         else:
                             tree[ca] = b
                             rates[ca] = rate
                             proc.append(ca)
                             comp.append(ca)
-            _findIntegerRates(comp, rates)
+            _find_integer_rates(comp, rates)
         # convert fractional rates to integer rates
-        return _makeIntegerRates(rates) 
+        return _make_integer_rates(rates)
 
     def throughput(self)->TThroughputValue:
         '''
         Compute throughput of the graph
         '''
         # compute state-space representation
-        _, ssr = self.stateSpaceMatrices()
+        _, ssr = self.state_space_matrices()
         # compute throughput from the state matrix
         return mpThroughput(ssr[0])
 
-    def throughputOutput(self, output: str)->TThroughputValue:
+    def throughput_output(self, output: str)->TThroughputValue:
         '''
         Compute throughput of the graph
         '''
         # compute state-space representation
-        _, ssr = self.stateSpaceMatrices()
+        _, ssr = self.state_space_matrices()
         # compute throughput from the state matrix
         tp: List[TThroughputValue] = mpGeneralizedThroughput(ssr[0])
-        i = self.indexOfOutput(output)
+        i = self.index_of_output(output)
         # find the minimum in tp for all non-minus-infinity elements in row number i of the C matrix
         min_val: TThroughputValue = "infinite"
-        Cr = ssr[2][i]
-        for k, crv in enumerate(Cr):
+        c_r = ssr[2][i]
+        for k, crv in enumerate(c_r):
             if not crv == MP_MINUSINFINITY:
                 t: TThroughputValue = tp[k]
                 if min_val=="infinite":
@@ -674,264 +704,297 @@ class DataflowGraph(object):
         Check if the dataflow graph deadlocks
         '''
         try:
-            self.stateSpaceMatrices()
+            self.state_space_matrices()
         except SDFDeadlockException:
             return True
         return False
 
     def latency(self, x0: Optional[TMPVector], mu: Fraction)->TMPMatrix:
-        '''Determine the mu-periodic latency of the dataflow graph. If x0 is provided, it is considered the initial state of the initial tokens. If it is not provided, a zero vector is assumed. The latency matrix is returned. I.e., the matrix: Lambda = (C ( A-mu )^{*} ( x0 otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D, where A, B, C, D are the sate-space matrices of the dataflow graph.
+        '''Determine the mu-periodic latency of the dataflow graph. If x0 is provided, it is
+        considered the initial state of the initial tokens. If it is not provided, a zero vector is
+        assumed. The latency matrix is returned. I.e., the matrix: Lambda = (C ( A-mu )^{*} ( x0
+        otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D, where A, B, C, D are the sate-space
+        matrices of the dataflow graph.
         '''
 
-        _, M = self.stateSpaceMatrices()
-        (A, B, C, D) = (M[0], M[1], M[2], M[3])
+        _, matrix_m = self.state_space_matrices()
+        (matrix_a, matrix_b, matrix_c, matrix_d) = \
+            (matrix_m[0], matrix_m[1], matrix_m[2], matrix_m[3])
 
         if x0 is None:
-            x0 = mpZeroVector(self.numberOfInitialTokens())
+            x0 = mpZeroVector(self.number_of_initial_tokens())
 
         # Compute the following latency matrix:
-        # Lambda = (C ( A-mu )^{*} ( x0 \otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D 
+        # Lambda = (C ( A-mu )^{*} ( x0 \otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D
 
-        Amu= mpMatrixMinusScalar(A, mu)
+        matrix_a_mu= mpMatrixMinusScalar(matrix_a, mu)
         try:
-            scAmu = mpStarClosure(Amu)
+            sc_a_mu = mpStarClosure(matrix_a_mu)
         except PositiveCycleException:
-            raise SDFException('The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.')
-        CscAmu = mpMultiplyMatrices(C, scAmu)
+            raise SDFException('The request period mu is smaller than smallest period the system" \
+                               " can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+        c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
         x00 = mpMultiplyMatrices(mpTransposeMatrix([x0]), [mpZeroVector(len(self._inputs))])
-        Bmmu= mpMatrixMinusScalar(B, mu)
-        x00Bmmu = mpMaxMatrices(x00, Bmmu)
-        CscAmux00Bmmu = mpMultiplyMatrices(CscAmu, x00Bmmu)
-        return mpMaxMatrices(CscAmux00Bmmu, D)
+        b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
+        x_00_b_m_mu = mpMaxMatrices(x00, b_m_mu)
+        c_sc_a_mu_x_00_b_m_mu = mpMultiplyMatrices(c_sc_a_mu, x_00_b_m_mu)
+        return mpMaxMatrices(c_sc_a_mu_x_00_b_m_mu, matrix_d)
 
-    def generalizedLatency(self, mu: Fraction):
-        '''Determine the mu-periodic latency of the dataflow graph in the form of separate IO-Latency and initial state latency matrices. I.e., the matrix: 
+    def generalized_latency(self, mu: Fraction):
+        '''Determine the mu-periodic latency of the dataflow graph in the form of separate
+        IO-Latency and initial state latency matrices. I.e., the matrix:
         Lambda_IO = (C ( A-mu )^{*} (B - mu)  oplus D,
-        Lambda_x = (C ( A-mu )^{*}, where A, B, C, D are the sate-space matrices of the dataflow graph.
+        Lambda_x = (C ( A-mu )^{*}, where A, B, C, D are the sate-space matrices of the
+        dataflow graph.
         '''
 
-        _, M = self.stateSpaceMatrices()
-        (A, B, C, D) = (M[0], M[1], M[2], M[3])
+        _, matrix_m = self.state_space_matrices()
+        (matrix_a, matrix_b, matrix_c, matrix_d) = \
+            (matrix_m[0], matrix_m[1], matrix_m[2], matrix_m[3])
 
-        # Lambda_IO =  = (C ( A-mu )^{*} (B - mu)  oplus D 
-        # Lambda_x =   (C ( A-mu )^{*} 
+        # Lambda_IO =  = (C ( A-mu )^{*} (B - mu)  oplus D
+        # Lambda_x =   (C ( A-mu )^{*}
 
-        Amu= mpMatrixMinusScalar(A, mu)
+        a_mu= mpMatrixMinusScalar(matrix_a, mu)
         try:
-            scAmu = mpStarClosure(Amu)
+            sc_a_mu = mpStarClosure(a_mu)
         except PositiveCycleException:
-            raise SDFException('The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.')
-        CscAmu = mpMultiplyMatrices(C, scAmu)
+            raise SDFException('The request period mu is smaller than smallest period the system "\
+                               "can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+        c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
 
-        Bmmu= mpMatrixMinusScalar(B, mu)
-        CscAmuBmmu = mpMultiplyMatrices(CscAmu, Bmmu)
-        return CscAmu, mpMaxMatrices(CscAmuBmmu, D)
+        b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
+        c_sc_a_mu_b_m_mu = mpMultiplyMatrices(c_sc_a_mu, b_m_mu)
+        return c_sc_a_mu, mpMaxMatrices(c_sc_a_mu_b_m_mu, matrix_d)
 
-    def isSingleRate(self)->bool:
+    def is_single_rate(self)->bool:
         '''Check if the graph is single-rate.'''
         for ch in self._channels:
-            if ch in self._channelSpecs:
-                if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                    if self._channelSpecs[ch][PROD_RATE_SPEC_KEY] > 1:
+            if ch in self._channel_specs:
+                if PROD_RATE_SPEC_KEY in self._channel_specs[ch]:
+                    if self._channel_specs[ch][PROD_RATE_SPEC_KEY] > 1:
                         return False
-                if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                    if self._channelSpecs[ch][CONS_RATE_SPEC_KEY] > 1:
+                if CONS_RATE_SPEC_KEY in self._channel_specs[ch]:
+                    if self._channel_specs[ch][CONS_RATE_SPEC_KEY] > 1:
                         return False
         return True
-    
-    def convertToSingleRate(self):
+
+    def convert_to_single_rate(self):
         '''Convert the graph to a single rate graph'''
 
-        def _actorName(a:str, n:int, repVec: Dict[str,int])->str:
-            if repVec[a] == 1:
+        def _actor_name(a:str, n:int, rep_vec: Dict[str,int])->str:
+            if rep_vec[a] == 1:
                 return a
-            return '{}{}'.format(a, n+1)
+            return f'{a}{n+1}'
 
-        def _addChannel(res: DataflowGraph, pa: str, ca: str, it: int):
+        def _add_channel(res: DataflowGraph, pa: str, ca: str, it: int):
             # add channel only if it does not yet exist
             for ch in res._channels:
-                if res._chanProducer[ch] == pa and res._chanConsumer[ch] == ca and res.numberOfInitialTokensOfChannel(ch) == it:
+                if res._chan_producer[ch] == pa and res._chan_consumer[ch] == ca and res.number_of_initial_tokens_of_channel(ch) == it:
                     return
-            specs = dict()
+            specs = {}
             if it > 0:
                 specs[INITIAL_TOKENS_SPEC_KEY] = it
-            res.addChannel(pa, ca, specs)
+            res.add_channel(pa, ca, specs)
 
         # if it already is single rate, return a copy of the graph itself
-        if self.isSingleRate():
+        if self.is_single_rate():
             return self.copy()
-        
-        repVec = self.repetitionVector()
-        if isinstance(repVec, list):
+
+        rep_vec = self.repetition_vector()
+        if isinstance(rep_vec, list):
             raise SDFInconsistentException("Graph is inconsistent")
-        
+
         res = DataflowGraph()
 
-        for a in self.actorsWithoutInputsOutputs():
-            if repVec[a] == 1:
-                res.addActor(a, self._actorSpecs[a])
+        for a in self.actors_without_inputs_outputs():
+            if rep_vec[a] == 1:
+                res.add_actor(a, self._actor_specs[a])
             else:
-                for n in range(repVec[a]):
-                    res.addActor(_actorName(a,n,repVec), self._actorSpecs[a])
+                for n in range(rep_vec[a]):
+                    res.add_actor(_actor_name(a,n,rep_vec), self._actor_specs[a])
 
         for ch in self._channels:
-            it = self.numberOfInitialTokensOfChannel(ch)
-            pr = self._chanProducer[ch]
-            co = self._chanConsumer[ch]
-            pRate = self.productionRate(ch)
-            cRate = self.consumptionRate(ch)
-            for n in range(repVec[pr] * pRate):
+            it = self.number_of_initial_tokens_of_channel(ch)
+            pr = self._chan_producer[ch]
+            co = self._chan_consumer[ch]
+            p_rate = self.production_rate(ch)
+            c_rate = self.consumption_rate(ch)
+            for n in range(rep_vec[pr] * p_rate):
                 # token n is produced by actor firing n // pRate
-                pa = _actorName(pr, n//pRate, repVec)
+                pa = _actor_name(pr, n//p_rate, rep_vec)
                 # token is consumed by actor firing (n+it) // cRate
-                ca = _actorName(co, ((n+it) // cRate) % repVec[co], repVec)
+                ca = _actor_name(co, ((n+it) // c_rate) % rep_vec[co], rep_vec)
                 # number of it ((n+it) // cRate) // repVec[co]
-                nit = ((n+it) // cRate) // repVec[co]
-                _addChannel(res, pa, ca, nit)
-       
+                nit = ((n+it) // c_rate) // rep_vec[co]
+                _add_channel(res, pa, ca, nit)
+
         for i in self._inputs:
-            for n in range(repVec[i]):
-                res.addInputPort(_actorName(i, n, repVec))
+            for n in range(rep_vec[i]):
+                res.add_input_port(_actor_name(i, n, rep_vec))
 
         for o in self._outputs:
-            for n in range(repVec[o]):
-                res.addOutputPort(_actorName(o, n, repVec))
+            for n in range(rep_vec[o]):
+                res.add_output_port(_actor_name(o, n, rep_vec))
 
-        for i in self._inputSignals:
+        for i, s_i in self._input_signals.items():
             if not i in self._inputs:
-                res.addInputSignal(i, self._inputSignals[i])
+                res.add_input_signal(i, s_i)
             else:
-                seqs = mpSplitSequence(self._inputSignals[i], repVec[i])
-                for n in range(repVec[i]):
-                    res.addInputSignal(_actorName(i, n, repVec), seqs[n])
+                seqs = mpSplitSequence(s_i, rep_vec[i])
+                for n in range(rep_vec[i]):
+                    res.add_input_signal(_actor_name(i, n, rep_vec), seqs[n])
 
         return res
 
-    def determineTrace(self, ni: int, x0: Optional[TMPVector]=None, inputOverride: Optional[Dict[str,Union[TTimeStampList,str]]]=None) -> Tuple[List[TTimeStampList],List[TTimeStampList],List[TTimeStampList],List[Fraction]]:
+    def determine_trace(self, ni: int, x0: Optional[TMPVector]=None, \
+                        input_override: Optional[Dict[str,Union[TTimeStampList,str]]]=None) -> \
+                            Tuple[List[TTimeStampList],List[TTimeStampList],List[TTimeStampList], \
+                            List[Fraction]]:
         '''Determine execution trace for the dataflow graph.
         The trace is ni iterations long.
-        x0 is an optional initial state for the execution. If it is not provided, initial tokens are assumed to be available at time 0.
-        inputOverride, is optionally used to provide input sequences to replace the ones in the model. 
-        Inputs that are neither specified in the model, nor in the override, are assumed to provide all input tokens with times tamps -inf.
+        x0 is an optional initial state for the execution. If it is not provided, initial tokens
+        are assumed to be available at time 0.
+        inputOverride, is optionally used to provide input sequences to replace the ones in the
+        model.
+        Inputs that are neither specified in the model, nor in the override, are assumed to provide
+        all input tokens with times tamps -inf.
         Returns a tuple with the following elements
         input traces, the output traces, all firing start times, all firing durations.
         '''
 
         # determine the state-space model an the trace matrix
-        H, SSM = self.stateSpaceMatrices()
+        matrix_h, state_space_matrices = self.state_space_matrices()
 
         # compute vector trace from state-space matrices
-        Matrices = {'A': MaxPlusMatrixModel.fromMatrix(SSM[0]), 'B': MaxPlusMatrixModel.fromMatrix(SSM[1]), 'C': MaxPlusMatrixModel.fromMatrix(SSM[2]), 'D': MaxPlusMatrixModel.fromMatrix(SSM[3]) }
+        matrices = {'A': MaxPlusMatrixModel.fromMatrix(state_space_matrices[0]), \
+                    'B': MaxPlusMatrixModel.fromMatrix(state_space_matrices[1]), \
+                    'C': MaxPlusMatrixModel.fromMatrix(state_space_matrices[2]), \
+                    'D': MaxPlusMatrixModel.fromMatrix(state_space_matrices[3]) }
 
-        stateVectorSize = self.numberOfInitialTokens()
-        repetition_vector: Dict[str,int] = self.repetitionVector() # type: ignore
-        inputVectorSize = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
+        state_vector_size = self.number_of_initial_tokens()
+        repetition_vector: Dict[str,int] = self.repetition_vector() # type: ignore
+        input_vector_size = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
 
         if x0 is None:
-            x0 = mpZeroVector(Matrices['A'].numberOfColumns())
+            x0 = mpZeroVector(matrices['A'].numberOfColumns())
 
-        inpSig = self.inputSignals()
-        inputs: List[TTimeStampList] = list()
+        inp_sig = self.input_signals()
+        inputs: List[TTimeStampList] = []
         for s in self.inputs():
-            if inputOverride and s in inputOverride:
+            if input_override and s in input_override:
                 s: str
-                if isinstance(inputOverride[s], list):
-                    ios_l: TTimeStampList = inputOverride[s]  # type: ignore
+                if isinstance(input_override[s], list):
+                    ios_l: TTimeStampList = input_override[s]  # type: ignore
                     # the input is given as an list of time stamps.
                     # split it according to the inputs within one graph iteration
                     inputs.extend(mpSplitSequence(ios_l, self.repetitions(s)))
                 else:
                     # the input is given as a name referring to an input sequence specified
                     #  in the model
-                    ios_s: str = inputOverride[s]  # type: ignore
-                    if inputOverride[s] not in inpSig:
-                        raise SDFException(f"Unknown event sequence: {inputOverride[s]}.")
-                    inputs.extend(mpSplitSequence(inpSig[ios_s], self.repetitions(s)))
+                    ios_s: str = input_override[s]  # type: ignore
+                    if input_override[s] not in inp_sig:
+                        raise SDFException(f"Unknown event sequence: {input_override[s]}.")
+                    inputs.extend(mpSplitSequence(inp_sig[ios_s], self.repetitions(s)))
             else:
                 # the input is not specified in override
-                if s in inpSig:
+                if s in inp_sig:
                     # it is defined in the model, use it
-                    inputs.extend(mpSplitSequence(inpSig[s], self.repetitions(s)))
+                    inputs.extend(mpSplitSequence(inp_sig[s], self.repetitions(s)))
                 else:
                     # it is not specified at all, use an event sequence with minus infinity
                     inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
 
         # Compute the vector trace
-        vt = MaxPlusMatrixModel.vectorTrace(Matrices, x0, ni, inputs)
+        vt = MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, inputs)
 
-        inputTraces = [v[0:inputVectorSize] for v in vt]
-        outputTraces = [v[inputVectorSize+stateVectorSize:] for v in vt]
+        input_traces = [v[0:input_vector_size] for v in vt]
+        output_traces = [v[input_vector_size+state_vector_size:] for v in vt]
 
         # reorder the vectors so that the state elements come first, followed by inputs
-        ssvt = [v[inputVectorSize:stateVectorSize+inputVectorSize]+v[0:inputVectorSize] for v in vt]
+        ssvt = [v[input_vector_size:state_vector_size+input_vector_size]+ \
+                v[0:input_vector_size] for v in vt]
         # compute the firing starting times using the trace matrix H
-        firingStarts = [mpMultiplyMatrixVector(H, s)  for s in ssvt]
+        firing_starts = [mpMultiplyMatrixVector(matrix_h, s)  for s in ssvt]
         # collect the firing durations
-        firingDurations= [self.executionTimeOfActor(a) for a in self.actorsWithoutInputsOutputs()]
+        firing_durations= [self.execution_time_of_actor(a) for a in \
+                           self.actors_without_inputs_outputs()]
 
-        return inputTraces, outputTraces, firingStarts, firingDurations
+        return input_traces, output_traces, firing_starts, firing_durations
 
-    def determineTraceZeroBased(self, ni:int, x0: Optional[TMPVector]=None) -> Tuple[List[str],List[str],List[TTimeStampList],List[str],List[TTimeStampList],List[TTimeStampList],List[Fraction]]:
+    def determine_trace_zero_based(self, ni:int, x0: Optional[TMPVector]=None) -> \
+        Tuple[List[str],List[str],List[TTimeStampList],List[str],List[TTimeStampList],\
+              List[TTimeStampList],List[Fraction]]:
         '''Determine a trace with ni iterations, assuming that actors cannot fire before time 0.
         Optional x0 can be used to specify an initial state for the graph.
         Returns a tuple with the following elements
-        actors, inputs, input traces, outputs, the output traces, all firing start times, all firing durations.
+        actors, inputs, input traces, outputs, the output traces, all firing start times, all
+        firing durations.
         '''
-        
+
         # determine trace assuming actors do not start before time 0
         # clone the graph to modify it.
-        G = self.copy()
+        matrix_g = self.copy()
 
         # create artificial inputs to actors to constraint their firings.
-        for a in G.actorsWithoutInputsOutputs():
-            inpName = '_zb_{}'.format(a)
-            G.addInputPort(inpName)
-            G.addChannel(inpName, a, dict())
-            # set the input sequence to the new channel with tokens with time stamp 0 to prevent it from firing earlier.
-            G.addInputSignal(inpName, [Fraction(0)] * ni)
+        for a in matrix_g.actors_without_inputs_outputs():
+            inp_name = f'_zb_{a}'
+            matrix_g.add_input_port(inp_name)
+            matrix_g.add_channel(inp_name, a, {})
+            # set the input sequence to the new channel with tokens with time stamp 0 to
+            # prevent it from firing earlier.
+            matrix_g.add_input_signal(inp_name, [Fraction(0)] * ni)
 
-        inputTraces, outputTraces, firingStarts, firingDurations = G.determineTrace(ni, x0)
+        input_traces, output_traces, firing_starts, firing_durations = \
+            matrix_g.determine_trace(ni, x0)
 
         # suppress the artificial inputs
-        num = len(G.actorsWithoutInputsOutputs())
-        reduceRealInputs = lambda l: l[:-num]
-        realInputTraces = list(map(reduceRealInputs, inputTraces))
+        num = len(matrix_g.actors_without_inputs_outputs())
+        def reduce_real_inputs(l):
+            return l[:-num]
+        real_input_traces = list(map(reduce_real_inputs, input_traces))
 
-        return G.actorsWithoutInputsOutputs(), (G.inputs())[:-num], realInputTraces, G.outputs(), outputTraces, firingStarts, firingDurations
+        return matrix_g.actors_without_inputs_outputs(), (matrix_g.inputs())[:-num],\
+             real_input_traces, matrix_g.outputs(), output_traces, firing_starts, firing_durations
 
-    def asDSL(self, name: str)->str:
-        '''Convert the model to a string representation in the domain specific language using the provided name.'''
+    def as_dsl(self, name: str)->str:
+        '''Convert the model to a string representation in the domain specific language using
+        the provided name.'''
 
-        def _actorSpecs(a: str, actorsWithSpec: Set[str])->str:
-            # if the specs of actor a have already been added to some instance of the actor, return an empty string
-            if a in actorsWithSpec:
+        def _actor_specs(a: str, actors_with_spec: Set[str])->str:
+            # if the specs of actor a have already been added to some instance of the actor,
+            # return an empty string
+            if a in actors_with_spec:
                 return ''
             # mark that the specs have been written
-            actorsWithSpec.add(a)
+            actors_with_spec.add(a)
             # if a has no specs
-            if not a in self._actorSpecs:
+            if not a in self._actor_specs:
                 return ''
             # if a has specs, but no execution time spec
-            if not EXECUTION_TIME_SPEC_KEY in self._actorSpecs[a]:
+            if not EXECUTION_TIME_SPEC_KEY in self._actor_specs[a]:
                 return ''
             # otherwise return the execution time spec for the DSL
-            return '[{}]'.format(self._actorSpecs[a][EXECUTION_TIME_SPEC_KEY])
+            return f'[{self._actor_specs[a][EXECUTION_TIME_SPEC_KEY]}]'
 
-        def _channelSpecs(ch: str)->str:
+        def _channel_specs(ch: str)->str:
             '''Generate the channel spec for the channel.'''
-            specs = list()
-            if ch in self._channelSpecs:
-                if CONS_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                    specs.append(' consumption rate: {} '.format(self._channelSpecs[ch][CONS_RATE_SPEC_KEY]))
-                if PROD_RATE_SPEC_KEY in self._channelSpecs[ch]:
-                    specs.append(' production rate: {} '.format(self._channelSpecs[ch][PROD_RATE_SPEC_KEY]))
-                if INITIAL_TOKENS_SPEC_KEY in self._channelSpecs[ch]:
-                    specs.append(' initial tokens: {} '.format(self._channelSpecs[ch][INITIAL_TOKENS_SPEC_KEY]))                
+            specs = []
+            if ch in self._channel_specs:
+                if CONS_RATE_SPEC_KEY in self._channel_specs[ch]:
+                    specs.append(' consumption rate: ' \
+                                 f'{self._channel_specs[ch][CONS_RATE_SPEC_KEY]} ')
+                if PROD_RATE_SPEC_KEY in self._channel_specs[ch]:
+                    specs.append(' production rate: ' \
+                                 f'{self._channel_specs[ch][PROD_RATE_SPEC_KEY]} ')
+                if INITIAL_TOKENS_SPEC_KEY in self._channel_specs[ch]:
+                    specs.append(' initial tokens: ' \
+                                 f'{self._channel_specs[ch][INITIAL_TOKENS_SPEC_KEY]} ')
             return ';'.join(specs)
 
         # create string writer for the output
         output = StringIO()
-        output.write("dataflow graph {} {{\n".format(name))
+        output.write(f"dataflow graph {name} {{\n")
 
         if len(self._inputs)>0:
             output.write('\tinputs ')
@@ -943,44 +1006,45 @@ class DataflowGraph(object):
             output.write(', '.join(self._outputs))
             output.write('\n')
 
-        actorsWithSpec = set()
+        actors_with_spec = set()
         for ch in self._channels:
-            pr = self._chanProducer[ch]
-            co = self._chanConsumer[ch]
-            output.write('\t{}{} '.format(pr, _actorSpecs(pr, actorsWithSpec)))
-            output.write(' ----{}----> '.format(_channelSpecs(ch)))
-            output.write('{}{}\n'.format(co,  _actorSpecs(co, actorsWithSpec)))
+            pr = self._chan_producer[ch]
+            co = self._chan_consumer[ch]
+            output.write(f'\t{pr}{_actor_specs(pr, actors_with_spec)} ')
+            output.write(f' ----{_channel_specs(ch)}----> ')
+            output.write(f'{co}{_actor_specs(co, actors_with_spec)}\n')
         output.write("}\n")
 
-        if len(self._inputSignals) > 0:
+        if len(self._input_signals) > 0:
             output.write('\ninput signals\n\n')
-            for inpSig in self._inputSignals:
-                inputSignalRatioList = "["+", ".join(["{}".format(i) for i in self._inputSignals[inpSig]])+"]"
-                output.write('{} = {}\n'.format(inpSig, inputSignalRatioList))
+            for inp, inp_sig in self._input_signals.items():
+                input_signal_ratio_list = "["+", ".join([f"{i}" for i in inp_sig])+"]"
+                output.write(f'{inp} = {input_signal_ratio_list}\n')
 
         result = output.getvalue()
         output.close()
         return result
 
     @staticmethod
-    def fromDSL(dslString)->Tuple[str,'DataflowGraph']:
+    def from_dsl(dsl_string)->Tuple[str,'DataflowGraph']:
         '''
         Parse the model provides as a string.
-        Returns if successful a pair with the name of the model and the constructed instance of `DataflowGraph`
+        Returns if successful a pair with the name of the model and the constructed instance
+        of `DataflowGraph`
         '''
 
-        factory = dict()
-        factory['Init'] = lambda : DataflowGraph()
+        factory = {}
+        factory['Init'] = DataflowGraph
         factory['AddActor'] = lambda sdf, a, specs: sdf.addActor(a, specs)
         factory['AddChannel'] = lambda sdf, a1, a2, specs: sdf.addChannel(a1, a2, specs)
         factory['AddInputPort'] = lambda sdf, i: sdf.addInputPort(i)
         factory['AddOutputPort'] = lambda sdf, i: sdf.addOutputPort(i)
         factory['AddInputSignal'] = lambda sdf, n, s: sdf.addInputSignal(n, s)
-        result = parseSDFDSL(dslString, factory)
+        result = parseSDFDSL(dsl_string, factory)
         if result[0] is None:
-            exit(1)
+            sys.exit(1)
         return result  # type: ignore
 
 
     def __str__(self):
-        return "({}, {}, {}, {})".format(self._actorsAndIO, self._channels, self._inputs, self._outputs)
+        return f"({self._actors_and_io}, {self._channels}, {self._inputs}, {self._outputs})"

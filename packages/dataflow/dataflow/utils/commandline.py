@@ -54,6 +54,10 @@ from dataflow.utils.utils import (
     requirePeriod, requireSequenceOfMatricesAndPossiblyVectorSequence,
     validateEventSequences)
 
+class DataflowException(Exception):
+    """Exceptions related to this package"""
+    pass
+
 
 def main():
     """Main entry point."""
@@ -149,7 +153,7 @@ def process_dataflow_operation(args, dsl):
     """Process arguments and execute dataflow operations."""
 
     # parse the model
-    name, dataflow_graph = DataflowGraph.fromDSL(dsl)
+    name, dataflow_graph = DataflowGraph.from_dsl(dsl)
     dataflow_graph.validate()
 
     # execute the selected operation
@@ -161,7 +165,7 @@ def process_dataflow_operation(args, dsl):
 
     # statelabels
     if args.operation == OP_SDF_STATE_LABELS:
-        print(",".join(dataflow_graph.stateElementLabels()))
+        print(",".join(dataflow_graph.state_element_labels()))
 
 
     # throughput
@@ -172,15 +176,15 @@ def process_dataflow_operation(args, dsl):
     # throughput of an output
     if args.operation == OP_SDF_THROUGHPUT_OUTPUT:
         if args.output is None:
-            raise SDFException("Please specify output with -ou option.")
+            raise DataflowException("Please specify output with -ou option.")
         print(f'Throughput of output: {args.output}:')
-        print(dataflow_graph.throughputOutput(args.output))
+        print(dataflow_graph.throughput_output(args.output))
 
 
     # repetitionvector
     if args.operation == OP_SDF_REP_VECTOR:
         print('Repetition Vector:')
-        rates = dataflow_graph.repetitionVector()
+        rates = dataflow_graph.repetition_vector()
         if isinstance(rates, list):
             print('The graph is inconsistent.')
             print('There is an inconsistent cycle between the following ' \
@@ -198,40 +202,40 @@ def process_dataflow_operation(args, dsl):
 
     # converttosinglerate
     if args.operation == OP_SDF_CONVERT_TO_SINGLE_RATE:
-        dataflow_graph_sr = dataflow_graph.convertToSingleRate()
-        print(dataflow_graph_sr.asDSL(name+'_singlerate'))
+        dataflow_graph_sr = dataflow_graph.convert_to_single_rate()
+        print(dataflow_graph_sr.as_dsl(name+'_singlerate'))
 
     # latency
     if args.operation == OP_SDF_LATENCY:
         mu = requirePeriod(args)
-        x0 = parseInitialState(args, dataflow_graph.numberOfInitialTokens())
+        x0 = parseInitialState(args, dataflow_graph.number_of_initial_tokens())
         print('Inputs:')
-        print(dataflow_graph.listOfInputsStr())
+        print(dataflow_graph.list_of_inputs_str())
         print('Outputs:')
-        print(dataflow_graph.listOfOutputsStr())
+        print(dataflow_graph.list_of_outputs_str())
         prettyPrintMPMatrix(dataflow_graph.latency(x0, mu))
 
     # generalized latency
     if args.operation == OP_SDF_GENERALIZED_LATENCY:
         mu = requirePeriod(args)
         print('Inputs:')
-        print(dataflow_graph.listOfInputsStr())
+        print(dataflow_graph.list_of_inputs_str())
         ivs = len(dataflow_graph.inputs())
         print('Outputs:')
-        print(dataflow_graph.listOfOutputsStr())
+        print(dataflow_graph.list_of_outputs_str())
         ovs = len(dataflow_graph.outputs())
         print('State vector:')
-        print(dataflow_graph.listOfStateElementsStr())
-        svs = len(dataflow_graph.stateElementLabels())
-        lambda_x, lambda_io = dataflow_graph.generalizedLatency(mu)
+        print(dataflow_graph.list_of_state_elements_str())
+        svs = len(dataflow_graph.state_element_labels())
+        lambda_x, lambda_io = dataflow_graph.generalized_latency(mu)
         print('IO latency matrix:')
         prettyPrintMPMatrix(lambda_io, ovs, ivs)
         print('Initial state latency matrix:')
         prettyPrintMPMatrix(lambda_x, ovs, svs)
 
     if args.operation == OP_SDF_STATE_MATRIX:
-        _, st_sp_matrices = dataflow_graph.stateSpaceMatrices()
-        svl = dataflow_graph.listOfStateElementsStr()
+        _, st_sp_matrices = dataflow_graph.state_space_matrices()
+        svl = dataflow_graph.list_of_state_elements_str()
         print('State vector:')
         print(svl)
         print()
@@ -240,12 +244,12 @@ def process_dataflow_operation(args, dsl):
         print()
 
     if args.operation == OP_SDF_STATE_SPACE_REPRESENTATION:
-        _, st_sp_matrices = dataflow_graph.stateSpaceMatrices()
-        svl = dataflow_graph.listOfStateElementsStr()
-        svs = len(dataflow_graph.stateElementLabels())
-        ivl = dataflow_graph.listOfInputsStr()
+        _, st_sp_matrices = dataflow_graph.state_space_matrices()
+        svl = dataflow_graph.list_of_state_elements_str()
+        svs = len(dataflow_graph.state_element_labels())
+        ivl = dataflow_graph.list_of_inputs_str()
         ivs = len(dataflow_graph.inputs())
-        ovl = dataflow_graph.listOfOutputsStr()
+        ovl = dataflow_graph.list_of_outputs_str()
         ovs = len(dataflow_graph.outputs())
         print('Inputs:')
         print(ivl)
@@ -268,25 +272,25 @@ def process_dataflow_operation(args, dsl):
 
 
     if args.operation == OP_SDF_STATE_MATRIX_MODEL:
-        _, st_sp_matrices = dataflow_graph.stateSpaceMatrices()
+        _, st_sp_matrices = dataflow_graph.state_space_matrices()
         mpm = MaxPlusMatrixModel()
         mpm.setMatrix(st_sp_matrices[0])
         matrices = {}
         matrices['A'] = MaxPlusMatrixModel(st_sp_matrices[0])
-        matrices['A'].setLabels(dataflow_graph.stateElementLabels())
+        matrices['A'].setLabels(dataflow_graph.state_element_labels())
         print(mpm.asDSL(name+"_MPM", matrices))
 
     if args.operation == OP_SDF_STATE_SPACE_MATRICES_MODEL:
-        _, st_sp_matrices = dataflow_graph.stateSpaceMatrices()
+        _, st_sp_matrices = dataflow_graph.state_space_matrices()
         mpm = MaxPlusMatrixModel()
         mpm.setMatrix(st_sp_matrices[0])
         matrices = {}
         matrices['A'] = MaxPlusMatrixModel(st_sp_matrices[0])
-        matrices['A'].setLabels(dataflow_graph.stateElementLabels())
+        matrices['A'].setLabels(dataflow_graph.state_element_labels())
         matrices['B'] = MaxPlusMatrixModel(st_sp_matrices[1])
-        matrices['B'].setLabels(dataflow_graph.stateElementLabels() + dataflow_graph.inputs())
+        matrices['B'].setLabels(dataflow_graph.state_element_labels() + dataflow_graph.inputs())
         matrices['C'] = MaxPlusMatrixModel(st_sp_matrices[2])
-        matrices['C'].setLabels(dataflow_graph.outputs() + dataflow_graph.stateElementLabels())
+        matrices['C'].setLabels(dataflow_graph.outputs() + dataflow_graph.state_element_labels())
         matrices['D'] = MaxPlusMatrixModel(st_sp_matrices[3])
         matrices['D'].setLabels(dataflow_graph.outputs() + dataflow_graph.inputs())
         print(mpm.asDSL(name+"_MPM", matrices))
@@ -297,11 +301,11 @@ def process_dataflow_operation(args, dsl):
             _determine_trace(dataflow_graph, args, ni)
 
         # write gantt chart trace
-        rv = dataflow_graph.repetitionVector()
+        rv = dataflow_graph.repetition_vector()
         if isinstance(rv, list):
-            raise SDFException("The graph is inconsistent.")
+            raise DataflowException("The graph is inconsistent.")
         float_firing_durations = [float(d) for d in firing_durations]
-        printXmlGanttChart(dataflow_graph.actorsWithoutInputsOutputs(), rv, \
+        printXmlGanttChart(dataflow_graph.actors_without_inputs_outputs(), rv, \
                            fractionToFloatOptionalLList(firing_starts), float_firing_durations, \
                            dataflow_graph.inputs(), fractionToFloatOptionalLList(input_traces), \
                            dataflow_graph.outputs(), fractionToFloatOptionalLList(output_traces))
@@ -318,24 +322,24 @@ def process_dataflow_operation(args, dsl):
             return f'_zb_{a}'
 
         # determine the repetition vector for the extended graph
-        reps = dataflow_graph.repetitionVector()
+        reps = dataflow_graph.repetition_vector()
         if isinstance(reps, list):
-            raise SDFException("The graph is inconsistent")
+            raise DataflowException("The graph is inconsistent")
 
         # add the new inputs and channels
-        for a in dataflow_graph.actorsWithoutInputsOutputs():
-            dataflow_graph.addInputPort(inp_name(a))
-            dataflow_graph.addChannel(inp_name(a), a, {})
+        for a in dataflow_graph.actors_without_inputs_outputs():
+            dataflow_graph.add_input_port(inp_name(a))
+            dataflow_graph.add_channel(inp_name(a), a, {})
             # provide the new inputs with input event sequences of sufficient zeros
             # add signal of number of iterations times the repetition vector of the
             # actor consuming from the input
-            dataflow_graph.addInputSignal(inp_name(a), list([Fraction(0.0)] * ni * reps[a]))
+            dataflow_graph.add_input_signal(inp_name(a), list([Fraction(0.0)] * ni * reps[a]))
 
         input_traces, output_traces, firing_starts, firing_durations = \
             _determine_trace(dataflow_graph, args, ni)
 
         # suppress the artificial inputs
-        num = len(dataflow_graph.actorsWithoutInputsOutputs())
+        num = len(dataflow_graph.actors_without_inputs_outputs())
 
         def reduce_real_inputs(l):
             return l[:-num]
@@ -343,7 +347,7 @@ def process_dataflow_operation(args, dsl):
 
         # write gantt chart trace
         float_firing_durations = [float(d) for d in firing_durations]
-        printXmlGanttChart(dataflow_graph.actorsWithoutInputsOutputs(), reps, \
+        printXmlGanttChart(dataflow_graph.actors_without_inputs_outputs(), reps, \
                            fractionToFloatOptionalLList(firing_starts), fractionToFloatList \
                            (firing_durations), real_inputs, fractionToFloatOptionalLList \
                            (real_input_traces), dataflow_graph.outputs(), \
@@ -488,14 +492,14 @@ def process_max_plus_operation(args, dsl):
                 sequences.append(s)
             if len(sequences) == 0:
                 # still nothing?
-                raise SDFException("vectortracexml requires sequences.")
+                raise DataflowException("vectortracexml requires sequences.")
 
         # determine the labels and the final length of the trace
         trace_len = ni
         labels = []
         for s in sequences:
             if not (s in vector_sequences or s in event_sequences):
-                raise SDFException(f"Unknown vector or event sequence {s}.")
+                raise DataflowException(f"Unknown vector or event sequence {s}.")
             if s in vector_sequences:
                 vs = vector_sequences[s]
                 for n in range(vs.vectorLength()):
@@ -506,7 +510,7 @@ def process_max_plus_operation(args, dsl):
                 labels.append(s)
                 trace_len = ms.length() if trace_len is None else min(trace_len, ms.length())
             else:
-                raise SDFException(f"Sequence {s} is unknown.")
+                raise DataflowException(f"Sequence {s} is unknown.")
 
         # collect the actual trace
         vt = []
@@ -581,7 +585,7 @@ def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
         ni = requireNumberOfIterations(args)
         matrix =matrices.values()[0]
         if not matrix.isSquare():
-            raise SDFException("Matrix must be square.")
+            raise DataflowException("Matrix must be square.")
         x0 = parseInitialState(args, matrix.numberOfRows())
         vt = matrix.vectorTraceClosed(x0, ni)
         inputs = []
@@ -609,7 +613,7 @@ def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
 def _convolution(event_sequences, args):
     sequences = parseSequences(args)
     if len(sequences) < 2:
-        raise SDFException("Please specify at least two sequences to convolve.")
+        raise DataflowException("Please specify at least two sequences to convolve.")
     validateEventSequences(event_sequences, sequences)
 
     res = event_sequences[sequences[0]]
@@ -620,7 +624,7 @@ def _convolution(event_sequences, args):
 def _maximum(event_sequences, args):
     sequences = parseSequences(args)
     if len(sequences) < 2:
-        raise SDFException("Please specify at least two sequences to maximize.")
+        raise DataflowException("Please specify at least two sequences to maximize.")
     validateEventSequences(event_sequences, sequences)
 
     res = event_sequences[sequences[0]]
@@ -629,15 +633,15 @@ def _maximum(event_sequences, args):
     return sequences, res
 
 def _determine_trace(dataflow_graph: DataflowGraph, args: Dict[str,Any], ni: int):
-    state_size = dataflow_graph.numberOfInitialTokens()
+    state_size = dataflow_graph.number_of_initial_tokens()
     x0 = parseInitialState(args, state_size)
 
     # get input sequences.
-    inp_sig = dataflow_graph.inputSignals()
+    inp_sig = dataflow_graph.input_signals()
     nt, _ = parseInputTraces(inp_sig, {}, args)  # type: ignore type system issue
 
     if state_size != len(x0):
-        raise SDFException('Initial state vector is of incorrect size.')
+        raise DataflowException('Initial state vector is of incorrect size.')
 
     return dataflow_graph.determineTrace(ni, x0, nt)  # type: ignore type system issue
 
