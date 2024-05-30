@@ -3,6 +3,7 @@
 from functools import reduce
 from math import floor, gcd, log
 from string import digits
+import sys
 import time
 from fractions import Fraction
 from typing import Callable, Iterable, List, Optional, Tuple, Union
@@ -16,113 +17,130 @@ COMPLEXITY_THRESHOLD: int = 50
 # Frac = lambda n : Fraction(n).limit_denominator(max_denominator=1000000) if not np.isnan(n) else n
 
 def warn(s: str):
+    """Print warning."""
     print("Warning: " + s)
 
 def error(s: str):
+    """Print error."""
     print("Error: "+ s)
-    exit()
+    sys.exit()
 
-def onlyDigits(s: str)->str:
+def only_digits(s: str)->str:
+    """Filter only digits from string."""
     return ''.join(c for c in s if c in digits)
 
-def onlyNonDigits(s: str)->str:
+def only_non_digits(s: str)->str:
+    """Filter only non-digits from string."""
     return ''.join(c for c in s if c not in digits)
 
 
-def getIndex(name: str)->int:
-    dig = onlyDigits(name)
+def get_index(name: str)->int:
+    """Get index from string."""
+    dig = only_digits(name)
     if dig == '':
         return -1
-    else:
-        return int(dig)
+    return int(dig)
 
-def isNumerical(setOfNames: Iterable[str])->bool:
-    alphaNames = set([onlyNonDigits(s) for s in setOfNames])
-    return len(alphaNames) <= 1
+def is_numerical(set_of_names: Iterable[str])->bool:
+    """Check if the names are numbered with an identical based."""
+    alpha_names = set([only_non_digits(s) for s in set_of_names])
+    return len(alpha_names) <= 1
 
-def stringToFloat(s: str, default: float)->float:
+def string_to_float(s: str, default: float)->float:
+    """Convert string to float."""
     try:
         return float(s)
     except ValueError:
         return default
 
+def sort_names(set_of_names: Iterable[str])->List[str]:
+    """Sort the set of names by number if possible, otherwise alphabetical."""
 
-def sortNames(setOfNames: Iterable[str])->List[str]:
-
-    listOfNames = list(setOfNames)
-    if isNumerical(setOfNames):
-        listOfNames.sort(key=getIndex)
+    list_of_names = list(set_of_names)
+    if is_numerical(set_of_names):
+        list_of_names.sort(key=get_index)
     else:
-        listOfNames.sort()
-    return listOfNames
+        list_of_names.sort()
+    return list_of_names
 
-def printList(l: List[float])->str:
+def print_list(l: List[float])->str:
+    """Print list to string."""
     try:
         string = "["
         for item in l:
             string += NUM_FORMAT.format(item)+", "
         return string[:-2] + "]"
-    except:
+    except ValueError:
         return str(l)
 
-def printOptionalList(l: Optional[List[float]], noneText: str = "--")->str:
+def print_optional_list(l: Optional[List[float]], none_text: str = "--")->str:
+    """Print list of optional floats to string."""
     if l is None:
-        return noneText
-    return printList(l)
+        return none_text
+    return print_list(l)
 
 
 
-def printInterval(i: Tuple[float,float])->str:
-    return printList([i[0],i[1]])
+def print_interval(i: Tuple[float,float])->str:
+    """Print interval to string."""
+    return print_list([i[0],i[1]])
 
-def printListOfIntervals(l: List[Tuple[float,float]])->str:
+def print_list_of_intervals(l: List[Tuple[float,float]])->str:
+    """Print list of intervals to string."""
     try:
         string = "["
         for i in l:
-            string += printInterval(i) + ", "
+            string += print_interval(i) + ", "
         return string[:-2] + "]"
-    except:
+    except ValueError:
         return str(l)
 
-def printOptionalInterval(i: Optional[Tuple[float,float]])->str:
+def print_optional_interval(i: Optional[Tuple[float,float]])->str:
+    """Print optional interval to string."""
     if i is None:
         return "--"
-    return printList([i[0],i[1]])
+    return print_list([i[0],i[1]])
 
-def printOptionalListOfIntervals(l: Optional[List[Tuple[float,float]]])->str:
+def print_optional_list_of_intervals(l: Optional[List[Tuple[float,float]]])->str:
+    """Print optional list of intervals to string."""
     if l is None:
         return "--"
-    return printListOfIntervals(l)
+    return print_list_of_intervals(l)
 
-def optionalFloatOrStringToString(nr: Optional[Union[str,float]]):
+def optional_float_or_string_to_string(nr: Optional[Union[str,float]]):
+    """Print an optional float or string to a string"""
     if nr is None:
         return "--"
     if isinstance(nr, str):
         return nr
     try:
         return NUM_FORMAT.format(nr)
-    except:
-        return "{}".format(nr)
+    except ValueError:
+        return f"{nr}"
 
 
-def printSortedSet(s: Iterable[str]):
-    print("{{{}}}".format(", ".join(sortNames(s))))
+def print_sorted_set(s: Iterable[str]):
+    """Print a set sorted to comma separated list."""
+    print(f"{{{', '.join(sort_names(s))}}}")
 
-def printSortedList(s: Iterable[str]):
-    print("{}".format(", ".join(sortNames(s))))
+def print_sorted_list(s: Iterable[str]):
+    """Print a list, sorted, to comma separated list."""
+    print(f"{', '.join(sort_names(s))}")
 
-def printListOfStrings(s: List[str]):
-    print ("[{}]\n".format(", ".join(s)))
+def print_list_of_strings(s: List[str]):
+    """Print list of strings comma separated."""
+    print (f"[{', '.join(s)}]\n")
 
-def printTable(table: List[Union[str,List[str]]], margin: int = 1):
+def print_table(table: List[Union[str,List[str]]], margin: int = 1):
+    """Print a table of strings to screen."""
 
     # determine nr of columns of table
-    nrColumns: int = -1
+    nr_columns: int = -1
     for row in table:
         if isinstance(row, list):
-            nrColumns = len(row)
+            nr_columns = len(row)
 
-    if nrColumns == -1:
+    if nr_columns == -1:
         # table has no proper rows
         for row in table:
             print(row)
@@ -130,7 +148,7 @@ def printTable(table: List[Union[str,List[str]]], margin: int = 1):
 
     # determine column widths
     widths: List[int] = []
-    for column in range(nrColumns):
+    for column in range(nr_columns):
         w: int = 0
         for row in table:
             if isinstance(row, list):
@@ -142,13 +160,14 @@ def printTable(table: List[Union[str,List[str]]], margin: int = 1):
         if isinstance(row, str):
             print(row)
         else:
-            for i in range(len(row)):
+            for i, v in enumerate(row):
                 if i > 0:
                     print(" ".ljust(margin), end="")
-                print(row[i].ljust(widths[i]), end="")
+                print(v.ljust(widths[i]), end="")
             print()
 
-def stopCriteria(c: List[float])->StopConditions:
+def stop_criteria(c: List[float])->StopConditions:
+    '''Create stop conditions from list of floats.'''
     # Format stop criteria:
     stop = '''
     Steady state behavior =
@@ -187,8 +206,9 @@ def stopCriteria(c: List[float])->StopConditions:
 
     return StopConditions(c[0],c[1], c[2], int(c[3]), int(c[4]), c[5])
 
-def nrOfSteps(ns: int)->int:
-    if ns == None:
+def nr_of_steps(ns: int)->int:
+    """Extract and validate number of steps."""
+    if ns is None:
         s = "Number of steps required (flag -ns)"
         error(s)
     if int(ns) < 1:
@@ -196,26 +216,31 @@ def nrOfSteps(ns: int)->int:
         error(s)
     return ns
 
-def vectorFloatToFraction(v: Iterable[float])->List[Fraction]:
+def vector_float_to_fraction(v: Iterable[float])->List[Fraction]:
+    """Convert vector of floats to vector of fractions."""
     return [Fraction(e).limit_denominator(10000) for e in v]
 
-def matrixFloatToFraction(M: Iterable[Iterable[float]])->List[List[Fraction]]:
-    return [[Fraction(e).limit_denominator(10000) for e in r] for r in M]
+def matrix_float_to_fraction(matrix: Iterable[Iterable[float]])->List[List[Fraction]]:
+    """Convert matrix of floats to matrix of fractions."""
+    return [[Fraction(e).limit_denominator(10000) for e in r] for r in matrix]
 
 def lcm(a: int, b: int)->int:
     '''Least common multiple (does not exist in math library python version <=3.8)'''
     return abs(a*b) // gcd(a, b)
 
-def commonDenominator(den: int, v: Fraction)->int:
+def common_denominator(den: int, v: Fraction)->int:
+    """Determine common denominator between denominator and fraction."""
     return lcm(den,v.denominator)
 
-def commonDenominatorList(l: List[Fraction])->int:
+def common_denominator_list(l: List[Fraction])->int:
+    """Determine the common denominator for a list of fractions."""
     den: int = 1
     for v in l:
-        den = commonDenominator(den, v)
+        den = common_denominator(den, v)
     return den
 
-def primeFactors(n: int)->List[int]:
+def prime_factors(n: int)->List[int]:
+    """Break a number in its prime factors."""
     i = 2
     factors = []
     while i * i <= n:
@@ -228,238 +253,267 @@ def primeFactors(n: int)->List[int]:
         factors.append(n)
     return factors
 
-
 def complexity(n: int):
-    primeFactorList = primeFactors(n)
-    if len(primeFactorList) == 0:
+    """Determine a metric of complexity of a number as the product of the number of
+    its distinct prime factors and the largest prime factor."""
+    prime_factor_list = prime_factors(n)
+    if len(prime_factor_list) == 0:
         return 1
-    return len(primeFactorList)*max(primeFactorList)
+    return len(prime_factor_list)*max(prime_factor_list)
 
-def isComplex(n: int)->bool:
+def is_complex(n: int)->bool:
+    """Determine if a given integer is 'complex' or not (to decide between representation
+    as a fraction or a float)"""
     return complexity(n)>COMPLEXITY_THRESHOLD
 
-def vectorFractionToFloat(v: List[Fraction])->List[float]:
+def vector_fraction_to_float(v: List[Fraction])->List[float]:
+    """Convert list of fractions to list of floats."""
     return [float(e) for e in v]
 
-def matrixFractionToFloat(M: List[List[Fraction]])->List[List[float]]:
-    return [[float(e) for e in r] for r in M]
+def matrix_fraction_to_float(matrix: List[List[Fraction]])->List[List[float]]:
+    """Convert matrix of fractions to matrix of floats."""
+    return [[float(e) for e in r] for r in matrix]
 
-def prettyPrintMatrix(M: List[List[Fraction]]):
+def pretty_print_matrix(matrix: List[List[Fraction]]):
     '''Print matrix M to the console.'''
 
     # transform to row major for easy printing
-    M = linalg.transpose(M)
+    matrix = linalg.transpose(matrix)
 
     # get common denominator
     den: int = 1
-    for r in M:
-        den = lcm(den, commonDenominatorList(r))
-    if isComplex(den):
-        printMatrix(matrixFractionToFloat(M))
+    for r in matrix:
+        den = lcm(den, common_denominator_list(r))
+    if is_complex(den):
+        print_matrix(matrix_fraction_to_float(matrix))
     else:
-        printFractionMatrix(M)
+        print_fraction_matrix(matrix)
 
-def prettyPrintVector(v: List[Fraction]):
+def pretty_print_vector(v: List[Fraction]):
+    """Pretty print a vector of fractions to screen."""
     # get common denominator
-    den = commonDenominatorList(v)
-    if isComplex(den):
-        printVector(vectorFractionToFloat(v))
+    den = common_denominator_list(v)
+    if is_complex(den):
+        print_vector(vector_fraction_to_float(v))
     else:
-        printFractionVector(v)
+        print_fraction_vector(v)
 
-def prettyPrintValue(x: Fraction, end=None):
-    if isComplex(x.denominator):
+def pretty_print_value(x: Fraction, end=None):
+    """Pretty print a fraction value to screen."""
+    if is_complex(x.denominator):
         print(NUM_FORMAT.format(x), end=end)
     else:
         print(x, end=end)
 
-
-def maxOpt(l: List[Optional[int]])-> Optional[int]:
+def max_opt(l: List[Optional[int]])-> Optional[int]:
+    """Determine the maximum of a list of optional integers."""
     return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
 
-def minOpt(l: List[Optional[int]])-> Optional[int]:
+def min_opt(l: List[Optional[int]])-> Optional[int]:
+    """Determine the minimum of a list of optional integers."""
     return reduce(lambda m, v: v if m is None else (m if v is None else min(v,m)), l, None)
 
 def exponent(e: Optional[float])->Optional[int]:
+    """Determine the order of magnitude of an optional float."""
     if e is None:
         return None
-    else:
-        if e==0.0:
-            return None
-        return floor(log(abs(e), 10.0))
+    if e==0.0:
+        return None
+    return floor(log(abs(e), 10.0))
 
 
-def determineMaxExp(M: List[List[float]]):
-    mo = maxOpt([maxOpt([exponent(e) for e in r]) for r in M])
+def determine_max_exp(matrix: List[List[float]]):
+    """Determine the maximum order of magnitude of the values in a matrix."""
+    mo = max_opt([max_opt([exponent(e) for e in r]) for r in matrix])
     if mo is None:
         return 0
     return mo
 
-def determineMaxExpVector(v: List[float]):
-    mo = maxOpt([exponent(e) for e in v])
+def determine_max_exp_vector(v: List[float]):
+    """Determine the maximum order of magnitude of the values in a vector."""
+    mo = max_opt([exponent(e) for e in v])
     if mo is None:
         return 0
     return mo
 
-def determineMinExp(M: List[List[float]]):
-    mo = minOpt([minOpt([exponent(e) for e in r]) for r in M])
+def determine_min_exp(matrix: List[List[float]]):
+    """Determine the minimum order of magnitude of the values in a matrix."""
+    mo = min_opt([min_opt([exponent(e) for e in r]) for r in matrix])
     if mo is None:
         return 0
     return mo
 
-def expMatrix(M: List[List[float]], ex: int) -> List[List[float]]:
+def exp_matrix(matrix: List[List[float]], ex: int) -> List[List[float]]:
+    """Scale the values in the matrix by 10 to the power ex."""
     f = pow(10,ex)
-    return [[e * f for e in r] for r in M]
+    return [[e * f for e in r] for r in matrix]
 
-def expVector(v: List[float], ex: int) -> List[float]:
+def exp_vector(v: List[float], ex: int) -> List[float]:
+    """Scale the values in the vector by 10 to the power ex."""
     f = pow(10,ex)
     return [e * f for e in v]
 
-def elementToString(x: float, w: Optional[int]=None)->str:
+def element_to_string(x: float, w: Optional[int]=None)->str:
+    """Convert float to a string of width w choosing optimal scientific or normal representation."""
     ex = 0 if x==0.0 else log(abs(x),10)
     fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC
-    return rightAlign(fmt.format(float(x)),w) if w else fmt.format(float(x))
+    return right_align(fmt.format(float(x)),w) if w else fmt.format(float(x))
 
-def rightAlign(s: str, w: int)->str:
+def right_align(s: str, w: int)->str:
+    """Right align and extend string to length w."""
     return (' '*(w-len(s)))+s
 
-def determineFractionWidth(e: Fraction)->int:
-    return len('{}'.format(e))
+def determine_fraction_width(e: Fraction)->int:
+    """Determine the string width of the given fraction."""
+    return len(f'{e}')
 
-def determineMaxFractionWidth(M: List[List[Fraction]])->Optional[int]:
-    return maxOpt([determineMaxFractionWidthVector(r) for r in M])
+def determine_max_fraction_width(matrix: List[List[Fraction]])->Optional[int]:
+    """Determine the maximum width of the fractions in the matrix."""
+    return max_opt([determine_max_faction_width_vector(r) for r in matrix])
 
-def determineMaxFractionWidthVector(v: List[Fraction])->Optional[int]:
-    return maxOpt([determineFractionWidth(e) for e in v])
+def determine_max_faction_width_vector(v: List[Fraction])->Optional[int]:
+    """Determine the maximum width of the fractions in the vector."""
+    return max_opt([determine_fraction_width(e) for e in v])
 
-def determineWidth(e: float)->int:
-    return len(elementToString(e))
+def determine_width(e: float)->int:
+    """Determine the width of the float represented as a string."""
+    return len(element_to_string(e))
 
-def determineMaxWidth(M: List[List[float]])->Optional[int]:
-    return maxOpt([determineMaxWidthVector(r) for r in M])
+def determine_max_width(matrix: List[List[float]])->Optional[int]:
+    """Determine the maximum width of the floats in the matrix represented as strings."""
+    return max_opt([determine_max_width_vector(r) for r in matrix])
 
-def determineMaxWidthVector(v: List[float])->Optional[int]:
-    return maxOpt([determineWidth(e) for e in v])
+def determine_max_width_vector(v: List[float])->Optional[int]:
+    """Determine the maximum width of the floats in the vector represented as strings."""
+    return max_opt([determine_width(e) for e in v])
 
-def vectorToString(v: List[float], w: Optional[int]=None)->str:
+def vector_to_string(v: List[float], w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
-        w = determineMaxWidthVector(v)
-    return '[ {} ]'.format(' '.join([elementToString(x,w) for x in v]))
+        w = determine_max_width_vector(v)
+    return f"[ {' '.join([element_to_string(x,w) for x in v])} ]"
 
-def printMatrixWithExponent(M: List[List[float]], ex: int):
+def print_matrix_with_exponent(matrix: List[List[float]], ex: int):
+    """Print matrix with factored exponent."""
 
-    M = expMatrix(M, -ex)
+    matrix = exp_matrix(matrix, -ex)
 
-    expPrefix = '10^{} x '.format(ex)
-    spcPrefix = ' ' * (len(expPrefix)+1)
+    exp_prefix = f'10^{ex} x '
+    spc_prefix = ' ' * (len(exp_prefix)+1)
 
-    w: Optional[int] = determineMaxWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
-            print(expPrefix+'[', end="")
+            print(exp_prefix+'[', end="")
         else:
-            print(spcPrefix, end="")
-        print(vectorToString(v, w), end='')
-        if i < len(M)-1:
+            print(spc_prefix, end="")
+        print(vector_to_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
-def printVectorWithExponent(v: List[float], ex: int):
+def print_vector_with_exponent(v: List[float], ex: int):
+    """Print a vector with factored exponent."""
 
-    v = expVector(v, -ex)
+    v = exp_vector(v, -ex)
 
-    expPrefix = '10^{} x '.format(ex)
+    exp_prefix = '10^{ex} x '
 
-    w: Optional[int] = determineMaxWidthVector(v)
-    print(expPrefix, end="")
-    print(vectorToString(v, w), end='')
+    w: Optional[int] = determine_max_width_vector(v)
+    print(exp_prefix, end="")
+    print(vector_to_string(v, w), end='')
 
-def printVector(v: List[float]):
+def print_vector(v: List[float]):
+    """Print vector to screen."""
     if len(v) == 0:
         print('[]')
         return
-    maxE: int = determineMaxExpVector(v)
-    if maxE > 3 or maxE < -2:
-        printVectorWithExponent(v, maxE)
+    max_e: int = determine_max_exp_vector(v)
+    if max_e > 3 or max_e < -2:
+        print_vector_with_exponent(v, max_e)
         return
 
-    w: Optional[int] = determineMaxWidthVector(v)
-    print(vectorToString(v, w))
+    w: Optional[int] = determine_max_width_vector(v)
+    print(vector_to_string(v, w))
 
-def printMatrix(M: List[List[float]]):
+def print_matrix(matrix: List[List[float]]):
     '''Print matrix M to the console.'''
-    if len(M) == 0:
+    if len(matrix) == 0:
         print('[[]]')
         return
-    maxE: int = determineMaxExp(M)
-    if maxE > 3 or maxE < -2:
-        printMatrixWithExponent(M, maxE)
+    max_e: int = determine_max_exp(matrix)
+    if max_e > 3 or max_e < -2:
+        print_matrix_with_exponent(matrix, max_e)
         return
 
-    w: Optional[int] = determineMaxWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
         else:
             print(' ', end="")
-        print(vectorToString(v, w), end='')
-        if i < len(M)-1:
+        print(vector_to_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
-def elementToFractionString(x: Fraction, w: Optional[int]=None)->str:
-    return rightAlign('{}'.format(x), w) if w else '{}'.format(x)
+def element_to_fraction_string(x: Fraction, w: Optional[int]=None)->str:
+    """Convert fraction to string at optional width."""
+    return right_align(f'{x}', w) if w else f'{x}'
 
-def vectorToFractionString(v: List[Fraction], w: Optional[int]=None)->str:
+def vector_to_fraction_string(v: List[Fraction], w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
-        w = determineMaxFractionWidthVector(v)
-    return '[ {} ]'.format('  '.join([elementToFractionString(x, w) for x in v]))
+        w = determine_max_faction_width_vector(v)
+    return f"[ {'  '.join([element_to_fraction_string(x, w) for x in v])} ]"
 
-def printFractionMatrix(M: List[List[Fraction]]):
+def print_fraction_matrix(matrix: List[List[Fraction]]):
     '''Print matrix M to the console.'''
-    if len(M) == 0:
+    if len(matrix) == 0:
         print('[[]]')
         return
-    w: Optional[int] = determineMaxFractionWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_fraction_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
         else:
             print(' ', end="")
-        print(vectorToFractionString(v, w), end='')
-        if i < len(M)-1:
+        print(vector_to_fraction_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
-def printFractionVector(v: List[Fraction]):
+def print_fraction_vector(v: List[Fraction]):
+    """Print vector of fractions."""
     if len(v) == 0:
         print('[]')
         return
-    w: Optional[int] = determineMaxFractionWidthVector(v)
-    print(vectorToFractionString(v, w))
+    w: Optional[int] = determine_max_faction_width_vector(v)
+    print(vector_to_fraction_string(v, w))
 
 class TimeoutTimer:
+    """Timeout timer for simulations with timeout."""
 
-    _secondsTimeout: float
-    _initialTime: float
+    _seconds_timeout: float
+    _initial_time: float
     _active: bool
 
-    def __init__(self, secondsTimeOut: float) -> None:
-        self._secondsTimeout = secondsTimeOut
-        self._active = secondsTimeOut > 0.0
-        self._initialTime = time.time()
+    def __init__(self, seconds_time_out: float) -> None:
+        self._seconds_timeout = seconds_time_out
+        self._active = seconds_time_out > 0.0
+        self._initial_time = time.time()
 
-    def isExpired(self)->bool:
+    def is_expired(self)->bool:
+        """Check if timer has expired."""
         if self._active:
-            return self._secondsTimeout <= time.time() - self._initialTime
+            return self._seconds_timeout <= time.time() - self._initial_time
         return False
 
-    def simAction(self)-> Callable[[int,str],bool]:
+    def sim_action(self)-> Callable[[int,str],bool]:
+        """Return a function that returns true if timer is active and expired."""
         if self._active:
-            return lambda n, state: self._secondsTimeout <= time.time() - self._initialTime
+            return lambda n, state: self._seconds_timeout <= time.time() - self._initial_time
         return lambda n, state: False

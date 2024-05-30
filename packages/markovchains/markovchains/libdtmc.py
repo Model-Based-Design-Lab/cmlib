@@ -15,7 +15,7 @@ import random
 import os
 from markovchains.libdtmcgrammar import parseDTMCDSL
 import markovchains.utils.linalgebra as linalg
-from markovchains.utils.utils import sortNames, TimeoutTimer
+from markovchains.utils.utils import sort_names, TimeoutTimer
 from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
 
 # type for generic actions to be executed during a random simulation
@@ -106,7 +106,7 @@ class MarkovChain:
 
     def sortStateNames(self):
         '''Sort the list of states.'''
-        self._states = sortNames(self._states)
+        self._states = sort_names(self._states)
         self._initialProbabilityVector = None
         self._transitionMatrix = None
 
@@ -991,7 +991,7 @@ class MarkovChain:
         _, stop = self.markovSimulationRecurrentCycles(
             [
                 (lambda n, _: 0 <= sc.maxPathLength <= n, STR_MAX_PATH_LENGTH), # Run until max path length has been reached
-                (t.simAction(), STR_TIMEOUT), # Exit on time out
+                (t.sim_action(), STR_TIMEOUT), # Exit on time out
             ], [
                 (_action_update, None),
                 (_action_AbsErr, STR_ABS_ERROR), # check absolute error
@@ -1051,7 +1051,7 @@ class MarkovChain:
         _, stop = self.markovSimulationRecurrentCycles(
             [
                 (lambda n, state: 0 <= sc.maxPathLength <= n, STR_MAX_PATH_LENGTH), # Run until max path length has been reached
-                (t.simAction(), STR_TIMEOUT), # Exit on time
+                (t.sim_action(), STR_TIMEOUT), # Exit on time
             ], [
                 (_action_visitState, ""),
                 (_action_abError, STR_ABS_ERROR), # Calculate smallest absolute error
@@ -1145,14 +1145,14 @@ class MarkovChain:
             self._markovSimulation([
                 (_action_lastStateReward, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
-                (t.simAction(), STR_TIMEOUT), # Exit on time
+                (t.sim_action(), STR_TIMEOUT), # Exit on time
             ])
 
             # Check stop conditions
             sim_stop_conditions[0] = statistics.abErrorReached(sc.maxAbError)
             sim_stop_conditions[1] = statistics.reErrorReached(sc.maxReError)
             sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics.cycleCount())
-            sim_stop_conditions[3] = t.isExpired()
+            sim_stop_conditions[3] = t.is_expired()
 
         # Determine stop condition
         stop = self._stopDescriptions[sim_stop_conditions.index(True)]
@@ -1214,7 +1214,7 @@ class MarkovChain:
             self._markovSimulation([
                 (_action_trackState, None),
                 (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
-                (t.simAction(), STR_TIMEOUT), # Exit on time out
+                (t.sim_action(), STR_TIMEOUT), # Exit on time out
             ])
 
             vCurrentState: str = currentState  # type: ignore
@@ -1225,7 +1225,7 @@ class MarkovChain:
             sim_stop_conditions[0] = distributionStatistics.abErrorReached(sc.maxAbError)
             sim_stop_conditions[1] = distributionStatistics.reErrorReached(sc.maxReError)
             sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= distributionStatistics.cycleCount())
-            sim_stop_conditions[3] = t.isExpired()
+            sim_stop_conditions[3] = t.is_expired()
 
         # Determine stop condition
         stop = self._stopDescriptions[sim_stop_conditions.index(True)]
@@ -1280,7 +1280,7 @@ class MarkovChain:
 
                 _, simResult = self._markovSimulation([
                     (lambda n, state: 0 <= sc.maxPathLength <= n, "steps"), # Exit when n is number of steps
-                    (t.simAction(), STR_TIMEOUT), # Exit on time
+                    (t.sim_action(), STR_TIMEOUT), # Exit on time
                     (action, "hit") # stop when hitting state is found
                 ], initialState)
 
@@ -1300,7 +1300,7 @@ class MarkovChain:
                 sim_stop_conditions[0] = statistics[initialState].abErrorReached(sc.maxAbError)
                 sim_stop_conditions[1] = statistics[initialState].reErrorReached(sc.maxReError)
                 sim_stop_conditions[2] = (0 <= sc.nrOfCycles <= statistics[initialState].nrPaths())
-                sim_stop_conditions[3] = t.isExpired()
+                sim_stop_conditions[3] = t.is_expired()
 
             # Determine stop condition
             stop[initialState] = self._stopDescriptions[sim_stop_conditions.index(True)]

@@ -3,7 +3,8 @@
 from string import digits
 from fractions import Fraction
 
-def onlyDigits(s):
+def only_digits(s: str)->str:
+    """Filter only digits from string."""
     return ''.join(c for c in s if c in digits)
 
 def onlyNonDigits(s):
@@ -11,7 +12,7 @@ def onlyNonDigits(s):
 
 
 def getIndex(name):
-    dig = onlyDigits(name)
+    dig = only_digits(name)
     if dig == '':
         return -1
     else:
@@ -34,7 +35,7 @@ def print4F(data):
         for key in data:
             data[key] = print4F(data[key])
         return data
-            
+
     if type(data) == list:
         string = "["
         for item in data:
@@ -43,7 +44,7 @@ def print4F(data):
             return string[:-2] + "]"
         else:
             return ""
-            
+
     else:
         if not (type(data) == int or type(data) == float):
             try:

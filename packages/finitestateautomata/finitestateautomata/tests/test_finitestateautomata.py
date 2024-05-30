@@ -55,7 +55,7 @@ class Automaton_pytest(Model_pytest):
         # Test current model against reference model defined in /models folder
         if "fsa_refModel.fsa" in MODEL_FSA_FILES:
             loc = os.path.join(MODEL_FOLDER, "fsa_refModel.fsa")
-            with open(loc, 'r') as secondModel:
+            with open(loc, 'r', encoding='utf-8') as secondModel:
                 dsl = secondModel.read()
             name, model = Automaton.from_dsl(dsl)
             self.function_test(lambda: self.model.language_included(model), "languageIncluded_refModel")
@@ -93,7 +93,7 @@ class LTL_pytest(Model_pytest):
         super().__init__(self.output_loc)
 
         # Open model
-        with open(self.model_loc, 'r') as ltlFile:
+        with open(self.model_loc, 'r', encoding='utf-8') as ltlFile:
             dsl = ltlFile.read()
         self.name, self.model = LTLFormula.fromDSL(dsl)
 
@@ -127,7 +127,7 @@ class Regular_expression_pytest(Model_pytest):
         super().__init__(self.output_loc)
 
         # Open model
-        with open(self.model_loc, 'r') as regFile:
+        with open(self.model_loc, 'r', encoding='utf-8') as regFile:
             dsl = regFile.read()
         self.name, self.model = RegEx.fromDSL(dsl)
 

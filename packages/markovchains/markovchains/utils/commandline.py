@@ -8,7 +8,7 @@ from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
 from markovchains.utils.linalgebra import matPower, TVector
 from markovchains.utils.statistics import StopConditions
-from markovchains.utils.utils import sortNames, stringToFloat, stopCriteria, nrOfSteps, printSortedList, printSortedSet, printListOfStrings, printOptionalInterval, printOptionalList, printOptionalListOfIntervals, prettyPrintMatrix, prettyPrintVector, prettyPrintValue, optionalFloatOrStringToString, printTable
+from markovchains.utils.utils import sort_names, string_to_float, stop_criteria, nr_of_steps, print_sorted_list, print_sorted_set, print_list_of_strings, print_optional_interval, print_optional_list, print_optional_list_of_intervals, pretty_print_matrix, pretty_print_vector, pretty_print_value, optional_float_or_string_to_string, print_table
 import markovchains.utils.linalgebra as linalg
 
 
@@ -28,7 +28,7 @@ def main():
         if options.opHelp not in MarkovChainOperations:
             print("Operation '{}' does not exist. List of operations:\n\t- {}".format(options.opHelp, "\n\t- ".join(MarkovChainOperations)))
         else:
-            print("{}: {}".format(options.opHelp, OperationDescriptions[MarkovChainOperations.index(options.opHelp)]))        
+            print("{}: {}".format(options.opHelp, OperationDescriptions[MarkovChainOperations.index(options.opHelp)]))
         exit(1)
 
     parser = argparse.ArgumentParser(
@@ -61,7 +61,7 @@ def main():
 
     if args.markovchain:
         try:
-            with open(args.markovchain, 'r') as dtmcFile:
+            with open(args.markovchain, 'r', encoding='utf-8') as dtmcFile:
                 dsl = dtmcFile.read()
         except FileNotFoundError as e:
             sys.stderr.write("File does not exist: {}\n.".format(args.markovchain))
@@ -81,7 +81,7 @@ def requireNumberOfSteps(args: Any)->int:
     if args.numberOfSteps is None:
         raise Exception("number of steps (-ns option) must be specified.")
     try:
-        ns: int = nrOfSteps(int(args.numberOfSteps))
+        ns: int = nr_of_steps(int(args.numberOfSteps))
     except Exception as e:
         raise Exception("Failed to determine number of steps.")
     if ns < 0:
@@ -108,7 +108,7 @@ def requireTargetStateSet(M: MarkovChain, args: Any)->List[str]:
 def requireStopCriteria(args: Any)->StopConditions:
     if args.Conditions is None:
         raise Exception("Stop conditions must be specified with the -c option.")
-    cc = stopCriteria([stringToFloat(i, -1.0) for i in args.Conditions[1:-1].split(',')])
+    cc = stop_criteria([string_to_float(i, -1.0) for i in args.Conditions[1:-1].split(',')])
     return cc
 
 def setSeed(args: Any, M: MarkovChain):
@@ -146,17 +146,17 @@ def process(args, dsl):
     # just list all states
     if operation == OP_DTMC_LIST_STATES:
         res = M.states()
-        printSortedList(res)
+        print_sorted_list(res)
 
     # list the recurrent states
     if operation == OP_DTMC_LIST_RECURRENT_STATES:
         _, recurrentStates = M.classifyTransientRecurrent()
-        printSortedList(recurrentStates)
+        print_sorted_list(recurrentStates)
 
     # list the transient states
     if operation == OP_DTMC_LIST_TRANSIENT_STATES:
         trans, _ = M.classifyTransientRecurrent()
-        printSortedList(trans)
+        print_sorted_list(trans)
 
     # create graph for a number of steps
     if operation == OP_DTMC_EXECUTION_GRAPH:
@@ -166,7 +166,7 @@ def process(args, dsl):
         data = dict()
         data['k'] = range(0,N+1)
         k = 0
-        for s in sortNames(states):
+        for s in sort_names(states):
             data[s] = trace[k]
             k += 1
         print(plotSvg(data, states))
@@ -175,22 +175,22 @@ def process(args, dsl):
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
         for s in M.communicatingClasses():
-            printSortedSet(s)
+            print_sorted_set(s)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
         trans, recurrentStates = M.classifyTransientRecurrent()
         print("Transient states:")
-        printSortedSet(trans)
+        print_sorted_set(trans)
         print("Recurrent states:")
-        printSortedSet(recurrentStates)
+        print_sorted_set(recurrentStates)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_PERIODICITY:
         per = M.classifyPeriodicity()
         print("The set of aperiodic recurrent states is:")
         aperStates =  [s for s in per.keys() if per[s] == 1]
-        printSortedSet(aperStates)
+        print_sorted_set(aperStates)
 
         if len(aperStates) < len(per):
             periodicities = set(per.values())
@@ -199,7 +199,7 @@ def process(args, dsl):
             for p in periodicities:
                 print("The set of periodic recurrent states with periodicity {} is.".format(p))
                 pPeriodicStates =  [s for s in per.keys() if per[s] == p]
-                printSortedSet(pPeriodicStates)
+                print_sorted_set(pPeriodicStates)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_MC_TYPE:
@@ -214,12 +214,12 @@ def process(args, dsl):
 
         print("Transient analysis:\n")
         print ("State vector:")
-        printListOfStrings(states)
+        print_list_of_strings(states)
 
         for k in range(N+1):
             print("Step {}:".format(k))
             print("Distribution: ", end="")
-            prettyPrintVector(trace[k])
+            pretty_print_vector(trace[k])
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_REWARDS:
@@ -230,7 +230,7 @@ def process(args, dsl):
         for k in range(N+1):
             print("\nStep {}:".format(k))
             print("Expected Reward: ", end='')
-            prettyPrintValue(M.rewardForDistribution(trace[k]))
+            pretty_print_value(M.rewardForDistribution(trace[k]))
 
 
     # determine transient behavior for a number of steps
@@ -239,25 +239,25 @@ def process(args, dsl):
         mat = M.transitionMatrix()
 
         print ("State vector:")
-        printListOfStrings(M.states())
+        print_list_of_strings(M.states())
         print("Transient analysis:\n")
         print("Matrix for {} steps:\n".format(N))
-        prettyPrintMatrix(matPower(mat, N))
-        
+        pretty_print_matrix(matPower(mat, N))
+
     if operation == OP_DTMC_LIMITING_MATRIX:
         mat = M.limitingMatrix()
         print ("State vector:")
-        printListOfStrings(M.states())
+        print_list_of_strings(M.states())
         print ("Limiting Matrix:\n")
-        prettyPrintMatrix(mat)
+        pretty_print_matrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
         lDist: TVector = M.limitingDistribution()
 
         print ("State vector:")
-        printListOfStrings(M.states())
+        print_list_of_strings(M.states())
         print ("Limiting Distribution:")
-        prettyPrintVector(lDist)
+        pretty_print_vector(lDist)
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
         mcType = M.determineMCType()
@@ -271,14 +271,14 @@ def process(args, dsl):
         s = requireTargetState(M, args)
         prob = M.hittingProbabilities(s)
         print("The hitting probabilities for {} are:".format(s))
-        for t in sortNames(M.states()):
+        for t in sort_names(M.states()):
             print("f({}, {}) = {}".format(t, s, prob[t]))
 
     if operation == OP_DTMC_REWARD_TILL_HIT:
         s = requireTargetState(M, args)
         res = M.rewardTillHit(s)
         print("The expected rewards until hitting {} are:".format(s))
-        for s in sortNames(res.keys()):
+        for s in sort_names(res.keys()):
             print("From state {}: {}".format(s, res[s]))
 
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
@@ -286,16 +286,16 @@ def process(args, dsl):
         prob = M.hittingProbabilitiesSet(targetStateSet)
         print("The hitting probabilities for {{{}}} are:".format(', '.join(prob)))
         ss = ', '.join(targetStateSet)
-        for t in sortNames(M.states()):
+        for t in sort_names(M.states()):
             print("f({}, {{{}}}) = {}".format(t, ss, prob[t]))
 
     if operation == OP_DTMC_REWARD_TILL_HIT_SET:
         s = requireTargetStateSet(M, args)
         res = M.rewardTillHitSet(s)
         print("The expected rewards until hitting {{{}}} are:".format(', '.join(s)))
-        for t in sortNames(res.keys()):
+        for t in sort_names(res.keys()):
             print("From state {}: {}".format(t, res[t]))
-    
+
     if operation == OP_DTMC_MARKOV_TRACE:
         setSeed(args, M)
         N = requireNumberOfSteps(args)
@@ -313,10 +313,10 @@ def process(args, dsl):
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
-            print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
-            print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
-            print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
+            print("\tEstimated mean: {}".format(optional_float_or_string_to_string(statistics.meanEstimateResult())))
+            print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidenceInterval())))
+            print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.abError())))
+            print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.reError())))
             print("\tNumber of cycles: {}".format(statistics.cycleCount()))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
@@ -325,12 +325,12 @@ def process(args, dsl):
             M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         distributionStatistics, stop = M.cezaroLimitDistribution(C)
-        
+
         if distributionStatistics is None:
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
-            print("Cezaro limit distribution: {}".format(printOptionalList(distributionStatistics.pointEstimates(), "Could not be determined")))
+            print("Cezaro limit distribution: {}".format(print_optional_list(distributionStatistics.pointEstimates(), "Could not be determined")))
             print("Number of cycles: {}\n".format(distributionStatistics.cycleCount()))
             dist: Optional[List[float]] = distributionStatistics.pointEstimates()
             if dist is not None:
@@ -340,9 +340,9 @@ def process(args, dsl):
                 states: List[str] = M.states()
                 for i in range(len(states)):
                     print("[{}]: {:.4f}".format(states[i], dist[i]))
-                    print("\tConfidence interval: {}".format(printOptionalInterval(None if intervals is None else intervals[i])))
-                    print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(abError[i])))
-                    print("\tRelative error bound: {}".format(optionalFloatOrStringToString(reError[i])))
+                    print("\tConfidence interval: {}".format(print_optional_interval(None if intervals is None else intervals[i])))
+                    print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(abError[i])))
+                    print("\tRelative error bound: {}".format(optional_float_or_string_to_string(reError[i])))
                     print("\n")
 
     if operation == OP_DTMC_ESTIMATION_EXPECTED_REWARD:
@@ -351,10 +351,10 @@ def process(args, dsl):
         C = requireStopCriteria(args)
         statistics, stop = M.estimationExpectedReward(C, N)
         print("Simulation termination reason: {}".format(stop))
-        print("\tExpected reward: {}".format(optionalFloatOrStringToString(statistics.meanEstimateResult())))
-        print("\tConfidence interval: {}".format(printOptionalInterval(statistics.confidenceInterval())))
-        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(statistics.abError())))
-        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(statistics.reError())))
+        print("\tExpected reward: {}".format(optional_float_or_string_to_string(statistics.meanEstimateResult())))
+        print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidenceInterval())))
+        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.abError())))
+        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.reError())))
         print("\tNumber of realizations: ", statistics.cycleCount())
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
@@ -365,10 +365,10 @@ def process(args, dsl):
         distributionStatistics, stop = M.estimationTransientDistribution(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
-        print("\tDistribution: {}".format(printOptionalList(distributionStatistics.pointEstimates())))
-        print("\tConfidence intervals: {}".format(printOptionalListOfIntervals(distributionStatistics.confidenceIntervals())))
-        print("\tAbsolute error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxAbError())))
-        print("\tRelative error bound: {}".format(optionalFloatOrStringToString(distributionStatistics.maxReError())))
+        print("\tDistribution: {}".format(print_optional_list(distributionStatistics.pointEstimates())))
+        print("\tConfidence intervals: {}".format(print_optional_list_of_intervals(distributionStatistics.confidenceIntervals())))
+        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.maxAbError())))
+        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.maxReError())))
         print("\tNumber of realizations: ", distributionStatistics.cycleCount())
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
@@ -386,15 +386,15 @@ def process(args, dsl):
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 tableHS.append([
-                    "f({}, {}) = {}".format(t, s, optionalFloatOrStringToString(statistics.meanEstimateResult())),
-                    "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
-                    "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
-                    "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                    "f({}, {}) = {}".format(t, s, optional_float_or_string_to_string(statistics.meanEstimateResult())),
+                    "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
+                    "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
+                    "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
                     "#paths: {}".format(statistics.nrPaths()),
                     "stop: {}".format(dStop[t])
                 ])
-            printTable(tableHS, 4)
-                
+            print_table(tableHS, 4)
+
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
@@ -409,19 +409,19 @@ def process(args, dsl):
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 if not isinstance(statistics.meanEstimateResult(), float):
-                    tableRS.append("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
+                    tableRS.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     tableRS.append([
-                        "From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())),
-                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
-                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())),
+                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
                         "#paths: {}".format(statistics.nrPaths()),
                         "stop: {}".format(dStop[t])
                     ])
-            printTable(tableRS, 4)
-    
+            print_table(tableRS, 4)
+
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
         setSeed(args, M)
         S = setStartingStateSet(args, M)
@@ -440,14 +440,14 @@ def process(args, dsl):
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     table.append([
-                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optionalFloatOrStringToString(statistics.meanEstimateResult())),
-                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
-                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optional_float_or_string_to_string(statistics.meanEstimateResult())),
+                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
                         "#paths: {}".format(statistics.nrPaths()),
                         "stop: {}".format(dStop[t])
                     ])
-            printTable(table, 4)
+            print_table(table, 4)
 
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
@@ -464,18 +464,18 @@ def process(args, dsl):
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 if not isinstance(statistics.meanEstimateResult(), float):
-                    tableRSet.append("From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())))
+                    tableRSet.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     tableRSet.append([
-                        "From state {}: {}".format(S[i], optionalFloatOrStringToString(statistics.meanEstimateResult())),
-                        "int: {}".format(printOptionalInterval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optionalFloatOrStringToString(statistics.abError())),
-                        "reEr: {}".format(optionalFloatOrStringToString(statistics.reError())),
+                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())),
+                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
                         "#paths: {}".format(statistics.nrPaths()),
                         "stop: {}".format(dStop[t])
                     ])
-            printTable(tableRSet, 4)
-                    
+            print_table(tableRSet, 4)
+
 if __name__ == "__main__":
     main()

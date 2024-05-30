@@ -62,7 +62,7 @@ class Model_pytest:
 
     def _read_output_file(self):
         try:
-            with open(self.output_loc, 'r') as outputFile:
+            with open(self.output_loc, 'r', encoding='utf-8') as outputFile:
                 self.output = json.load(outputFile)
         except Exception:
             # Json file is empty

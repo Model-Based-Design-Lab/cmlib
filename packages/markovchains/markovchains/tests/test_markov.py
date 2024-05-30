@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Union
 import pytest
 from modeltest.modeltest import Model_pytest # Import Model_pytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
-from markovchains.utils.utils import sortNames
+from markovchains.utils.utils import sort_names
 from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
 
 # Collect models and output files
@@ -13,7 +13,7 @@ OUTPUT_FOLDER = os.path.join(TEST_FILE_FOLDER, "output")
 MODEL_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".dtmc")]
 
 class Markov_pytest(Model_pytest):
-    
+
     model: MarkovChain
     state: str
 
@@ -27,19 +27,19 @@ class Markov_pytest(Model_pytest):
         super().__init__(self.output_loc)
 
         # Open model
-        with open(self.model_loc, 'r') as dtmcFile:
+        with open(self.model_loc, 'r', encoding='utf-8') as dtmcFile:
             dsl = dtmcFile.read()
         dName, dModel = MarkovChain.fromDSL(dsl)
 
         if dModel is None or dName is None:
             raise Exception("Failed to read test model.")
-        
+
         self.name, self.model = dName, dModel
 
 
         # Store default recurrent state
         _,recurrentStates = self.model.classifyTransientRecurrent()
-        self.state = sortNames(recurrentStates)[0]
+        self.state = sort_names(recurrentStates)[0]
 
         # Set seed for markovchain simulation functions
         #   When adding a function in behavior_tests which relies on seed will corrupt following functions
@@ -48,22 +48,22 @@ class Markov_pytest(Model_pytest):
 
         # Set recurrent state to be the first in the trace
         self.model.setRecurrentState(None)
-        
+
     def statisticsAndStop(self, s: Statistics, stop: Optional[str]):
-        return s.confidenceInterval(), s.abError(), s.reError(), s.meanEstimate(), s.stdDevEstimate(), stop 
+        return s.confidenceInterval(), s.abError(), s.reError(), s.meanEstimate(), s.stdDevEstimate(), stop
 
     def dictionaryStatisticsAndStop(self, s: Optional[Dict[str,Statistics]], stop: Union[str,Dict[str,str]]):
         if s is None:
             return None
         res = dict()
         for t in s.keys():
-            res[t] = [s[t].confidenceInterval(), s[t].abError(), s[t].reError(), s[t].meanEstimate(), s[t].stdDevEstimate()] 
+            res[t] = [s[t].confidenceInterval(), s[t].abError(), s[t].reError(), s[t].meanEstimate(), s[t].stdDevEstimate()]
         return res, stop
 
     def distributionStatisticsAndStop(self, s: Optional[DistributionStatistics], stop: Optional[str]):
         if s is None:
             return "None"
-        return s.confidenceIntervals(), s.abError(), s.reError(), s.pointEstimates(), s.stdDevEstimates(), stop 
+        return s.confidenceIntervals(), s.abError(), s.reError(), s.pointEstimates(), s.stdDevEstimates(), stop
 
     def Correct_behavior_tests(self):
         self.function_test(lambda: self.model.states(), "states")
@@ -140,4 +140,4 @@ def test_model(test_model: str):
     m.Incorrect_behavior_tests()
     m.write_output_file()
 
- 
+
