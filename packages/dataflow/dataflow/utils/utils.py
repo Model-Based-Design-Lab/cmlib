@@ -2,83 +2,92 @@
 
 import re
 from fractions import Fraction
+import sys
 from typing import Any, Dict, Optional, Tuple, Union, List
 from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector
 from dataflow.maxplus.algebra import MP_MINUSINFINITY_STR, MP_MINUSINFINITY
 from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
 from dataflow.libmpm import EventSequenceModel, VectorSequenceModel, MaxPlusMatrixModel
 
+class DataflowException(Exception):
+    """Exceptions related to this package"""
+
 def warn(s: str):
+    """Print warning."""
     print("Warning: " + s)
 
 def error(s: str):
+    """Print error."""
     print("Error: "+ s)
-    exit()
+    sys.exit()
 
-def makeLabels(name: str, n: int):
+def make_labels(name: str, n: int):
+    """Make labels from name and number."""
     if n == 1:
         return [name]
-    return ['{}{}'.format(name, k) for k in range(n)]
+    return [f'{name}{k}' for k in range(n)]
 
 
-def printXmlTrace(vt: List[TTimeStampFloatList], labels: List[str]):
+def print_xml_trace(vt: List[TTimeStampFloatList], labels: List[str]):
+    """Print an xml representation of the trace using the labels."""
     print('<?xml version="1.0"?>')
     print('<vectortrace>')
     print('    <vectors>')
     k = 0
-    vSize = len(labels)
+    v_size = len(labels)
     for v in vt:
-        print('        <vector id="{}">'.format(k))
-        for n in range(vSize):
+        print(f'        <vector id="{k}">')
+        for n in range(v_size):
             if v[n] is None:
                 timestamp  = MP_MINUSINFINITY_STR
             else:
                 timestamp = v[n]
-            print('            <token name="{}" timestamp="{}"/>'.format(labels[n], timestamp))
+            print(f'            <token name="{labels[n]}" timestamp="{timestamp}"/>')
         print('        </vector>')
         k = k + 1
     print('</vectors>')
     print('</vectortrace>')
 
-def xmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampFloatList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampFloatList], outputNames: List[str], outputTraces: List[TTimeStampFloatList]):
+def xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: List[TTimeStampFloatList]):
+    """Make an XML Gantt chart representation."""
     xml = '<?xml version="1.0"?>\n'
     xml += '<trace>\n'
     xml += '    <firings>\n'
-    id = 0
+    f_id = 0
     it = 0
-    for v in firingStarts:
+    for v in firing_starts:
         k = 0
         n = 0
-        for a in actorNames:
-            for _ in range(repVec[a]):
+        for a in actor_names:
+            for _ in range(rep_vec[a]):
                 if v[k] != MP_MINUSINFINITY:
                     vk: float = v[k]  # type: ignore
-                    xml += '        <firing id="{}" start="{}" end="{}" actor="{}" iteration="{}" scenario="s"/>\n'.format(id, vk, vk+firingDurations[n], a, it)
-                    id += 1
+                    xml += f'        <firing id="{f_id}" start="{vk}" end="{vk+firing_durations[n]}" actor="{a}" iteration="{it}" scenario="s"/>\n'
+                    f_id += 1
                 k += 1
             n += 1
         it += 1
     xml += '    </firings>\n'
     xml += '    <inputs>\n'
     it = 0
-    for v in inputTraces:
+    for v in input_traces:
         k = 0
-        for i in inputNames:
-            for _ in range(repVec[i]):
+        for i in input_names:
+            for _ in range(rep_vec[i]):
                 if v[k] != MP_MINUSINFINITY:
-                    xml += '        <input name="{}" timestamp="{}" iteration="{}"/>\n'.format(i, v[k], it)
+                    xml += f'        <input name="{i}" timestamp="{v[k]}" iteration="{it}"/>\n'
                     it += 1
                 k += 1
 
     xml += '    </inputs>\n'
     xml += '    <outputs>\n'
     it = 0
-    for v in outputTraces:
+    for v in output_traces:
         k = 0
-        for o in outputNames:
-            for _ in range(repVec[o]):
+        for o in output_names:
+            for _ in range(rep_vec[o]):
                 if v[k] != MP_MINUSINFINITY:
-                    xml += '        <output name="{}" timestamp="{}" iteration="{}"/>\n'.format(o, v[k], it)
+                    xml += f'        <output name="{o}" timestamp="{v[k]}" iteration="{it}"/>\n'
                     it += 1
                 k += 1
 
@@ -87,136 +96,144 @@ def xmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: Lis
     return xml
 
 
-def printXmlGanttChart(actorNames: List[str], repVec:Dict[str,int], firingStarts: List[TTimeStampFloatList], firingDurations: List[float], inputNames: List[str], inputTraces: List[TTimeStampFloatList], outputNames: List[str], outputTraces: List[TTimeStampFloatList]):
-    print(xmlGanttChart(actorNames, repVec, firingStarts, firingDurations, inputNames, inputTraces, outputNames, outputTraces))
+def print_xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: List[TTimeStampFloatList]):
+    """Print an XML representation of the Gantt chart."""
+    print(xml_gantt_chart(actor_names, rep_vec, firing_starts, firing_durations, \
+                          input_names, input_traces, output_names, output_traces))
 
 
-def inputTracesRegEx():
+def input_traces_reg_ex():
     '''
     syntax for inputtrace: comma-separated list of: (ID=)?([...]|ID)
     '''
     return r"(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*)))(,(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*))))*"
 
-def inputTraceRegEx():
+def input_trace_reg_ex():
     '''
     syntax for inputtrace: (ID=)?([...]|ID)
     '''
     return r"^(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*)))"
 
-def namedInputTraceRegEx():
+def named_input_trace_reg_ex():
     '''
     syntax for named inputtrace: ID=([...]|ID)
     '''
     return r"([a-zA-Z][a-zA-Z0-9_]*)=((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*))"
 
-def sequenceLiteralRegEx():
+def sequence_literal_reg_ex():
     '''
     syntax for a literal sequence: [...]
     '''
     return r"\[.*?\]"
 
-def parseInputTraces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None],Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
+def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None],Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
     '''
     return dictionary of named traces and list of unnamed traces
     '''
 
-    # check if trace are specified 
+    # check if trace are specified
     if not args.inputtrace:
         return None, None
 
     it = args.inputtrace
 
     # check if they are syntactically correct
-    if not re.match(inputTracesRegEx() , it):
-        raise Exception("Invalid input trace specification")
+    if not re.match(input_traces_reg_ex() , it):
+        raise DataflowException("Invalid input trace specification")
 
     # variables to collect results for named and unnamed traces
-    resNt: Dict[str,TTimeStampList] = dict()
-    resUt:List[TTimeStampList] = list()
-    
+    res_nt: Dict[str,TTimeStampList] = dict()
+    res_ut:List[TTimeStampList] = list()
+
     # find individual traces
     traces: List[str] = []
-    ss = re.search(inputTraceRegEx(), it)
+    ss = re.search(input_trace_reg_ex(), it)
     while ss:
         tt:str = ss.group(1)
         traces.append(tt)
         it = it[len(tt):]
         if len(tt)>0:
             it = it[1:]
-        ss = re.search(inputTraceRegEx(), it)
+        ss = re.search(input_trace_reg_ex(), it)
 
     # for each trace found
     for t in traces:
         # check if it is a named trace, e.g., x=[1,2,3]
-        namedMatch = re.match(namedInputTraceRegEx(), t)
-        if namedMatch:
+        named_match = re.match(named_input_trace_reg_ex(), t)
+        if named_match:
             # it is a named trace
-            name = namedMatch.group(1)
-            expr = namedMatch.group(2)
-            if re.match(sequenceLiteralRegEx(), expr):
-                resNt[name] = mpParseVector(expr)
+            name = named_match.group(1)
+            expr = named_match.group(2)
+            if re.match(sequence_literal_reg_ex(), expr):
+                res_nt[name] = mpParseVector(expr)
             else:
                 if expr in eventsequences:
-                    # ugly, but if the model is SDF, this is a list, if the model is max-plus this is an EventSequenceModel
-                    evSeqOrList = eventsequences[expr]
-                    if isinstance(evSeqOrList, list):
-                        resNt[name] = evSeqOrList
+                    # ugly, but if the model is SDF, this is a list, if the model
+                    # is max-plus this is an EventSequenceModel
+                    ev_seq_or_list = eventsequences[expr]
+                    if isinstance(ev_seq_or_list, list):
+                        res_nt[name] = ev_seq_or_list
                     else:
-                        resNt[name] = evSeqOrList.sequence()
+                        res_nt[name] = ev_seq_or_list.sequence()
                 elif expr in vectorsequences:
                     vs = vectorsequences[expr]
-                    vsl = vs.extractSequenceList()
+                    vsl = vs.extract_sequence_list()
                     for k in range(len(vs)):
-                        resNt[name+str(k+1)] = vsl[k]
+                        res_nt[name+str(k+1)] = vsl[k]
                 else:
-                    raise Exception("Unknown sequence: {}".format(expr))
+                    raise DataflowException(f"Unknown sequence: {expr}")
         else:
             # check if it is a literal, unnamed, event sequence, e.g. [1,2,3]
-            if re.match(sequenceLiteralRegEx(), t):
-                resUt.append(mpParseVector(t))
+            if re.match(sequence_literal_reg_ex(), t):
+                res_ut.append(mpParseVector(t))
             else:
                 if t in eventsequences:
                     es = eventsequences[t]
                     if isinstance(es, EventSequenceModel):
-                        resUt.append(es.sequence())
+                        res_ut.append(es.sequence())
                     else:
-                        resUt.append(es)
+                        res_ut.append(es)
                 elif t in vectorsequences:
                     vs = vectorsequences[t]
-                    vsl = vs.extractSequenceList()
+                    vsl = vs.extract_sequence_list()
                     for k in range(len(vs)):
-                        resUt.append(vsl[k])
+                        res_ut.append(vsl[k])
                 else:
-                    raise Exception("Unknown sequence: {}".format(t))
+                    raise DataflowException(f"Unknown sequence: {t}")
 
-    return resNt, resUt
+    return res_nt, res_ut
 
-def parsePeriod(args: Any)->Optional[Fraction]:
+def parse_period(args: Any)->Optional[Fraction]:
+    """Parse specified period argument."""
     if not args.period:
         return None
     try:
         return Fraction(args.period)
     except Exception:
-        raise Exception("Failed to parse period argument; period must be a floating point number.")
+        raise DataflowException("Failed to parse period argument; period must be a "\
+                                "floating point number.") # pylint: disable=raise-missing-from
 
-def requirePeriod(args)->Fraction:
+def require_period(args)->Fraction:
+    """Ensure that a period has been provided."""
     if not args.period:
-        raise Exception("Operation requires period to be given.")
-    val = parsePeriod(args)
+        raise DataflowException("Operation requires period to be given.")
+    val = parse_period(args)
     if val is None:
-        raise Exception("Operation requires period to be given.")
+        raise DataflowException("Operation requires period to be given.")
     return val
 
-def parseParameterInteger(args: Any)->Optional[int]:
+def parse_parameter_integer(args: Any)->Optional[int]:
+    """Parse parameter as an integer."""
     if not args.parameter:
         return None
     try:
         return int(args.parameter)
     except Exception:
-        raise Exception("Failed to parse integer parameter.")
+        raise DataflowException("Failed to parse integer parameter.") # pylint: disable=raise-missing-from
 
-def parseParameterMPValue(args: Any)->Tuple[bool, TTimeStamp]:
-    '''Returns False, None if parameter was not specified, otherwise return True, value. An exception is raised if the parsing failed.'''
+def parse_parameter_mp_value(args: Any)->Tuple[bool, TTimeStamp]:
+    '''Returns False, None if parameter was not specified, otherwise return True,
+    value. An exception is raised if the parsing failed.'''
     if not args.parameter:
         return False, None
     if args.parameter == 'mininf':
@@ -224,179 +241,204 @@ def parseParameterMPValue(args: Any)->Tuple[bool, TTimeStamp]:
     try:
         return True, Fraction(float(args.parameter))
     except Exception:
-        raise Exception("Failed to parse parameter as a max-plus value.")
+        raise DataflowException("Failed to parse parameter as a max-plus value.") # pylint: disable=raise-missing-from
 
-def requireParameterInteger(args) -> int:
-    val = parseParameterInteger(args)
+def require_parameter_integer(args) -> int:
+    """Ensure parameter is specified and parse it."""
+    val = parse_parameter_integer(args)
     if val is None:
-        raise Exception("Operation requires parameter to be specified as an integer.")
+        raise DataflowException("Operation requires parameter to be specified as an integer.") # pylint: disable=raise-missing-from
     return val
 
-def requireParameterMPValue(args)->TTimeStamp:
-    '''Parse and return required MP parameter value. If it doesn't exist, or cannot be parsed, an exception is raised.'''
+def require_parameter_mp_value(args)->TTimeStamp:
+    '''Parse and return required MP parameter value. If it doesn't exist, or cannot
+    be parsed, an exception is raised.'''
     if not args.parameter:
-        raise Exception("Operation requires parameter to be specified as a floating point number or 'mininf'.")
-    success, val =  parseParameterMPValue(args)
+        raise DataflowException("Operation requires parameter to be specified as a "\
+                                "floating point number or 'mininf'.") # pylint: disable=raise-missing-from
+    success, val =  parse_parameter_mp_value(args)
     if not success:
-        raise Exception("Operation requires parameter to be specified as a floating point number or 'mininf'.")
+        raise DataflowException("Operation requires parameter to be specified as a " \
+                                "floating point number or 'mininf'.") # pylint: disable=raise-missing-from
     return val
 
-def parseInitialState(args: Any, stateSize: int) -> TMPVector:
+def parse_initial_state(args: Any, state_size: int) -> TMPVector:
+    """Parse initial state."""
     if args.initialstate is None:
-        return mpZeroVector(stateSize)
-    else:
-        x0 = mpParseVector(args.initialstate)
-        if len(x0) != stateSize:
-            raise Exception('Provided initial state is not of the expected size.')
-        return x0
+        return mpZeroVector(state_size)
+    x0 = mpParseVector(args.initialstate)
+    if len(x0) != state_size:
+        raise DataflowException('Provided initial state is not of the expected size.') # pylint: disable=raise-missing-from
+    return x0
 
-def requireNumberOfIterations(args: Any) -> int:
+def require_number_of_iterations(args: Any) -> int:
+    """Ensure that number of iterations is specified and parse it."""
     if not args.numberofiterations:
-        raise Exception("Operation requires number of iterations to be given.")
-    val = parseNumberOfIterations(args)
+        raise DataflowException("Operation requires number of iterations to be given.") # pylint: disable=raise-missing-from
+    val = parse_number_of_iterations(args)
     if val is None:
-        raise Exception("Failed to parse number of iterations.")
+        raise DataflowException("Failed to parse number of iterations.") # pylint: disable=raise-missing-from
     return val
 
 
-def parseNumberOfIterations(args: Any) -> Optional[int]:
+def parse_number_of_iterations(args: Any) -> Optional[int]:
+    """Parse number of iterations."""
     if not args.numberofiterations:
         return None
     try:
         return int(args.numberofiterations)
     except Exception:
-        raise Exception("Failed to parse numberofiterations argument; it must be a non-negative integer number.")
-    
-def parseMatrices(args: Any)->List[str]:
+        raise DataflowException("Failed to parse numberofiterations argument; it must be " \
+                                "a non-negative integer number.") # pylint: disable=raise-missing-from
+
+def parse_matrices(args: Any)->List[str]:
     '''Parse list of matrix names.'''
     if not args.matrices:
         return []
     return args.matrices.split(',')
 
-def requireMatrices(argMatrices: List[str], defMatrices: Dict[str, MaxPlusMatrixModel])->List[str]:
-    ''' check that the matrices in the list argMatrices are all defined in defMatrices, and that at least one matrix is specified, otherwise raise an exception. Returns argMatrices.'''
-    if len(argMatrices) == 0:
-        raise Exception("One or more matrices must be specified.")
-    for m in argMatrices:
-        if not m in defMatrices:
-            raise Exception("Matrix {0} is not defined in the model.".format(m))
-    return argMatrices
+def require_matrices(arg_matrices: List[str], def_matrices: Dict[str, MaxPlusMatrixModel])\
+    ->List[str]:
+    ''' check that the matrices in the list argMatrices are all defined in defMatrices,
+    and that at least one matrix is specified, otherwise raise an exception. Returns argMatrices.'''
+    if len(arg_matrices) == 0:
+        raise DataflowException("One or more matrices must be specified.")
+    for m in arg_matrices:
+        if not m in def_matrices:
+            raise DataflowException(f"Matrix {m} is not defined in the model.")
+    return arg_matrices
 
-def parseOneMatrix(args: Any)->Optional[str]:
+def parse_one_matrix(args: Any)->Optional[str]:
     '''Get one matrix name from the arguments, or None if there is no such argument'''
-    matrices = parseMatrices(args)
+    matrices = parse_matrices(args)
     if len(matrices) == 0:
         return None
     if len(matrices) != 1:
-        raise Exception("Specify one matrix only.")
+        raise DataflowException("Specify one matrix only.")
     return matrices[0]
 
-def requireSquareMatrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
-    '''Return a list of names of the square matrices in the matrices dictionary. If there are no square matrices, an exception is raised.'''
-    sqMatrixModels = [m for m,M in matrices.items() if M.isSquare()] 
-    if len(sqMatrixModels) == 0:
-        raise Exception("Provide a model with a square matrix.")
-    return sqMatrixModels
+def require_square_matrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
+    '''Return a list of names of the square matrices in the matrices dictionary.
+    If there are no square matrices, an exception is raised.'''
+    sq_matrix_models = [m for m,M in matrices.items() if M.is_square()]
+    if len(sq_matrix_models) == 0:
+        raise DataflowException("Provide a model with a square matrix.")
+    return sq_matrix_models
 
-def getSquareMatrix(matrices: Dict[str, MaxPlusMatrixModel], args: Any) -> str:
-    '''Get a square matrix from the arguments. If no square matrix was specified, take the first one from the model.'''
-    sqMatrixModels = requireSquareMatrices(matrices)
-    mat = parseOneMatrix(args)
+def get_square_matrix(matrices: Dict[str, MaxPlusMatrixModel], args: Any) -> str:
+    '''Get a square matrix from the arguments. If no square matrix was specified,
+    take the first one from the model.'''
+    sq_matrix_models = require_square_matrices(matrices)
+    mat = parse_one_matrix(args)
     if mat:
-        if mat not in sqMatrixModels:
-            raise Exception("Matrix {0} is not square.".format(mat))
+        if mat not in sq_matrix_models:
+            raise DataflowException(f"Matrix {mat} is not square.")
     else:
-        mat = next(iter(sqMatrixModels))
+        mat = next(iter(sq_matrix_models))
     return mat
 
-def parseSequences(args: Any) -> List[str]:
+def parse_sequences(args: Any) -> List[str]:
     '''Return a list of sequence names specified in arg.'''
     if not args.sequences:
         return []
     return args.sequences.split(',')
 
-def validateEventSequences(eventsequences: Dict[str,object], sequences: List[str]):
+def validate_event_sequences(eventsequences: Dict[str,object], sequences: List[str]):
     ''' check that the sequences are defined in the eventsequences dict.'''
     for s in sequences:
         if s not in eventsequences:
-            raise Exception("Sequence {} is not defined.".format(s))
+            raise DataflowException(f"Sequence {s} is not defined.")
 
 
-def parseOneSequence(args: Any) -> Optional[str]:
-    '''Return the name of a specified sequence. If the argument does not specify sequences, None i returned. If multiple sequences are specified an exception is raised.'''
-    sequences = parseSequences(args)
+def parse_one_sequence(args: Any) -> Optional[str]:
+    '''Return the name of a specified sequence. If the argument does
+    not specify sequences, None i returned. If multiple sequences are
+    specified an exception is raised.'''
+    sequences = parse_sequences(args)
     if len(sequences) == 0:
         return None
     if len(sequences) != 1:
-        raise Exception("Specify one sequence.")
+        raise DataflowException("Specify one sequence.")
     return sequences[0]
 
 
-def requireOneEventSequence(eventsequences: Dict[str,Any], args)->str:
-    '''Return the name of a specified sequence. Requires that exactly on sequence is specified from eventsequences, otherwise an exception is raised.'''
-    s = parseOneSequence(args)
+def require_one_event_sequence(eventsequences: Dict[str,Any], args)->str:
+    '''Return the name of a specified sequence. Requires that exactly on
+    sequence is specified from eventsequences, otherwise an exception is raised.'''
+    s = parse_one_sequence(args)
     if s is None:
-        raise Exception("A sequence is required.")
+        raise DataflowException("A sequence is required.")
     if not s in eventsequences:
-        raise Exception("Sequence {} is unknown.".format(s))
+        raise DataflowException(f"Sequence {s} is unknown.")
     return s
 
-def requireSequenceOfMatricesAndPossiblyVectorSequence(matrices:Dict[str,MaxPlusMatrixModel], vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> List[str]:
-    '''Get a required sequence of matrices, and possibly last a vector sequence. An exception is raised if no sequence is specified, or it is malformed.'''
-    names = requireMatrices(parseMatrices(args), matrices)
-    for k in range(len(names)):
-        if names[k] not in matrices:
-            raise Exception('{} is not a matrix'.format(names[k]))
-    vs = parseOneSequence(args)
+def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Dict[str,\
+                MaxPlusMatrixModel], vectorsequences: Dict[str,VectorSequenceModel], args: Any)\
+                 -> List[str]:
+    '''Get a required sequence of matrices, and possibly last a vector sequence.
+    An exception is raised if no sequence is specified, or it is malformed.'''
+    names = require_matrices(parse_matrices(args), matrices)
+    for n in names:
+        if n not in matrices:
+            raise DataflowException(f'{n} is not a matrix')
+    vs = parse_one_sequence(args)
     if vs:
         if vs not in vectorsequences:
-            raise Exception('{} is not a vector sequence'.format(vs))
+            raise DataflowException(f'{vs} is not a vector sequence')
         names.append(vs)
 
     return names
 
-def requireMatrixDefined(matrices: Dict[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
-    '''Check that m is defined in matrices and return the corresponding matrix model. If m is not defined, raises an exception'''
+def require_matrix_defined(matrices: Dict[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
+    '''Check that m is defined in matrices and return the corresponding matrix model.
+    If m is not defined, raises an exception'''
     if not m in matrices:
-        raise Exception("Matrix {} is not defined.".format(m))
+        raise DataflowException(f"Matrix {m} is not defined.")
     return matrices[m]
 
-def determineStateSpaceLabels(matrices: Dict[str,MaxPlusMatrixModel])->Tuple[List[str],List[str],List[str]]:
-    '''Determine the labels of the state-space elements from the matrix definitions. Returns a tuple with input labels, state labels, and output labels.'''
-    MA = requireMatrixDefined(matrices, "A")
-    MB = requireMatrixDefined(matrices, "B")
-    MC = requireMatrixDefined(matrices, "C")
-    requireMatrixDefined(matrices, "D")
-    inputSize = MB.numberOfColumns()
-    stateSize = MA.numberOfRows()
-    outputSize = MC.numberOfRows()
-    if len(MB.labels()) == stateSize+inputSize:
-        inputLabels = (MB.labels())[stateSize:]
+def determine_state_space_labels(matrices: Dict[str,MaxPlusMatrixModel])->\
+    Tuple[List[str],List[str],List[str]]:
+    '''Determine the labels of the state-space elements from the matrix definitions.
+    Returns a tuple with input labels, state labels, and output labels.'''
+    matrix_a = require_matrix_defined(matrices, "A")
+    matrix_b = require_matrix_defined(matrices, "B")
+    matrix_c = require_matrix_defined(matrices, "C")
+    require_matrix_defined(matrices, "D")
+    input_size = matrix_b.number_of_columns()
+    state_size = matrix_a.number_of_rows()
+    output_size = matrix_c.number_of_rows()
+    if len(matrix_b.labels()) == state_size+input_size:
+        input_labels = (matrix_b.labels())[state_size:]
     else:
         # make default input names
-        inputLabels = makeLabels('i', inputSize)
+        input_labels = make_labels('i', input_size)
 
-    if len(MA.labels()) >= stateSize:
-        stateLabels = (MA.labels())[:stateSize]
+    if len(matrix_a.labels()) >= state_size:
+        state_labels = (matrix_a.labels())[:state_size]
     else:
         # make default state labels
-        stateLabels = makeLabels('x', stateSize)
+        state_labels = make_labels('x', state_size)
 
-    if len(MC.labels()) >= outputSize:
-        outputLabels = (MC.labels())[:outputSize]
+    if len(matrix_c.labels()) >= output_size:
+        output_labels = (matrix_c.labels())[:output_size]
     else:
         # make default output labels
-        outputLabels = makeLabels('o', outputSize)
-    return inputLabels, stateLabels, outputLabels
+        output_labels = make_labels('o', output_size)
+    return input_labels, state_labels, output_labels
 
-def fractionToFloatList(l: List[Fraction])->List[float]:
+def fraction_to_float_list(l: List[Fraction])->List[float]:
+    """Convert a list of fractions to a list of floats."""
     return [float(f) for f in l]
 
-def fractionToFloatOptionalList(l: List[Union[Fraction,None]])->List[Union[float,None]]:
+def fraction_to_float_optional_list(l: List[Union[Fraction,None]])->List[Union[float,None]]:
+    """Convert a list of optional fractions to a list of optional floats."""
     return [None if f is None else float(f) for f in l]
 
-def fractionToFloatLList(l: List[List[Fraction]])->List[List[float]]:
-    return [fractionToFloatList(ll) for ll in l]
+def fraction_to_float_l_list(l: List[List[Fraction]])->List[List[float]]:
+    """Convert a list of lists of fractions to a list of lists of floats."""
+    return [fraction_to_float_list(ll) for ll in l]
 
-def fractionToFloatOptionalLList(l: List[List[Union[Fraction,None]]])->List[List[Union[float,None]]]:
-    return [fractionToFloatOptionalList(ll) for ll in l]
+def fraction_to_float_optional_l_list(l: List[List[Union[Fraction,None]]])-> \
+    List[List[Union[float,None]]]:
+    """Convert a list of lists of optional fractions to a list of lists of optional floats."""
+    return [fraction_to_float_optional_list(ll) for ll in l]

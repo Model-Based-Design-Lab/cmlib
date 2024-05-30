@@ -9,7 +9,7 @@ import pytest
 from dataflow.libmpm import MaxPlusMatrixModel
 from dataflow.libsdf import DataflowGraph
 from dataflow.utils.commandline import _convolution, _maximum
-from dataflow.utils.utils import getSquareMatrix, parseInitialState
+from dataflow.utils.utils import get_square_matrix, parse_initial_state
 from modeltest.modeltest import Model_pytest
 
 TEST_FILE_FOLDER = os.path.dirname(__file__)
@@ -71,7 +71,7 @@ class SDFPyTest(Model_pytest):
             self.function_test(self.model.state_space_matrices, "stateSpaceMatrices")
         mu = self.mu
         if mu is not None:
-            x0 = parseInitialState(self.args, self.model.number_of_initial_tokens())
+            x0 = parse_initial_state(self.args, self.model.number_of_initial_tokens())
             self.function_test(lambda: self.model.latency(x0, mu), "latency")
             self.function_test(lambda: self.model.generalized_latency(mu), "generalizedLatency")
         self.function_test(lambda: self.model.as_dsl("TestName"), "convert_to_DSL", sort = True)
@@ -81,7 +81,7 @@ class SDFPyTest(Model_pytest):
         """Testing behaviors that are expected to fail."""
         mu = self.mu
         if mu is not None:
-            x0 = parseInitialState(self.args, self.model.number_of_initial_tokens())
+            x0 = parse_initial_state(self.args, self.model.number_of_initial_tokens())
             self.incorrect_test(lambda: self.model.latency(x0, mu-Fraction(0.01)), \
                                 "The requested period mu is smaller than smallest period the " \
                                     "system can sustain. Therefore, it has no latency.")
@@ -123,7 +123,7 @@ class MPMPyTest(Model_pytest):
         with open(self.model_loc, 'r', encoding='utf-8') as mpm_file:
             dsl = mpm_file.read()
         self.name, self.matrices, self.vector_sequences, \
-            self.event_sequences = MaxPlusMatrixModel.fromDSL(dsl)
+            self.event_sequences = MaxPlusMatrixModel.from_dsl(dsl)
 
         sq = ",".join(self.event_sequences.keys())
         sq = ",".join([sq, sq])
@@ -143,11 +143,11 @@ class MPMPyTest(Model_pytest):
     def correct_behavior_tests(self):
         """Test behaviors that are expected to succeed."""
         # Function used to obtain multiple results
-        mat = getSquareMatrix(self.matrices, self.args)
+        mat = get_square_matrix(self.matrices, self.args)
 
         # Deterministic results
         self.function_test(self.matrices[mat].eigenvalue, "Eigenvalues")
-        self.function_test(self.matrices[mat].starClosure, "starClosure")
+        self.function_test(self.matrices[mat].star_closure, "starClosure")
 
         # Only check convolution when sequence is available
         if len(self.args.sequences) > 1:  # type: ignore
@@ -161,11 +161,11 @@ class MPMPyTest(Model_pytest):
             sequences, res = _maximum(self.event_sequences, self.args)
             self.function_test(lambda: sequences, "maximum_analysis_sequences")
             self.function_test(lambda: vars(res)['_sequence'], "maximum_analysis_res")
-        _, cl = self.matrices[list(self.matrices.keys())[0]].starClosure()
+        _, cl = self.matrices[list(self.matrices.keys())[0]].star_closure()
         # if success:
         self.function_test(lambda: cl, "star_closure")
         matrix = self.matrices[list(self.matrices.keys())[0]]
-        self.function_test(lambda: vars(MaxPlusMatrixModel.multiplySequence([matrix]))["_rows"], \
+        self.function_test(lambda: vars(MaxPlusMatrixModel.multiply_sequence([matrix]))["_rows"], \
                            "multiply")
 
         # Non deterministic results, False added as argument

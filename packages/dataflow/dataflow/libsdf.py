@@ -731,8 +731,8 @@ class DataflowGraph:
         try:
             sc_a_mu = mpStarClosure(matrix_a_mu)
         except PositiveCycleException:
-            raise SDFException('The requested period mu is smaller than smallest period the system' \
-                               ' can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+            raise SDFException('The requested period mu is smaller than smallest period the' \
+                               ' system can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
         c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
         x00 = mpMultiplyMatrices(mpTransposeMatrix([x0]), [mpZeroVector(len(self._inputs))])
         b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
@@ -759,8 +759,8 @@ class DataflowGraph:
         try:
             sc_a_mu = mpStarClosure(a_mu)
         except PositiveCycleException:
-            raise SDFException('The requested period mu is smaller than smallest period the system '\
-                               'can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+            raise SDFException('The requested period mu is smaller than smallest period the '\
+                               'system can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
         c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
 
         b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
@@ -789,8 +789,9 @@ class DataflowGraph:
 
         def _add_channel(res: DataflowGraph, pa: str, ca: str, it: int):
             # add channel only if it does not yet exist
-            for ch in res._channels:
-                if res._chan_producer[ch] == pa and res._chan_consumer[ch] == ca and res.number_of_initial_tokens_of_channel(ch) == it:
+            for ch in res.channels():
+                if res.producer_of_channel(ch) == pa and res.consumer_of_channel(ch) == ca and \
+                    res.number_of_initial_tokens_of_channel(ch) == it:
                     return
             specs = {}
             if it > 0:
@@ -867,17 +868,17 @@ class DataflowGraph:
         matrix_h, state_space_matrices = self.state_space_matrices()
 
         # compute vector trace from state-space matrices
-        matrices = {'A': MaxPlusMatrixModel.fromMatrix(state_space_matrices[0]), \
-                    'B': MaxPlusMatrixModel.fromMatrix(state_space_matrices[1]), \
-                    'C': MaxPlusMatrixModel.fromMatrix(state_space_matrices[2]), \
-                    'D': MaxPlusMatrixModel.fromMatrix(state_space_matrices[3]) }
+        matrices = {'A': MaxPlusMatrixModel.from_matrix(state_space_matrices[0]), \
+                    'B': MaxPlusMatrixModel.from_matrix(state_space_matrices[1]), \
+                    'C': MaxPlusMatrixModel.from_matrix(state_space_matrices[2]), \
+                    'D': MaxPlusMatrixModel.from_matrix(state_space_matrices[3]) }
 
         state_vector_size = self.number_of_initial_tokens()
         repetition_vector: Dict[str,int] = self.repetition_vector() # type: ignore
         input_vector_size = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
 
         if x0 is None:
-            x0 = mpZeroVector(matrices['A'].numberOfColumns())
+            x0 = mpZeroVector(matrices['A'].number_of_columns())
 
         inp_sig = self.input_signals()
         inputs: List[TTimeStampList] = []
@@ -906,7 +907,7 @@ class DataflowGraph:
                     inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
 
         # Compute the vector trace
-        vt = MaxPlusMatrixModel.vectorTrace(matrices, x0, ni, inputs)
+        vt = MaxPlusMatrixModel.vector_trace(matrices, x0, ni, inputs)
 
         input_traces = [v[0:input_vector_size] for v in vt]
         output_traces = [v[input_vector_size+state_vector_size:] for v in vt]
