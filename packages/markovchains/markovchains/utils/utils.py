@@ -93,7 +93,7 @@ def printOptionalListOfIntervals(l: Optional[List[Tuple[float,float]]])->str:
     if l is None:
         return "--"
     return printListOfIntervals(l)
-    
+
 def optionalFloatOrStringToString(nr: Optional[Union[str,float]]):
     if nr is None:
         return "--"
@@ -136,7 +136,7 @@ def printTable(table: List[Union[str,List[str]]], margin: int = 1):
             if isinstance(row, list):
                 w = max(w, len(row[column]))
         widths.append(w)
-    
+
     # print the table
     for row in table:
         if isinstance(row, str):
@@ -149,9 +149,9 @@ def printTable(table: List[Union[str,List[str]]], margin: int = 1):
             print()
 
 def stopCriteria(c: List[float])->StopConditions:
-    # Format stop criteria: 
+    # Format stop criteria:
     stop = '''
-    Steady state behavior = 
+    Steady state behavior =
     [
         Confidence level,
         Absolute error,
@@ -161,7 +161,7 @@ def stopCriteria(c: List[float])->StopConditions:
         Time (in seconds)
     ]
 
-    Transient behavior = 
+    Transient behavior =
     [
         Confidence level,
         Absolute error,
@@ -175,16 +175,16 @@ def stopCriteria(c: List[float])->StopConditions:
     if len(c) != 6:
         s = "Wrong number of arguments for -c\n" + stop
         error(s)
-    
+
     # Confidence level
     if c[0] <= 0:
         s = "No confidence level set"
         error(s)
-    
+
     if all(i<=0 for i in c[1:]):
         s = "No stop conditions inside -c argument, simulation never terminating"
         error(s)
-    
+
     return StopConditions(c[0],c[1], c[2], int(c[3]), int(c[4]), c[5])
 
 def nrOfSteps(ns: int)->int:
@@ -197,7 +197,7 @@ def nrOfSteps(ns: int)->int:
     return ns
 
 def vectorFloatToFraction(v: Iterable[float])->List[Fraction]:
-    return [Fraction(e).limit_denominator(10000) for e in v] 
+    return [Fraction(e).limit_denominator(10000) for e in v]
 
 def matrixFloatToFraction(M: Iterable[Iterable[float]])->List[List[Fraction]]:
     return [[Fraction(e).limit_denominator(10000) for e in r] for r in M]
@@ -246,10 +246,10 @@ def matrixFractionToFloat(M: List[List[Fraction]])->List[List[float]]:
 
 def prettyPrintMatrix(M: List[List[Fraction]]):
     '''Print matrix M to the console.'''
-    
+
     # transform to row major for easy printing
     M = linalg.transpose(M)
-    
+
     # get common denominator
     den: int = 1
     for r in M:
@@ -317,7 +317,7 @@ def expVector(v: List[float], ex: int) -> List[float]:
 
 def elementToString(x: float, w: Optional[int]=None)->str:
     ex = 0 if x==0.0 else log(abs(x),10)
-    fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC 
+    fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC
     return rightAlign(fmt.format(float(x)),w) if w else fmt.format(float(x))
 
 def rightAlign(s: str, w: int)->str:
@@ -443,8 +443,8 @@ def printFractionVector(v: List[Fraction]):
     w: Optional[int] = determineMaxFractionWidthVector(v)
     print(vectorToFractionString(v, w))
 
-class TimeoutTimer(object):
-    
+class TimeoutTimer:
+
     _secondsTimeout: float
     _initialTime: float
     _active: bool

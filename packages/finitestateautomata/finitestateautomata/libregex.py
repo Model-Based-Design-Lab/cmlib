@@ -18,7 +18,7 @@ REGEXLETTERSIMPLE = re.compile(r"^[a-zA-Z]$")
 class RegExException(Exception):
     pass
 
-class RegExTerm(object):
+class RegExTerm:
 
     def __init__(self):
         pass
@@ -770,7 +770,7 @@ class RegExTermLetter(RegExTerm):
     def __hash__(self) -> int:
         return hash((7, self._letter))
 
-class RegEx(object):
+class RegEx:
 
     _expression: RegExTerm
     _name: str

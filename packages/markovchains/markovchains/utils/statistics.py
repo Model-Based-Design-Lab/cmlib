@@ -9,7 +9,7 @@ Minimum_Nr_Samples: int = 30
 
 
 RES_TOO_FEW_SAMPLES = "Cannot be decided, too few samples."
-class Statistics(object):
+class Statistics:
     '''
     Determine estimated long-run sample average, absolute error, relative error and confidence interval
     Equations follow Section B.7.3. of the Reader 5xie0, Computational Modeling
@@ -17,7 +17,7 @@ class Statistics(object):
 
     _cycleLength:int                            # Current cycle length Ln
     _sumOfSamplesCycle: float                   # Current cycle, sum of samples
-    _cycleCount: int                            # Cycle count 
+    _cycleCount: int                            # Cycle count
     _cumulativeCycleLengths: int                # Sum of cycle lengths
     _cumulativeSamples: float                   # Cumulative sum of samples
     _cumulativeCycleLengthsSq: int              # Sum of cycle length squared
@@ -73,8 +73,8 @@ class Statistics(object):
         # assumes mean estimate is up to date!
         if (self._cumulativeCycleLengths != 0) and (self._cycleCount != 0):
             self._stdDevEst = math.sqrt(abs(
-                self._cumulativeSamplesCycleSq 
-                - 2*self._meanEst*self._cumulativeProdCycleLengthSumSamples 
+                self._cumulativeSamplesCycleSq
+                - 2*self._meanEst*self._cumulativeProdCycleLengthSumSamples
                 + pow(self._meanEst,2)*self._cumulativeCycleLengthsSq
             )/self._cycleCount)
 
@@ -85,7 +85,7 @@ class Statistics(object):
         self._cumulativeCycleLengthsSq += pow(self._cycleLength, 2)
         self._cumulativeSamplesCycleSq += pow(self._sumOfSamplesCycle, 2)
         self._cumulativeProdCycleLengthSumSamples += self._cycleLength * self._sumOfSamplesCycle
-        
+
         # reset accumulators
         self._cycleLength = 0
         self._sumOfSamplesCycle = 0.0
@@ -106,13 +106,13 @@ class Statistics(object):
         If no estimate can be given, None is returned
         '''
 
-        # check if we have collected sufficient cycles 
+        # check if we have collected sufficient cycles
         if self._cycleCount < self._minimumNrSamples:
             return None
-        
+
         if self._cycleCount == 0:
             return None
-        
+
         # denominator of the absolute error term in Eq. B.69
         den = self._cumulativeCycleLengths/math.sqrt(self._cycleCount)
         if den != 0.0:
@@ -120,7 +120,7 @@ class Statistics(object):
         else:
             return None
 
-    def abErrorReached(self, maxAbError: float)-> bool: 
+    def abErrorReached(self, maxAbError: float)-> bool:
         abErrorVal = self.abError()
         if abErrorVal is not None:
             return  (0.0 <= abErrorVal <= maxAbError)
@@ -129,7 +129,7 @@ class Statistics(object):
     def reError(self)->Optional[float]:
         '''Return estimated relative error'''
 
-        # check if we have collected sufficient cycles 
+        # check if we have collected sufficient cycles
         if 0 <= self._cycleCount < self._minimumNrSamples:
             return None
 
@@ -145,7 +145,7 @@ class Statistics(object):
 
         return absError / (abs(self._meanEst) - absError)
 
-    def reErrorReached(self, maxReError: float)-> bool: 
+    def reErrorReached(self, maxReError: float)-> bool:
         reErrorVal = self.reError()
         if reErrorVal is not None:
             return  (0.0 <= reErrorVal <= maxReError)
@@ -167,10 +167,10 @@ class Statistics(object):
 
 
 
-class DistributionStatistics(object):
+class DistributionStatistics:
     '''Determine Cesaro limit distribution'''
 
-    _number_of_states: int  # length of distribution 
+    _number_of_states: int  # length of distribution
     _stateEstimators: List[Statistics]
 
     def __init__(self, nr_of_states: int, confidence: float) -> None:
@@ -198,14 +198,14 @@ class DistributionStatistics(object):
         vRes: List[float] = res  # type: ignore
         if not 0.9999 < sum(vRes) < 1.0001:
             return None
-        
+
         return vRes
 
     def stdDevEstimates(self)->Optional[List[float]]:
         res = [s.stdDevEstimate() for s in self._stateEstimators]
         if None in res:
             return None
-        vRes: List[float] = res  # type: ignore        
+        vRes: List[float] = res  # type: ignore
         return vRes
 
     def abError(self)->List[Optional[float]]:
@@ -253,7 +253,7 @@ class DistributionStatistics(object):
         vRes: List[Tuple[float,float]] = res  # type: ignore
         return vRes
 
-class StopConditions(object):
+class StopConditions:
 
     confidence: float
     maxAbError: float

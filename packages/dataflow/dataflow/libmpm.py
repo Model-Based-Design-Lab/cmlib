@@ -17,12 +17,12 @@ class MPMException(mp.MPException):
 class MPMValidateException(MPMException):
     """Validation exception"""
 
-class EventSequenceModel(object):
+class EventSequenceModel:
     """Model of an event sequence."""
 
     _sequence: mp.TTimeStampList
 
-    def __init__(self, seq: mp.TTimeStampList|None = None):
+    def __init__(self, seq: Union[mp.TTimeStampList,None] = None):
         # _sequence captures the event sequence
         if seq is None:
             seq = []
@@ -81,7 +81,7 @@ class EventSequenceModel(object):
         '''Return a string representation.'''
         return mpPrettyVectorToString(self._sequence)
 
-class VectorSequenceModel(object):
+class VectorSequenceModel:
     """Model of a sequence of vectors."""
 
     _vectors: mp.TMPVectorList

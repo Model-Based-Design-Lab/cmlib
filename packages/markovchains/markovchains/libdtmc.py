@@ -30,7 +30,7 @@ STR_MAX_PATH_LENGTH = "Maximum path length"
 
 class DTMCException(Exception):
     pass
-class MarkovChain(object):
+class MarkovChain:
 
     # states is a list of strings
     _states: List[str]
@@ -109,7 +109,7 @@ class MarkovChain(object):
         self._states = sortNames(self._states)
         self._initialProbabilityVector = None
         self._transitionMatrix = None
-    
+
     def setInitialProbability(self, s: str, p: Fraction):
         '''Set initial probability of state s to p.'''
         if not s in self._states:
@@ -135,7 +135,7 @@ class MarkovChain(object):
         if s not in self._transitions:
             self._transitions[s] = dict()
         self._transitions[s][d] = p
-    
+
     def transitions(self)->Set[Tuple[str,Fraction,str]]:
         '''Get the transitions of the dtmc as tuples (s, p, d). With source state s, destination state d and probability p.'''
         result = set()
@@ -195,7 +195,7 @@ class MarkovChain(object):
                             mass = mass - self._transitionMatrix[k][n]
 
                     self._transitionMatrix[kMax][n] = mass
-                
+
                 else:
                     # it is significantly larger than 1
                     raise DTMCException("probability mass is larger than one")
@@ -469,7 +469,7 @@ class MarkovChain(object):
         - ImEQ: the matrix of the matrix equation
         - rIndex: index numbers of the states from rs in the equation
         - pIndex, index of all states
-        - res: the hitting probabilities 
+        - res: the hitting probabilities
         '''
 
         def _statesReachableFrom(s: str)->List[str]:
@@ -562,7 +562,7 @@ class MarkovChain(object):
             # solve the equation x = inv(I-EQ)*Fj
             ImEQm: linalg.TMatrix = ImEQ  # type: ignore we know ImEQ is a matrix
             solX = linalg.solve(ImEQm, fj)
-            
+
         # set fr to zero
         fr: Dict[str,Fraction] = dict()
         for s in self._states:
@@ -582,13 +582,13 @@ class MarkovChain(object):
 
     def _hittingProbabilitiesSet(self, targetStates: List[str])->Tuple[linalg.TMatrix,List[str],Optional[linalg.TMatrix],Dict[str,int],Dict[str,int],Dict[str,Fraction]]:
         '''Determine the hitting probabilities to hit a set targetStates. Returns a tuple with:
-        
+
         - P: the transition matrix
         - rs: the list of states from which the target state is reachable
         - ImEQ: the matrix of the matrix equation
         - rIndex: index numbers of the states from rs in the equation
         - pIndex, index of all states
-        - res: the hitting probabilities 
+        - res: the hitting probabilities
         '''
 
         def _statesReachableFrom(s: str)->List[str]:
@@ -801,7 +801,7 @@ class MarkovChain(object):
         random.seed(seed)
 
     def randomInitialState(self)->str:
-        '''Return random initial state according to initial state distribution''' 
+        '''Return random initial state according to initial state distribution'''
         r = random.random()
         p: float = 0.0
 
@@ -839,11 +839,11 @@ class MarkovChain(object):
                 self._recurrentState = state
             else:
                 raise DTMCException("{} is not a recurrent state.".format(state))
-    
+
     def _markovSimulation(self, actions: List[TSimulationActionAndDescription], initialState: Optional[str] = None)->Tuple[int,Optional[str]]:
         '''
-        Simulate Markov Chain. 
-        actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends. 
+        Simulate Markov Chain.
+        actions is a list of pairs consisting of a callable that is called upon every step of the simulation and an optional string that describes the reason why the simulation ends.
         The callable should take two arguments: n: int, the number of performed simulation steps before this one, and state: str, the current state of the Markov Chain in the simulation. It should return a Boolean value indicating if the simulation should be ended.
         An optional forced initial state can be provided. If no initial state is provided, it is selected randomly according to the initial state distribution.
         Returns a pair n, stop, consisting of the total number of steps simulated and the optional string describing the reason for stopping.
@@ -860,7 +860,7 @@ class MarkovChain(object):
         else:
             current_state = initialState
 
-        while not any(stop_conditions):            
+        while not any(stop_conditions):
             # perform simulation actions
             for i, (action,_) in enumerate(actions):
                 stop_conditions[i] = action(n, current_state)
@@ -955,7 +955,7 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple: each of the results can be None if they could not be determined.
         - Statistics with:
             - confidence interval
@@ -973,13 +973,13 @@ class MarkovChain(object):
             if c is None:
                 return False
             return sc.maxAbError > 0 and c <= sc.maxAbError
-            
+
         def _action_RelErr(_n:int, _state:str)->bool:
             c = statistics.reError()
             if c is None:
                 return False
             return sc.maxReError > 0 and c <= sc.maxReError
-            
+
         def _CycleUpdate()->bool:
             statistics.completeCycle()
             return 0 <= sc.nrOfCycles <= statistics.cycleCount()
@@ -1009,7 +1009,7 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple: each of the results can be None if they could not be determined.
         - DistributionStatistics with:
             - confidence interval
@@ -1058,7 +1058,7 @@ class MarkovChain(object):
                 (_action_reError, STR_REL_ERROR) # Calculate smallest relative error
             ],
             _completeCycle)
-        
+
         return distributionStatistics, stop
 
     def longRunExpectedAverageReward(self, sc:StopConditions)->Tuple[Statistics, Optional[str]]:
@@ -1070,7 +1070,7 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple: each of the results can be None if they could not be determined.
         - Statistics with:
             - confidence interval
@@ -1096,14 +1096,14 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple:
         - DistributionStatistics with:
             - List of point estimates of the probabilities of the limit distribution
             - List of confidence intervals
             - List of estimates of the absolute errors
             - List of estimates of the relative errors
-            - number of cycles 
+            - number of cycles
         - the stop criterion applied as a string
         '''
 
@@ -1124,9 +1124,9 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple: each of the results can be None if they could not be determined.
-        - statistics of the expected reward 
+        - statistics of the expected reward
         - the stop criterion applied as a string
         '''
 
@@ -1155,7 +1155,7 @@ class MarkovChain(object):
             sim_stop_conditions[3] = t.isExpired()
 
         # Determine stop condition
-        stop = self._stopDescriptions[sim_stop_conditions.index(True)]       
+        stop = self._stopDescriptions[sim_stop_conditions.index(True)]
         return statistics, stop
 
     def estimationExpectedReward(self, sc:StopConditions, nr_of_steps)->Tuple[
@@ -1170,9 +1170,9 @@ class MarkovChain(object):
         - path length
         - nr. cycles
         - timeout in seconds
-        
+
         Returns a tuple: each of the results can be None if they could not be determined.
-        - statistics of the expected reward 
+        - statistics of the expected reward
         - the stop criterion applied as a string
         '''
 
@@ -1190,9 +1190,9 @@ class MarkovChain(object):
         - path length
         - nr. rounds
         - timeout in seconds
-        
+
         Returns a tuple:
-        - Statistics of the estimated distribution 
+        - Statistics of the estimated distribution
         - the stop criterion applied as a string
         '''
 
@@ -1201,14 +1201,14 @@ class MarkovChain(object):
         # There are in total four applicable stop conditions for this function
         sim_stop_conditions: List[bool] = [False] * 4
 
-        t = TimeoutTimer(sc.secondsTimeout)        
+        t = TimeoutTimer(sc.secondsTimeout)
         currentState: Optional[str] = None
 
         def _action_trackState(_n: int, state: str)-> bool:
             nonlocal currentState
             currentState = state
             return False
-        
+
         while not any(sim_stop_conditions):
 
             self._markovSimulation([
@@ -1228,13 +1228,13 @@ class MarkovChain(object):
             sim_stop_conditions[3] = t.isExpired()
 
         # Determine stop condition
-        stop = self._stopDescriptions[sim_stop_conditions.index(True)]       
-           
+        stop = self._stopDescriptions[sim_stop_conditions.index(True)]
+
         return distributionStatistics, stop
 
 
     def estimationHittingStateGeneric(self, sc:StopConditions, analysisStates: List[str], initialization: Callable, action: Callable[[int,str],bool], onHit: Callable[[Statistics],None], onNoHit: Callable[[Statistics],None])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
+
         '''
         Generic framework for estimating hitting probability, or reward until hit by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1270,7 +1270,7 @@ class MarkovChain(object):
         t = TimeoutTimer(sc.secondsTimeout)
 
         for initialState in analysisStates:
-            
+
             sim_stop_conditions = [False] * 4
 
             # generic initialization
@@ -1303,14 +1303,14 @@ class MarkovChain(object):
                 sim_stop_conditions[3] = t.isExpired()
 
             # Determine stop condition
-            stop[initialState] = self._stopDescriptions[sim_stop_conditions.index(True)]       
-                
+            stop[initialState] = self._stopDescriptions[sim_stop_conditions.index(True)]
+
         return statistics, stop
 
 
 
     def estimationHittingProbabilityState(self, sc:StopConditions, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
+
         '''
         Estimate the hitting probability until hitting a single state in one or more steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1324,7 +1324,7 @@ class MarkovChain(object):
         Parameter hitting_state is a state to be hit
 
         The analysis is performed for all initial states in analysisStates
-        
+
         Returns a tuple:
         - statistics of the estimated hitting probability
         - the stop criteria applied as strings
@@ -1351,7 +1351,7 @@ class MarkovChain(object):
         return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)
 
     def estimationRewardUntilHittingState(self, sc:StopConditions, hitting_state: str, analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
+
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1365,7 +1365,7 @@ class MarkovChain(object):
         Parameter hitting_state is a state to be hit
 
         The analysis is performed for all initial states in analysisStates
-        
+
         Returns a tuple:
         - statistics of the cumulative reward
         - the stop criteria applied as strings
@@ -1403,7 +1403,7 @@ class MarkovChain(object):
 
 
     def estimationHittingProbabilityStateSet(self, sc:StopConditions, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
+
         '''
         Estimate the hitting probability until hitting a set of states in zero or more steps by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1417,7 +1417,7 @@ class MarkovChain(object):
         Parameter hitting_states is a list of states to be hit
 
         The analysis is performed for all initial states in analysisStates
-        
+
         Returns a tuple:
         - statistics of the estimated hitting probability
         - the stop criteria applied as strings
@@ -1442,7 +1442,7 @@ class MarkovChain(object):
         return self.estimationHittingStateGeneric(sc, analysisStates, initialization, action, onHit, onNoHit)
 
     def estimationRewardUntilHittingStateSet(self, sc:StopConditions, hitting_states: List[str], analysisStates: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-        
+
         '''
         Estimate the cumulative reward until hitting a single state by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1456,7 +1456,7 @@ class MarkovChain(object):
         Parameter hitting_states is a list of states to be hit
 
         The analysis is performed for all initial states in analysisStates
-        
+
         Returns a tuple:
         - statistics of the cumulative reward
         - the stop criteria applied as strings

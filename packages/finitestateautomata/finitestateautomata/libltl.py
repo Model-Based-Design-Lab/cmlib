@@ -22,7 +22,7 @@ def printUnfold(uf:Set[Tuple[AbstractSet['LTLFormula'],AbstractSet['LTLFormula']
         print("Accept:")
         print(", ".join([str(phi) for phi in p[2]]))
 
-class LTLSubFormula(object):
+class LTLSubFormula:
 
     def __init__(self):
         pass
@@ -693,7 +693,7 @@ class LTLFormulaEventually(LTLSubFormula):
     def __hash__(self) -> int:
         return hash((self._subformula,"F"))
 
-class LTLFormula(object):
+class LTLFormula:
 
     _expression: LTLSubFormula
     _alphabet: Optional[Set[str]]
