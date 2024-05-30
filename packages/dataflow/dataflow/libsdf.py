@@ -731,8 +731,8 @@ class DataflowGraph:
         try:
             sc_a_mu = mpStarClosure(matrix_a_mu)
         except PositiveCycleException:
-            raise SDFException('The request period mu is smaller than smallest period the system" \
-                               " can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+            raise SDFException('The requested period mu is smaller than smallest period the system' \
+                               ' can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
         c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
         x00 = mpMultiplyMatrices(mpTransposeMatrix([x0]), [mpZeroVector(len(self._inputs))])
         b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
@@ -759,8 +759,8 @@ class DataflowGraph:
         try:
             sc_a_mu = mpStarClosure(a_mu)
         except PositiveCycleException:
-            raise SDFException('The request period mu is smaller than smallest period the system "\
-                               "can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
+            raise SDFException('The requested period mu is smaller than smallest period the system '\
+                               'can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
         c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
 
         b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
@@ -1035,11 +1035,11 @@ class DataflowGraph:
 
         factory = {}
         factory['Init'] = DataflowGraph
-        factory['AddActor'] = lambda sdf, a, specs: sdf.addActor(a, specs)
-        factory['AddChannel'] = lambda sdf, a1, a2, specs: sdf.addChannel(a1, a2, specs)
-        factory['AddInputPort'] = lambda sdf, i: sdf.addInputPort(i)
-        factory['AddOutputPort'] = lambda sdf, i: sdf.addOutputPort(i)
-        factory['AddInputSignal'] = lambda sdf, n, s: sdf.addInputSignal(n, s)
+        factory['AddActor'] = lambda sdf, a, specs: sdf.add_actor(a, specs)
+        factory['AddChannel'] = lambda sdf, a1, a2, specs: sdf.add_channel(a1, a2, specs)
+        factory['AddInputPort'] = lambda sdf, i: sdf.add_input_port(i)
+        factory['AddOutputPort'] = lambda sdf, i: sdf.add_output_port(i)
+        factory['AddInputSignal'] = lambda sdf, n, s: sdf.add_input_signal(n, s)
         result = parseSDFDSL(dsl_string, factory)
         if result[0] is None:
             sys.exit(1)

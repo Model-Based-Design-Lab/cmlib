@@ -1,12 +1,16 @@
-from fractions import Fraction
-import os
-import pytest
+"""Testing the dataflow library"""
+
 import copy
-from modeltest.modeltest import Model_pytest
-from dataflow.libsdf import DataflowGraph
+import os
+
+from fractions import Fraction
+
+import pytest
 from dataflow.libmpm import MaxPlusMatrixModel
-from dataflow.utils.utils import parseInitialState, getSquareMatrix
+from dataflow.libsdf import DataflowGraph
 from dataflow.utils.commandline import _convolution, _maximum
+from dataflow.utils.utils import getSquareMatrix, parseInitialState
+from modeltest.modeltest import Model_pytest
 
 TEST_FILE_FOLDER = os.path.dirname(__file__)
 MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
@@ -20,20 +24,21 @@ MODEL_MPM_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".mpm")]
 ### Synchronous Data Flow Models            ###
 ###############################################
 
-class SDF_pytest(Model_pytest):
+class SDFPyTest(Model_pytest):
+    """Testing the dataflow domain."""
     def __init__(self, model):
-        
+
         # First load LTL model
         self.model_name = model[:-4]
         self.model_loc = os.path.join(MODEL_FOLDER, self.model_name + ".sdf")
         self.output_loc = os.path.join(OUTPUT_FOLDER, self.model_name + ".json")
-                
+
         super().__init__(self.output_loc)
 
         # Open model
-        with open(self.model_loc, 'r') as sdfFile:
-            dsl = sdfFile.read()
-        self.name, self.model = DataflowGraph.fromDSL(dsl)
+        with open(self.model_loc, 'r', encoding='utf-8') as sdf_file:
+            dsl = sdf_file.read()
+        self.name, self.model = DataflowGraph.from_dsl(dsl)
 
         # Create namespace of user arguments
         self.args = self.Namespace(
@@ -51,43 +56,51 @@ class SDF_pytest(Model_pytest):
                     self.mu = 1/self.throughput
 
 
-    def Correct_behavior_tests(self):
-        self.function_test(lambda: self.model.deadlock(), "deadlock")
-        self.function_test(lambda: self.model.repetitionVector(), "repetitionVector")
-        self.function_test(lambda: self.model.listOfInputsStr(), "listOfInputsStr")
-        self.function_test(lambda: self.model.listOfOutputsStr(), "listOfOutputsStr")
-        self.function_test(lambda: self.model.listOfStateElementsStr(), "listOfStateElementsStr")
+    def correct_behavior_tests(self):
+        """Testing behaviors with errors."""
+        self.function_test(self.model.deadlock, "deadlock")
+        self.function_test(self.model.repetition_vector, "repetitionVector")
+        self.function_test(self.model.list_of_inputs_str, "listOfInputsStr")
+        self.function_test(self.model.list_of_outputs_str, "listOfOutputsStr")
+        self.function_test(self.model.list_of_state_elements_str, "listOfStateElementsStr")
         inv_model = copy.deepcopy(self.model) # Need copy of current object for save conversion
-        self.function_test(lambda: vars(inv_model.convertToSingleRate()), "convertToSingleRate", sort = True)
+        self.function_test(lambda: vars(inv_model.convert_to_single_rate()),  \
+                           "convertToSingleRate", sort = True)
         if not self.deadlock:
-            self.function_test(lambda: self.model.throughput(), "throughput")
-            self.function_test(lambda: self.model.stateSpaceMatrices(), "stateSpaceMatrices")
+            self.function_test(self.model.throughput, "throughput")
+            self.function_test(self.model.state_space_matrices, "stateSpaceMatrices")
         mu = self.mu
         if mu is not None:
-            x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
+            x0 = parseInitialState(self.args, self.model.number_of_initial_tokens())
             self.function_test(lambda: self.model.latency(x0, mu), "latency")
-            self.function_test(lambda: self.model.generalizedLatency(mu), "generalizedLatency")
-        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
+            self.function_test(lambda: self.model.generalized_latency(mu), "generalizedLatency")
+        self.function_test(lambda: self.model.as_dsl("TestName"), "convert_to_DSL", sort = True)
 
 
-    def Incorrect_behavior_tests(self):
+    def incorrect_behavior_tests(self):
+        """Testing behaviors that are expected to fail."""
         mu = self.mu
         if mu is not None:
-            x0 = parseInitialState(self.args, self.model.numberOfInitialTokens())
-            self.incorrect_test(lambda: self.model.latency(x0, mu-Fraction(0.01)), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
-            self.incorrect_test(lambda: self.model.generalizedLatency(mu-Fraction(0.01)), "The request period mu is smaller than smallest period the system can sustain. Therefore, it has no latency.")
+            x0 = parseInitialState(self.args, self.model.number_of_initial_tokens())
+            self.incorrect_test(lambda: self.model.latency(x0, mu-Fraction(0.01)), \
+                                "The requested period mu is smaller than smallest period the " \
+                                    "system can sustain. Therefore, it has no latency.")
+            self.incorrect_test(lambda: self.model.generalized_latency(mu-Fraction(0.01)), \
+                                "The requested period mu is smaller than smallest period the " \
+                                    "system can sustain. Therefore, it has no latency.")
 
-    # Class to create namespace args consisting of user input arguments 
     class Namespace:
+        """Class to create namespace args consisting of user input arguments"""
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
 
 @pytest.mark.parametrize("test_model", MODEL_SDF_FILES)
-def test_SDF(test_model: str):
-    m = SDF_pytest(test_model)
-    m.Correct_behavior_tests()
-    m.Incorrect_behavior_tests()
+def test_sdf(test_model: str):
+    """Test an SDF model."""
+    m = SDFPyTest(test_model)
+    m.correct_behavior_tests()
+    m.incorrect_behavior_tests()
     m.write_output_file()
 
 
@@ -95,22 +108,24 @@ def test_SDF(test_model: str):
 ### Max-Plus Models                         ###
 ###############################################
 
-class MPM_pytest(Model_pytest):
+class MPMPyTest(Model_pytest):
+    """Test an MPM model."""
     def __init__(self, model):
-        
+
         # First load LTL model
         self.model_name = model[:-4]
         self.model_loc = os.path.join(MODEL_FOLDER, self.model_name + ".mpm")
         self.output_loc = os.path.join(OUTPUT_FOLDER, self.model_name + ".json")
-                
+
         super().__init__(self.output_loc)
 
         # Open model
-        with open(self.model_loc, 'r') as mpmFile:
-            dsl = mpmFile.read()
-        self.name, self.Matrices, self.VectorSequences, self.EventSequences = MaxPlusMatrixModel.fromDSL(dsl)
+        with open(self.model_loc, 'r', encoding='utf-8') as mpm_file:
+            dsl = mpm_file.read()
+        self.name, self.matrices, self.vector_sequences, \
+            self.event_sequences = MaxPlusMatrixModel.fromDSL(dsl)
 
-        sq = ",".join(self.EventSequences.keys())
+        sq = ",".join(self.event_sequences.keys())
         sq = ",".join([sq, sq])
 
         # Create namespace of user arguments
@@ -125,46 +140,50 @@ class MPM_pytest(Model_pytest):
             sequences=sq,
         )
 
-    def Correct_behavior_tests(self):
+    def correct_behavior_tests(self):
+        """Test behaviors that are expected to succeed."""
         # Function used to obtain multiple results
-        mat = getSquareMatrix(self.Matrices, self.args)
+        mat = getSquareMatrix(self.matrices, self.args)
 
         # Deterministic results
-        self.function_test(lambda: self.Matrices[mat].eigenvalue(), "Eigenvalues")
-        self.function_test(lambda: self.Matrices[mat].starClosure(), "starClosure")
-        
+        self.function_test(self.matrices[mat].eigenvalue, "Eigenvalues")
+        self.function_test(self.matrices[mat].starClosure, "starClosure")
+
         # Only check convolution when sequence is available
         if len(self.args.sequences) > 1:  # type: ignore
-            sequences, res = _convolution(self.EventSequences, self.args)
+            sequences, res = _convolution(self.event_sequences, self.args)
             self.function_test(lambda: sequences, "convolution_sequences")
             self.function_test(lambda: vars(res)['_sequence'], "convolution_res")
-            res = self.EventSequences[list(self.EventSequences.keys())[0]].delay(self.args.numberofiterations)  # type: ignore
+            res = self.event_sequences[list(self.event_sequences.keys())[0]].delay(self.args.numberofiterations)  # type: ignore
             self.function_test(lambda: vars(res)['_sequence'], "delay_sequence")
-            res = self.EventSequences[list(self.EventSequences.keys())[0]].scale(self.args.numberofiterations)  # type: ignore
+            res = self.event_sequences[list(self.event_sequences.keys())[0]].scale(self.args.numberofiterations)  # type: ignore
             self.function_test(lambda: vars(res)['_sequence'], "scale_sequence")
-            sequences, res = _maximum(self.EventSequences, self.args)
+            sequences, res = _maximum(self.event_sequences, self.args)
             self.function_test(lambda: sequences, "maximum_analysis_sequences")
             self.function_test(lambda: vars(res)['_sequence'], "maximum_analysis_res")
-        success, cl = self.Matrices[list(self.Matrices.keys())[0]].starClosure()
+        _, cl = self.matrices[list(self.matrices.keys())[0]].starClosure()
         # if success:
         self.function_test(lambda: cl, "star_closure")
-        matrix = self.Matrices[list(self.Matrices.keys())[0]]
-        self.function_test(lambda: vars(MaxPlusMatrixModel.multiplySequence([matrix]))["_rows"], "multiply")
+        matrix = self.matrices[list(self.matrices.keys())[0]]
+        self.function_test(lambda: vars(MaxPlusMatrixModel.multiplySequence([matrix]))["_rows"], \
+                           "multiply")
 
         # Non deterministic results, False added as argument
-        self.function_test(lambda: self.Matrices[mat].eigenvectors(), "Eigenvectors", False) # Eigenvectors can appear in different order
+        # Eigenvectors can appear in different order
+        self.function_test(self.matrices[mat].eigenvectors, "Eigenvectors", False)
 
-    def Incorrect_behavior_tests(self):
-        pass
+    def incorrect_behavior_tests(self):
+        """Test behaviors that are expected to fail."""
 
-    # Class to create namespace args consisting of user input arguments 
     class Namespace:
+        """Class to create namespace args consisting of user input arguments"""
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
 @pytest.mark.parametrize("test_model", MODEL_MPM_FILES)
-def test_MPM(test_model: str):
-    m = MPM_pytest(test_model)
-    m.Correct_behavior_tests()
-    m.Incorrect_behavior_tests()
+def test_mpm(test_model: str):
+    """Test an MPM model."""
+    m = MPMPyTest(test_model)
+    m.correct_behavior_tests()
+    m.incorrect_behavior_tests()
     m.write_output_file()

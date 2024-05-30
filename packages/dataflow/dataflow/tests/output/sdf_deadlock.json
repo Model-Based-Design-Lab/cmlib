@@ -1,19 +1,19 @@
 {
     "deadlock": "True",
     "repetitionVector": {
-        "B": "1.0000",
-        "o": "1.0000",
-        "C": "1.0000",
         "A": "1.0000",
-        "i": "1.0000"
+        "B": "1.0000",
+        "i": "1.0000",
+        "C": "1.0000",
+        "o": "1.0000"
     },
     "listOfInputsStr": "i",
     "listOfOutputsStr": "o",
     "listOfStateElementsStr": "",
     "convertToSingleRate": {
-        "_actorsAndIO": "[A, B, C, i, o]",
+        "_actors_and_io": "[A, B, C, i, o]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5]",
-        "_actorSpecs": {
+        "_actor_specs": {
             "i": {
                 "executionTime": "0"
             },
@@ -24,33 +24,33 @@
                 "executionTime": "0"
             }
         },
-        "_outChannels": {
+        "_out_channels": {
             "i": "[ch1]",
             "A": "[ch2]",
             "B": "[ch3, ch5]",
             "C": "[ch4]"
         },
-        "_inChannels": {
+        "_in_channels": {
             "A": "[ch1, ch4]",
             "B": "[ch2]",
             "C": "[ch3]",
             "o": "[ch5]"
         },
-        "_chanProducer": {
+        "_chan_producer": {
             "ch1": "i",
             "ch2": "A",
             "ch3": "B",
             "ch4": "C",
             "ch5": "B"
         },
-        "_chanConsumer": {
+        "_chan_consumer": {
             "ch1": "A",
             "ch2": "B",
             "ch3": "C",
             "ch4": "A",
             "ch5": "o"
         },
-        "_channelSpecs": {
+        "_channel_specs": {
             "ch1": {},
             "ch2": {},
             "ch3": {},
@@ -59,16 +59,16 @@
         },
         "_inputs": "[i]",
         "_outputs": "[o]",
-        "_inputSignals": {},
-        "_repetitionVector": {
-            "B": "1.0000",
-            "o": "1.0000",
-            "C": "1.0000",
+        "_input_signals": {},
+        "_repetition_vector": {
             "A": "1.0000",
-            "i": "1.0000"
+            "B": "1.0000",
+            "i": "1.0000",
+            "C": "1.0000",
+            "o": "1.0000"
         },
-        "_symbolicTimeStampSize": "1.0000",
-        "_symbolicVector": "[i]"
+        "_symbolic_time_stamp_size": "1.0000",
+        "_symbolic_vector": "[i]"
     },
     "convert_to_DSL": "dataflow graph TestName {\n\tinputs i\n\toutputs o\n\ti[0]  --------> A\n\tA  --------> B\n\tB  --------> C\n\tC  --------> A\n\tB  --------> o[0]\n}\n"
 }

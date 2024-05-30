@@ -1,17 +1,17 @@
 {
     "deadlock": "False",
     "repetitionVector": {
+        "C": "1.0000",
         "F": "1.0000",
-        "P": "1.0000",
-        "C": "1.0000"
+        "P": "1.0000"
     },
     "listOfInputsStr": "",
     "listOfOutputsStr": "",
     "listOfStateElementsStr": "P_P, F_P_1, F_P_2, C_F_1, C_F_2, C_C",
     "convertToSingleRate": {
-        "_actorsAndIO": "[C, F, P]",
+        "_actors_and_io": "[C, F, P]",
         "_channels": "[ch1, ch2, ch3, ch4, ch5, ch6]",
-        "_actorSpecs": {
+        "_actor_specs": {
             "P": {
                 "executionTime": "2"
             },
@@ -22,17 +22,17 @@
                 "executionTime": "1"
             }
         },
-        "_outChannels": {
+        "_out_channels": {
             "P": "[ch1, ch2]",
             "F": "[ch3, ch4]",
             "C": "[ch5, ch6]"
         },
-        "_inChannels": {
+        "_in_channels": {
             "P": "[ch1, ch3]",
             "F": "[ch2, ch5]",
             "C": "[ch4, ch6]"
         },
-        "_chanProducer": {
+        "_chan_producer": {
             "ch1": "P",
             "ch2": "P",
             "ch3": "F",
@@ -40,7 +40,7 @@
             "ch5": "C",
             "ch6": "C"
         },
-        "_chanConsumer": {
+        "_chan_consumer": {
             "ch1": "P",
             "ch2": "F",
             "ch3": "P",
@@ -48,7 +48,7 @@
             "ch5": "F",
             "ch6": "C"
         },
-        "_channelSpecs": {
+        "_channel_specs": {
             "ch1": {
                 "initialTokens": "1.0000"
             },
@@ -66,14 +66,14 @@
         },
         "_inputs": "",
         "_outputs": "",
-        "_inputSignals": {},
-        "_repetitionVector": {
+        "_input_signals": {},
+        "_repetition_vector": {
+            "C": "1.0000",
             "F": "1.0000",
-            "P": "1.0000",
-            "C": "1.0000"
+            "P": "1.0000"
         },
-        "_symbolicTimeStampSize": "6.0000",
-        "_symbolicVector": "[ch1, ch3_1, ch3_2, ch5_1, ch5_2, ch6]"
+        "_symbolic_time_stamp_size": "6.0000",
+        "_symbolic_vector": "[ch1, ch3_1, ch3_2, ch5_1, ch5_2, ch6]"
     },
     "throughput": "2/5",
     "stateSpaceMatrices": "[[[0, 0, None, None, None, None], [2, 2, None, 0, None, None], [5, 5, None, 3, None, 0]], [[[2, 2, None, None, None, None], [None, None, 0, None, None, None], [5, 5, None, 3, None, None], [None, None, None, None, 0, None], [6, 6, None, 4, None, 1], [6, 6, None, 4, None, 1]], [, , , , , ], , ]]",
