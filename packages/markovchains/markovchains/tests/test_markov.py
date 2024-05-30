@@ -50,20 +50,20 @@ class Markov_pytest(Model_pytest):
         self.model.setRecurrentState(None)
 
     def statisticsAndStop(self, s: Statistics, stop: Optional[str]):
-        return s.confidenceInterval(), s.abError(), s.reError(), s.meanEstimate(), s.stdDevEstimate(), stop
+        return s.confidence_interval(), s.ab_error(), s.re_error(), s.mean_estimate(), s.std_dev_estimate(), stop
 
     def dictionaryStatisticsAndStop(self, s: Optional[Dict[str,Statistics]], stop: Union[str,Dict[str,str]]):
         if s is None:
             return None
         res = dict()
         for t in s.keys():
-            res[t] = [s[t].confidenceInterval(), s[t].abError(), s[t].reError(), s[t].meanEstimate(), s[t].stdDevEstimate()]
+            res[t] = [s[t].confidence_interval(), s[t].ab_error(), s[t].re_error(), s[t].mean_estimate(), s[t].std_dev_estimate()]
         return res, stop
 
     def distributionStatisticsAndStop(self, s: Optional[DistributionStatistics], stop: Optional[str]):
         if s is None:
             return "None"
-        return s.confidenceIntervals(), s.abError(), s.reError(), s.pointEstimates(), s.stdDevEstimates(), stop
+        return s.confidence_intervals(), s.ab_error(), s.re_error(), s.point_estimates(), s.std_dev_estimates(), stop
 
     def Correct_behavior_tests(self):
         self.function_test(lambda: self.model.states(), "states")

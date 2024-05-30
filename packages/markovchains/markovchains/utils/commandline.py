@@ -308,16 +308,16 @@ def process(args, dsl):
             M.setRecurrentState(args.targetState)
         C = requireStopCriteria(args)
         statistics, stop = M.longRunExpectedAverageReward(C)
-        if statistics.cycleCount() == 0:
+        if statistics.cycle_count() == 0:
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optional_float_or_string_to_string(statistics.meanEstimateResult())))
-            print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidenceInterval())))
-            print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.abError())))
-            print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.reError())))
-            print("\tNumber of cycles: {}".format(statistics.cycleCount()))
+            print("\tEstimated mean: {}".format(optional_float_or_string_to_string(statistics.mean_estimate_result())))
+            print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidence_interval())))
+            print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.ab_error())))
+            print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.re_error())))
+            print("\tNumber of cycles: {}".format(statistics.cycle_count()))
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         setSeed(args, M)
@@ -330,13 +330,13 @@ def process(args, dsl):
             print("Recurrent state has not been reached, no realizations found")
         else:
             print("Simulation termination reason: {}".format(stop))
-            print("Cezaro limit distribution: {}".format(print_optional_list(distributionStatistics.pointEstimates(), "Could not be determined")))
-            print("Number of cycles: {}\n".format(distributionStatistics.cycleCount()))
-            dist: Optional[List[float]] = distributionStatistics.pointEstimates()
+            print("Cezaro limit distribution: {}".format(print_optional_list(distributionStatistics.point_estimates(), "Could not be determined")))
+            print("Number of cycles: {}\n".format(distributionStatistics.cycle_count()))
+            dist: Optional[List[float]] = distributionStatistics.point_estimates()
             if dist is not None:
-                intervals = distributionStatistics.confidenceIntervals()
-                abError = distributionStatistics.abError()
-                reError = distributionStatistics.reError()
+                intervals = distributionStatistics.confidence_intervals()
+                abError = distributionStatistics.ab_error()
+                reError = distributionStatistics.re_error()
                 states: List[str] = M.states()
                 for i in range(len(states)):
                     print("[{}]: {:.4f}".format(states[i], dist[i]))
@@ -351,11 +351,11 @@ def process(args, dsl):
         C = requireStopCriteria(args)
         statistics, stop = M.estimationExpectedReward(C, N)
         print("Simulation termination reason: {}".format(stop))
-        print("\tExpected reward: {}".format(optional_float_or_string_to_string(statistics.meanEstimateResult())))
-        print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidenceInterval())))
-        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.abError())))
-        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.reError())))
-        print("\tNumber of realizations: ", statistics.cycleCount())
+        print("\tExpected reward: {}".format(optional_float_or_string_to_string(statistics.mean_estimate_result())))
+        print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidence_interval())))
+        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.ab_error())))
+        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.re_error())))
+        print("\tNumber of realizations: ", statistics.cycle_count())
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
         setSeed(args, M)
@@ -365,11 +365,11 @@ def process(args, dsl):
         distributionStatistics, stop = M.estimationTransientDistribution(C, N)
         print("Simulation termination reason: {}".format(stop))
         print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
-        print("\tDistribution: {}".format(print_optional_list(distributionStatistics.pointEstimates())))
-        print("\tConfidence intervals: {}".format(print_optional_list_of_intervals(distributionStatistics.confidenceIntervals())))
-        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.maxAbError())))
-        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.maxReError())))
-        print("\tNumber of realizations: ", distributionStatistics.cycleCount())
+        print("\tDistribution: {}".format(print_optional_list(distributionStatistics.point_estimates())))
+        print("\tConfidence intervals: {}".format(print_optional_list_of_intervals(distributionStatistics.confidence_intervals())))
+        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.max_ab_error())))
+        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.max_re_error())))
+        print("\tNumber of realizations: ", distributionStatistics.cycle_count())
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
         setSeed(args, M)
@@ -386,11 +386,11 @@ def process(args, dsl):
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
                 tableHS.append([
-                    "f({}, {}) = {}".format(t, s, optional_float_or_string_to_string(statistics.meanEstimateResult())),
-                    "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
-                    "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
-                    "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
-                    "#paths: {}".format(statistics.nrPaths()),
+                    "f({}, {}) = {}".format(t, s, optional_float_or_string_to_string(statistics.mean_estimate_result())),
+                    "int: {}".format(print_optional_interval(statistics.confidence_interval())),
+                    "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
+                    "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
+                    "#paths: {}".format(statistics.nr_paths()),
                     "stop: {}".format(dStop[t])
                 ])
             print_table(tableHS, 4)
@@ -408,16 +408,16 @@ def process(args, dsl):
             tableRS: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if not isinstance(statistics.meanEstimateResult(), float):
-                    tableRS.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())))
+                if not isinstance(statistics.mean_estimate_result(), float):
+                    tableRS.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     tableRS.append([
-                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())),
-                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
-                        "#paths: {}".format(statistics.nrPaths()),
+                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())),
+                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
+                        "#paths: {}".format(statistics.nr_paths()),
                         "stop: {}".format(dStop[t])
                     ])
             print_table(tableRS, 4)
@@ -435,16 +435,16 @@ def process(args, dsl):
             table: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if not isinstance(statistics.meanEstimateResult(), float):
-                    table.append("From state {}: {}".format(S[i], statistics.meanEstimateResult()))
+                if not isinstance(statistics.mean_estimate_result(), float):
+                    table.append("From state {}: {}".format(S[i], statistics.mean_estimate_result()))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     table.append([
-                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optional_float_or_string_to_string(statistics.meanEstimateResult())),
-                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
-                        "#paths: {}".format(statistics.nrPaths()),
+                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optional_float_or_string_to_string(statistics.mean_estimate_result())),
+                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
+                        "#paths: {}".format(statistics.nr_paths()),
                         "stop: {}".format(dStop[t])
                     ])
             print_table(table, 4)
@@ -463,16 +463,16 @@ def process(args, dsl):
             tableRSet: List[Union[str,List[str]]] = []
             for i, t in enumerate(S):
                 statistics = statisticsDict[t]
-                if not isinstance(statistics.meanEstimateResult(), float):
-                    tableRSet.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())))
+                if not isinstance(statistics.mean_estimate_result(), float):
+                    tableRSet.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())))
                 else:
                     dStop: Dict[str,str] = stop  # type: ignore
                     tableRSet.append([
-                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.meanEstimateResult())),
-                        "int: {}".format(print_optional_interval(statistics.confidenceInterval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.abError())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.reError())),
-                        "#paths: {}".format(statistics.nrPaths()),
+                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())),
+                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
+                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
+                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
+                        "#paths: {}".format(statistics.nr_paths()),
                         "stop: {}".format(dStop[t])
                     ])
             print_table(tableRSet, 4)
