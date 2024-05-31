@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from finitestateautomata.libfsa import Automaton, FSAException
 from finitestateautomata.libregex import RegEx,RegExTerm
 from finitestateautomata.libltl import LTLFormula
-from finitestateautomata.utils.utils import printStates, printSetOfStates
+from finitestateautomata.utils.utils import print_states, print_set_of_states
 from finitestateautomata.utils.operations import Operations, \
     AutomataOperations, LTLOperations, OperationDescriptions, RegExOperations, \
     OP_FSA_ACCEPTS, OP_FSA_ALPHABET, OP_FSA_AS_DFA, OP_FSA_AS_DFA_NAME, \
@@ -25,6 +25,13 @@ from finitestateautomata.utils.operations import Operations, \
     OP_LTL_CONVERT_LTL, OP_LTL_CONVERT_LTL_NAME, OP_REGEX_CONVERT_FSA, \
     OP_REGEX_CONVERT_OMEGA_REGEX
 
+def _operations_joined_by(s: str):
+    return s.join(Operations)
+
+OPERATIONS_TABBED_LIST = _operations_joined_by('\n\t- ')
+OPERATIONS_SEMI_COLON_NEW_LINE = _operations_joined_by("; \n")
+OPERATIONS_COMMA_SEPARATED = _operations_joined_by(", ")
+
 def main():
     ''' the main entry point '''
 
@@ -35,8 +42,8 @@ def main():
 
     if options.opHelp: # Check if -oh has been called
         if options.opHelp not in Operations:
-            print(f"Operation '{options.opHelp}' does not exist. List of operations:\n\t- { \
-                "\n\t- ".join(Operations)}")
+            print(f"Operation '{options.opHelp}' does not exist. List of operations:\n" \
+                  f"\t- {OPERATIONS_TABBED_LIST}")
         else:
             print(f"{options.opHelp}: {OperationDescriptions[Operations.index(options.opHelp)]}")
         sys.exit(1)
@@ -49,8 +56,8 @@ def main():
     parser.add_argument('-sa', '--secondaryautomaton', dest='secondaryAutomaton',
                         help="a secondary automaton for the operation")
     parser.add_argument('-op', '--operation', dest='operation',
-            help=f"the operation or analysis to perform, one of: {"; \n".join(Operations) \
-            }.\n" \
+            help=f"the operation or analysis to perform, one of: " \
+                f"{OPERATIONS_SEMI_COLON_NEW_LINE}.\n" \
             "Use 'finitestateautomata -oh OPERATION' for information about the specific operation.")
     parser.add_argument('-oa', '--outputautomaton', dest='outputAutomaton',
                         help="the outputfile to write output automata to")
@@ -65,7 +72,7 @@ def main():
 
     if args.operation not in Operations:
         sys.stderr.write(f"Unknown operation: {args.operation}\n")
-        sys.stderr.write(f"Operation should be one of: {", ".join(Operations)}.\n")
+        sys.stderr.write(f"Operation should be one of: {OPERATIONS_COMMA_SEPARATED}.\n")
         sys.exit(1)
 
     dsl = None
@@ -136,7 +143,7 @@ def process(args, dsl):
 
     if args.operation not in Operations:
         print("Unknown operation or no operation provided")
-        print(f"Operation should be one of: {", ".join(Operations)}.")
+        print(f"Operation should be one of: {OPERATIONS_COMMA_SEPARATED}.")
         sys.exit(1)
 
     # accepts (requires input word)
@@ -144,7 +151,7 @@ def process(args, dsl):
         res, path = require_automaton(a).accepts_with_path(args.inputtrace)
         print(res)
         if res and path is not None:
-            printStates(path)
+            print_states(path)
 
     # isDeterministic
     if args.operation == OP_FSA_IS_DETERMINISTIC:
@@ -206,7 +213,7 @@ def process(args, dsl):
         if not empty:
             print(word)
             if path is not None:
-                printStates(path)
+                print_states(path)
 
     # languageEmptyBuchi
     if args.operation == OP_FSA_LANGUAGE_EMPTY_BUCHI:
@@ -217,13 +224,13 @@ def process(args, dsl):
             print(wordprefix)
             print(wordrepeat)
             if pathprefix is not None and pathrepeat is not None:
-                printStates(list(map(lambda s: state_map[s], pathprefix)))
-                printStates(list(map(lambda s: state_map[s], pathrepeat)))
+                print_states(list(map(lambda s: state_map[s], pathprefix)))
+                print_states(list(map(lambda s: state_map[s], pathrepeat)))
 
     # reachable states
     if args.operation == OP_FSA_REACHABLE_STATES:
         res = require_automaton(a).reachable_states()
-        printSetOfStates(res)
+        print_set_of_states(res)
 
     # languageIncluded
     if args.operation == OP_FSA_LANGUAGE_INCLUDED:

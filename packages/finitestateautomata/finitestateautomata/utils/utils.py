@@ -1,23 +1,27 @@
 """ miscellaneous utility functions """
 
-from string import digits
+import sys
 from typing import List, Set
 
 def warn(s: str):
+    '''Print warning.'''
     print("Warning: " + s)
 
 def error(s: str):
+    '''Print error.'''
     print("Error: "+ s)
-    exit()
+    sys.exit()
 
-def inQuotes(state: str):
+def in_quotes(state: str):
+    '''Return string within double quotes.'''
     if "," in state:
         return "\"" + state + "\""
-    else:
-        return state
+    return state
 
-def printStates(states: List[str]):
+def print_states(states: List[str]):
+    '''Print list of states.'''
     print(states)
 
-def printSetOfStates(states: Set[str]):
+def print_set_of_states(states: Set[str]):
+    '''Print a set of states.'''
     print("{"+", ".join(states)+"}")

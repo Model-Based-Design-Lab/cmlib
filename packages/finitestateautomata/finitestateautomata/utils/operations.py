@@ -2,7 +2,7 @@
 
 OP_FSA_ACCEPTS = 'accepts'
 OP_FSA_IS_DETERMINISTIC = 'isDeterministic'
-OP_FSA_AS_DFA = 'asDFA' 
+OP_FSA_AS_DFA = 'asDFA'
 OP_FSA_ELIMINATE_EPSILON = 'eliminateEpsilon'
 OP_FSA_ALPHABET = 'alphabet'
 OP_FSA_COMPLETE = 'complete'
@@ -25,7 +25,14 @@ OP_REGEX_CONVERT_OMEGA_REGEX = 'convertOmegaRegEx'
 
 OP_LTL_CONVERT_LTL = 'convertLTL'
 
-AutomataOperations = [OP_FSA_ACCEPTS, OP_FSA_IS_DETERMINISTIC, OP_FSA_AS_DFA, OP_FSA_ELIMINATE_EPSILON, OP_FSA_ALPHABET, OP_FSA_COMPLETE, OP_FSA_COMPLEMENT, OP_FSA_PRODUCT, OP_FSA_STRICT_PRODUCT, OP_FSA_PRODUCT_BUCHI, OP_FSA_STRICT_PRODUCT_BUCHI, OP_FSA_REACHABLE_STATES, OP_FSA_LANGUAGE_EMPTY, OP_FSA_LANGUAGE_EMPTY_BUCHI, OP_FSA_LANGUAGE_INCLUDED, OP_FSA_MINIMIZE, OP_FSA_MINIMIZE_BUCHI, OP_FSA_RELABEL, OP_FSA_AS_REGEX ]
+AutomataOperations = [OP_FSA_ACCEPTS, OP_FSA_IS_DETERMINISTIC, OP_FSA_AS_DFA, \
+                        OP_FSA_ELIMINATE_EPSILON, OP_FSA_ALPHABET, OP_FSA_COMPLETE, \
+                        OP_FSA_COMPLEMENT, OP_FSA_PRODUCT, OP_FSA_STRICT_PRODUCT, \
+                        OP_FSA_PRODUCT_BUCHI, OP_FSA_STRICT_PRODUCT_BUCHI, \
+                        OP_FSA_REACHABLE_STATES, OP_FSA_LANGUAGE_EMPTY, \
+                        OP_FSA_LANGUAGE_EMPTY_BUCHI, OP_FSA_LANGUAGE_INCLUDED, \
+                        OP_FSA_MINIMIZE, OP_FSA_MINIMIZE_BUCHI, OP_FSA_RELABEL, OP_FSA_AS_REGEX
+                    ]
 
 # FSA Transformations
 
@@ -55,22 +62,22 @@ Operations = AutomataOperations + RegExOperations + LTLOperations + OtherOperati
 OperationDescriptions = [
     OP_FSA_ACCEPTS + ' (checks if provided word is accepted, requires input word)',
     OP_FSA_IS_DETERMINISTIC + ' (check if automaton is deterministic)',
-    OP_FSA_AS_DFA + ' (convert FSA to DFA)', 
-    OP_FSA_ELIMINATE_EPSILON + ' (eliminate epsilon transitions from FSA)', 
-    OP_FSA_ALPHABET + ' (determine the alphabet of the FSA)', 
-    OP_FSA_COMPLETE + ' (make the FSA complete)', 
-    OP_FSA_COMPLEMENT + ' (determine the complement FSA)', 
-    OP_FSA_PRODUCT + ' (determine product with secondary automaton)', 
-    OP_FSA_STRICT_PRODUCT + ' (determine strict product with secondary automaton)', 
-    OP_FSA_PRODUCT_BUCHI + ' (determine product of a Buchi automaton with secondary Buchi automaton)', 
-    OP_FSA_STRICT_PRODUCT_BUCHI + '(determine the strict product of a Buchi automaton with secondary Buchi automaton)', 
-    OP_FSA_REACHABLE_STATES + ' (determine the reachable states of the automaton)', 
-    OP_FSA_LANGUAGE_EMPTY + ' (check if the language of the automaton is empty)', 
-    OP_FSA_LANGUAGE_EMPTY_BUCHI + ' (check if the language of the Buchi automaton is empty)', 
-    OP_FSA_LANGUAGE_INCLUDED + ' (check if the language is included in the language of the secondary automaton)', 
-    OP_FSA_MINIMIZE + ' (minimize the automaton)', 
-    OP_FSA_MINIMIZE_BUCHI + ' (minimize the Buchi automaton)', 
-    OP_FSA_RELABEL + ' (relabel the states of the automaton)', 
+    OP_FSA_AS_DFA + ' (convert FSA to DFA)',
+    OP_FSA_ELIMINATE_EPSILON + ' (eliminate epsilon transitions from FSA)',
+    OP_FSA_ALPHABET + ' (determine the alphabet of the FSA)',
+    OP_FSA_COMPLETE + ' (make the FSA complete)',
+    OP_FSA_COMPLEMENT + ' (determine the complement FSA)',
+    OP_FSA_PRODUCT + ' (determine product with secondary automaton)',
+    OP_FSA_STRICT_PRODUCT + ' (determine strict product with secondary automaton)',
+    OP_FSA_PRODUCT_BUCHI + ' (determine product of a Buchi automaton with secondary Buchi automaton)',
+    OP_FSA_STRICT_PRODUCT_BUCHI + '(determine the strict product of a Buchi automaton with secondary Buchi automaton)',
+    OP_FSA_REACHABLE_STATES + ' (determine the reachable states of the automaton)',
+    OP_FSA_LANGUAGE_EMPTY + ' (check if the language of the automaton is empty)',
+    OP_FSA_LANGUAGE_EMPTY_BUCHI + ' (check if the language of the Buchi automaton is empty)',
+    OP_FSA_LANGUAGE_INCLUDED + ' (check if the language is included in the language of the secondary automaton)',
+    OP_FSA_MINIMIZE + ' (minimize the automaton)',
+    OP_FSA_MINIMIZE_BUCHI + ' (minimize the Buchi automaton)',
+    OP_FSA_RELABEL + ' (relabel the states of the automaton)',
     OP_FSA_AS_REGEX + ' (convert the automaton to a regular expression)',
     OP_REGEX_CONVERT_FSA + ' (convert the regular expression to an FSA)',
     OP_REGEX_CONVERT_OMEGA_REGEX + ' (convert the omega-regular expression to a Buchi automaton)',

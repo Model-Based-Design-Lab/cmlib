@@ -1,193 +1,223 @@
+"""
+Linear Algebra support to solve Markov Chain problems.
+Matrices are represented as a list of column vectors
+"""
+
 from fractions import Fraction
 from functools import reduce
-from typing import Any, Callable, Dict, List
+from typing import Callable, Dict, List
+
+from markovchains.utils.utils import MarkovChainException
 
 TVector = List[Fraction]
-TMatrix = List[TVector] # a list of column(!)-vectors 
+TMatrix = List[TVector] # a list of column(!)-vectors
 
 TFloatVector = List[float]
-TFloatMatrix = List[TFloatVector] # a list of column(!)-vectors 
+TFloatMatrix = List[TFloatVector] # a list of column(!)-vectors
 
-def zeroVector(n: int)->TVector:
+def zero_vector(n: int)->TVector:
     '''Generate a zero-vector'''
     return [Fraction(0) for _ in range(n)]
 
-def oneVector(n: int)->TVector:
+def one_vector(n: int)->TVector:
     '''Generate a one-vector'''
     return [Fraction(1) for _ in range(n)]
 
-def zeroMatrix(nr: int, nc: int)->TMatrix:
+def zero_matrix(nr: int, nc: int)->TMatrix:
     '''Generate a zero-matrix'''
-    return [zeroVector(nr) for _ in range(nc)]
+    return [zero_vector(nr) for _ in range(nc)]
 
-def oneMatrix(nr: int, nc: int)->TMatrix:
+def one_matrix(nr: int, nc: int)->TMatrix:
     '''Generate a one-matrix'''
-    return [oneVector(nr) for _ in range(nc)]
+    return [one_vector(nr) for _ in range(nc)]
 
-def copyVector(v: TVector)->TVector:
-    return [x for x in v]
+def copy_vector(v: TVector)->TVector:
+    """Create a copy of a vector."""
+    return list(v)
 
-def copyMatrix(A: TMatrix)->TMatrix:
-    return [copyVector(v) for v in A]
+def copy_matrix(a: TMatrix)->TMatrix:
+    """Create a copy of a vector."""
+    return [copy_vector(v) for v in a]
 
-def innerProduct(va: TVector, vb: TVector)->Fraction:
+def inner_product(va: TVector, vb: TVector)->Fraction:
     '''compute inner product of vectors.'''
     return reduce(lambda sum,i: sum + va[i]*vb[i], range(len(va)), Fraction(0))
 
-def matrixVectorProduct(A: TMatrix, v: TVector)-> TVector:
-    N = len(v)
-    return [reduce(lambda sum, c: sum+A[c][r]*v[c], range(N), Fraction(0)) for r in range(N)]
+def matrix_vector_product(a: TMatrix, v: TVector)-> TVector:
+    """Compute matrix-vector product."""
+    n = len(v)
+    return [
+        reduce(lambda sum, c: sum+a[c][r]*v[c], range(n), Fraction(0)) for r in range(n) # ... it seems fine to me... pylint: disable=cell-var-from-loop
+        ]
 
-def vectorMatrixProduct(v: TVector, A: TMatrix)-> TVector:
-    return [innerProduct(v, vc) for vc in A]
+def vector_matrix_product(v: TVector, a: TMatrix)-> TVector:
+    '''Compute the product between vector and matrix'''
+    return [inner_product(v, vc) for vc in a]
 
-def matrixMatrixProduct(A: TMatrix, B: TMatrix)-> TMatrix:
-    return [matrixVectorProduct(A, v) for v in B]
+def matrix_matrix_product(ma: TMatrix, mb: TMatrix)-> TMatrix:
+    '''Compute the product of two matrices'''
+    return [matrix_vector_product(ma, v) for v in mb]
 
-def vectorSum(v: TVector)-> Fraction:
+def vector_sum(v: TVector)-> Fraction:
+    '''Compute the sum of the vector of fractions.'''
     return reduce(lambda sum, x: sum+x, v, Fraction(0))
 
-def flVectorSum(v: TFloatVector)-> float:
+def fl_vector_sum(v: TFloatVector)-> float:
+    '''Compute the sum of a vector of floats.'''
     return reduce(lambda sum, x: sum+x, v, 0.0)
 
-def rowSum(A: TMatrix)-> TVector:
+def row_sum(ma: TMatrix)-> TVector:
     '''Sum matrix A along its rows'''
-    if len(A)==0:
+    if len(ma)==0:
         return []
-    return [reduce(lambda sum, c: sum+A[c][r], range(len(A)) , Fraction(0)) for r in range(len(A[0]))]
+    return [reduce(lambda sum, c: sum+ma[c][r], range(len(ma)) , Fraction(0)) for r in \
+            range(len(ma[0]))] # ... it seems fine to me... pylint: disable=cell-var-from-loop
 
-def columnSum(A: TMatrix)-> TVector:
+def column_sum(ma: TMatrix)-> TVector:
     '''Sum matrix A along its columns'''
-    return [vectorSum(v) for v in A]
+    return [vector_sum(v) for v in ma]
 
-
-def unitVector(N: int, k: int)->TVector:
-    res = zeroVector(N)
+def unit_vector(n: int, k: int)->TVector:
+    '''Return unit vector k of length n.'''
+    res = zero_vector(n)
     res[k] = Fraction(1)
     return res
 
-def identityMatrix(N: int)->TMatrix:
-    return [unitVector(N, k) for k in range(N)]
+def identity_matrix(n: int)->TMatrix:
+    '''Return a n-by-n identity matrix.'''
+    return [unit_vector(n, k) for k in range(n)]
 
-def subtractVector(va: TVector, vb: TVector)->TVector:
+def subtract_vector(va: TVector, vb: TVector)->TVector:
+    '''Subtract vectors.'''
     return [va[k]-vb[k] for k in range(len(va))]
 
-def addVector(va: TVector, vb: TVector)->TVector:
+def fl_subtract_vector(va: TFloatVector, vb: TFloatVector)->TFloatVector:
+    '''Subtract vectors of floats.'''
+    return [va[k]-vb[k] for k in range(len(va))]
+
+def add_vector(va: TVector, vb: TVector)->TVector:
+    '''Add vectors.'''
     return [va[k]+vb[k] for k in range(len(va))]
 
-def flAddVector(va: TFloatVector, vb: TFloatVector)->TFloatVector:
+def fl_add_vector(va: TFloatVector, vb: TFloatVector)->TFloatVector:
+    '''Add vectors of floats.'''
     return [va[k]+vb[k] for k in range(len(va))]
 
-def subtractMatrix(Aa: TMatrix, Ab: TMatrix)->TMatrix:
-    return [subtractVector(Aa[k], Ab[k]) for k in range(len(Aa))]
+def subtract_matrix(ma: TMatrix, mb: TMatrix)->TMatrix:
+    '''Subtract two matrices.'''
+    return [subtract_vector(ma[k], mb[k]) for k in range(len(ma))]
 
-def addMatrix(Aa: TMatrix, Ab: TMatrix)->TMatrix:
-    return [addVector(Aa[k], Ab[k]) for k in range(len(Aa))]
+def add_matrix(ma: TMatrix, mb: TMatrix)->TMatrix:
+    '''Add two matrices.'''
+    return [add_vector(ma[k], mb[k]) for k in range(len(ma))]
 
-def transpose(A: TMatrix) -> TMatrix:    
-    if len(A)==0:
+def transpose(ma: TMatrix) -> TMatrix:
+    '''Transpose matrix.'''
+    if len(ma)==0:
         return [[]]
-    nRowsA = len(A[0])
-    nColsA = len(A)
-    return [[A[c][r] for c in range(nColsA)] for r in range(nRowsA)]
+    n_rows_ma = len(ma[0])
+    n_cols_ma = len(ma)
+    return [[ma[c][r] for c in range(n_cols_ma)] for r in range(n_rows_ma)]
 
-def flVectorElementwise(v: TFloatVector, f: Callable[[float],float ])->TFloatVector:
+def fl_vector_element_wise(v: TFloatVector, f: Callable[[float],float ])->TFloatVector:
+    '''Apply the given function to the elements of a vector to compute a new vector.'''
     return [f(x) for x in v]
 
-def flMatrixElementwise(A: TFloatMatrix, f: Callable[[float],float ])->TFloatMatrix:
-    return [flVectorElementwise(v, f) for v in A]
+def fl_matrix_element_wise(ma: TFloatMatrix, f: Callable[[float],float ])->TFloatMatrix:
+    '''Apply the given function to the elements of a matrix to compute a new matrix.'''
+    return [fl_vector_element_wise(v, f) for v in ma]
 
-def matPower(A: TMatrix, n: int)->TMatrix:
+def mat_power(ma: TMatrix, n: int)->TMatrix:
+    '''Raise matrix ma to the power n'''
     # if n is 0, or 1
     if n==0:
-        return identityMatrix(len(A))
+        return identity_matrix(len(ma))
     if n==1:
-        return A
+        return ma
     if n % 2 == 0:
         # if n is even A^n = (A^2)^n
-        return matPower(matrixMatrixProduct(A, A), n//2)
-    else:
-        # if n=2m+1, A^n = (A^2)^m A
-        return matrixMatrixProduct(matPower(matrixMatrixProduct(A, A), n//2), A)
+        return mat_power(matrix_matrix_product(ma, ma), n//2)
+    # if n=2m+1, A^n = (A^2)^m A
+    return matrix_matrix_product(mat_power(matrix_matrix_product(ma, ma), n//2), ma)
 
-def solve(A: TMatrix, b: TVector)->TVector:
+def solve(ma: TMatrix, b: TVector)->TVector:
     '''Solve the linear equation Ax=b for a square and full rank matrix A'''
     # copy matrix and vector as we are going to change them
-    A = copyMatrix(A)
-    b = copyVector(b)
-    
+    ma = copy_matrix(ma)
+    b = copy_vector(b)
+
     # Gaussian elimination from the top of my head..."
-    AS = len(A)
+    a_size = len(ma)
     # map for indirect manipulation of A' w.r.t original A
     # A'[c][r] = A[c][rowIndex[r]]
-    rowIndex: Dict[int,int] = dict()
-    for r in range(AS):
-        rowIndex[r]=r 
-    for r in range(AS):
+    row_index: Dict[int,int] = {}
+    for r in range(a_size):
+        row_index[r]=r
+    for r in range(a_size):
         # find a row k >= r s.t. A'[k][r] is not 0
         k = r
-        while A[r][rowIndex[k]] == Fraction(0):
+        while ma[r][row_index[k]] == Fraction(0):
             k = k + 1
-            if k==AS:
-                raise Exception("Matrix is not full rank.")
+            if k==a_size:
+                raise MarkovChainException("Matrix is not full rank.")
         # In A', swap rows r and k
-        rowIndex[k], rowIndex[r] = rowIndex[r], rowIndex[k] 
+        row_index[k], row_index[r] = row_index[r], row_index[k]
 
-        for rp in range(AS):
+        for rp in range(a_size):
             if r != rp:
                 # replace row rp by rp-(rp[r]/r[r])r
-                f: Fraction = A[r][rowIndex[rp]] / A[r][rowIndex[r]]
-                b[rowIndex[rp]] = b[rowIndex[rp]] - f*b[rowIndex[r]]
-                for c in range(AS):
-                    A[c][rowIndex[rp]] = A[c][rowIndex[rp]] - f*A[c][rowIndex[r]]
+                f: Fraction = ma[r][row_index[rp]] / ma[r][row_index[r]]
+                b[row_index[rp]] = b[row_index[rp]] - f*b[row_index[r]]
+                for c in range(a_size):
+                    ma[c][row_index[rp]] = ma[c][row_index[rp]] - f*ma[c][row_index[r]]
             else:
                 # replace row r by r * 1/ r[r]
-                f: Fraction = Fraction(1) / A[r][rowIndex[r]]
-                b[rowIndex[r]] = f * b[rowIndex[r]]
-                for c in range(AS):
-                    A[c][rowIndex[r]] = f * A[c][rowIndex[r]]
+                f: Fraction = Fraction(1) / ma[r][row_index[r]]
+                b[row_index[r]] = f * b[row_index[r]]
+                for c in range(a_size):
+                    ma[c][row_index[r]] = f * ma[c][row_index[r]]
 
     # Equation is reduced to Ix=b'
-    return [b[rowIndex[r]] for r in range(AS)]
+    return [b[row_index[r]] for r in range(a_size)]
 
-def invertMatrix(A: TMatrix)->TMatrix:
+def invert_matrix(ma: TMatrix)->TMatrix:
     '''Return the inverse of the square and full rank matrix A'''
     # copy matrix and vector as we are going to change them
-    A = copyMatrix(A)
+    ma = copy_matrix(ma)
 
     # Gaussian elimination from the top of my head..."
-    AS = len(A)
-    
-    B = identityMatrix(AS)
+    a_size = len(ma)
+
+    mb = identity_matrix(a_size)
 
     # map for indirect manipulation of A' w.r.t original A
     # A'[c][r] = A[c][rowIndex[r]]
-    rowIndex = dict()
-    for r in range(AS):
-        rowIndex[r]=r 
-    for r in range(AS):
+    row_index = dict()
+    for r in range(a_size):
+        row_index[r]=r
+    for r in range(a_size):
         # find a row k >= r s.t. A'[k][r] is not 0
         k = r
-        while A[r][rowIndex[k]] == Fraction(0):
+        while ma[r][row_index[k]] == Fraction(0):
             k = k + 1
-            if k==AS:
-                raise Exception("Matrix is not full rank.")
+            if k==a_size:
+                raise MarkovChainException("Matrix is not full rank.")
         # In A', swap rows r and k
-        rowIndex[k], rowIndex[r] = rowIndex[r], rowIndex[k] 
-            
-        for rp in range(AS):
+        row_index[k], row_index[r] = row_index[r], row_index[k]
+
+        for rp in range(a_size):
             if r != rp:
                 # replace row rp by rp-(rp[r]/r[r])r
-                f: Fraction = A[r][rowIndex[rp]] / A[r][rowIndex[r]]
-                for c in range(AS):
-                    A[c][rowIndex[rp]] = A[c][rowIndex[rp]] - f*A[c][rowIndex[r]]
-                    B[c][rowIndex[rp]] = B[c][rowIndex[rp]] - f*B[c][rowIndex[r]]
+                f: Fraction = ma[r][row_index[rp]] / ma[r][row_index[r]]
+                for c in range(a_size):
+                    ma[c][row_index[rp]] = ma[c][row_index[rp]] - f*ma[c][row_index[r]]
+                    mb[c][row_index[rp]] = mb[c][row_index[rp]] - f*mb[c][row_index[r]]
             else:
                 # replace row r by r * 1/ r[r]
-                f: Fraction = Fraction(1) / A[r][rowIndex[r]]
-                for c in range(AS):
-                    A[c][rowIndex[r]] = f * A[c][rowIndex[r]]
-                    B[c][rowIndex[r]] = f * B[c][rowIndex[r]]
+                f: Fraction = Fraction(1) / ma[r][row_index[r]]
+                for c in range(a_size):
+                    ma[c][row_index[r]] = f * ma[c][row_index[r]]
+                    mb[c][row_index[r]] = f * mb[c][row_index[r]]
 
     # Equation is reduced to IX=B'=A^-1
-    return [[B[c][rowIndex[r]] for r in range(AS)] for c in range(AS)]
+    return [[mb[c][row_index[r]] for r in range(a_size)] for c in range(a_size)]

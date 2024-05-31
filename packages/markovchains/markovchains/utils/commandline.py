@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
-from markovchains.utils.linalgebra import TVector, matPower
+from markovchains.utils.linalgebra import TVector, mat_power
 from markovchains.utils.operations import (
     OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT,
     OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_ESTIMATION_DISTRIBUTION,
@@ -280,7 +280,7 @@ def process(args, dsl):
         print_list_of_strings(mc.states())
         print("Transient analysis:\n")
         print(f"Matrix for {n_steps} steps:\n")
-        pretty_print_matrix(matPower(mat, n_steps))
+        pretty_print_matrix(mat_power(mat, n_steps))
 
     if operation == OP_DTMC_LIMITING_MATRIX:
         mat = mc.limiting_matrix()
@@ -329,7 +329,7 @@ def process(args, dsl):
 
     if operation == OP_DTMC_REWARD_TILL_HIT_SET:
         s = require_target_state_set(mc, args)
-        res = mc.rewardTillHitSet(s)
+        res = mc.reward_till_hit_set(s)
         print(f"The expected rewards until hitting {{{', '.join(s)}}} are:")
         for t in sort_names(res.keys()):
             print(f"From state {t}: {res[t]}")

@@ -15,7 +15,7 @@ import os
 import pygraph.classes.digraph  as pyg
 import pygraph.algorithms.accessibility as pyga
 import pygraph.algorithms.searching as pygs
-from markovchains.libdtmcgrammar import parseDTMCDSL
+from markovchains.libdtmcgrammar import parse_dtmc_dsl
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sort_names, TimeoutTimer
 from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
@@ -174,7 +174,7 @@ class MarkovChain:
             raise DTMCException("Transition matrix is not yet initialized.")
         # ensure that all rows add up to 1.
         # compute the row sums
-        sums = linalg.rowSum(self._transition_matrix)
+        sums = linalg.row_sum(self._transition_matrix)
         nr_states = len(self._states)
         for n in range(nr_states):
             # if the row n sum is significantly smaller than 1
@@ -210,7 +210,7 @@ class MarkovChain:
     def transition_matrix(self)->linalg.TMatrix:
         '''Computes and returns the transition matrix of the MC.'''
         n_states = len(self._states)
-        self._transition_matrix = linalg.zeroMatrix(n_states, n_states)
+        self._transition_matrix = linalg.zero_matrix(n_states, n_states)
         row = 0
         for ss in self._states:
             if ss in self._transitions:
@@ -236,7 +236,7 @@ class MarkovChain:
         if self._initial_probability_vector is None:
             raise DTMCException("Initial probability vector is not yet initialized.")
         # ensure that the initial probabilities add up to 1.
-        v_sum = linalg.vectorSum(self._initial_probability_vector)
+        v_sum = linalg.vector_sum(self._initial_probability_vector)
         if v_sum > Fraction(1):
             raise DTMCException("probability is larger than one")
         if v_sum < Fraction(1):
@@ -300,7 +300,7 @@ class MarkovChain:
     def initial_probability_vector(self)->linalg.TVector:
         '''Determine and return the initial probability vector.'''
         n_states = len(self._states)
-        self._initial_probability_vector = linalg.zeroVector(n_states)
+        self._initial_probability_vector = linalg.zero_vector(n_states)
         k = 0
         for s in self._states:
             if s in self._initial_probabilities:
@@ -331,7 +331,7 @@ class MarkovChain:
         result = []
         for _ in range(n_steps+1):
             result.append(pi)
-            pi = linalg.vectorMatrixProduct(pi, p_matrix)
+            pi = linalg.vector_matrix_product(pi, p_matrix)
         return result
 
 
@@ -531,8 +531,8 @@ class MarkovChain:
 
             n_rs = len(rs)
             # initialize matrix I-EQ from the equation, and vector Pj
-            i_minus_eq = linalg.identityMatrix(n_rs)
-            pj = linalg.zeroVector(n_rs)
+            i_minus_eq = linalg.identity_matrix(n_rs)
+            pj = linalg.zero_vector(n_rs)
             # for all equations (rows of the matrix)
             for i in range(n_rs):
                 ip = p_index[rs[i]]
@@ -579,7 +579,7 @@ class MarkovChain:
             # solve the equation: (I-EQ) x = Fj
 
             n_states = len(rs)
-            fj = linalg.zeroVector(n_states)
+            fj = linalg.zero_vector(n_states)
             for i in range(n_states):
                 si = rs[i]
                 fj[i] = self.get_reward(si) * f[si]
@@ -658,8 +658,8 @@ class MarkovChain:
         # solve the equation: (I-EQ) x = Pj
 
         n_states = len(rs)
-        i_minus_eq = linalg.identityMatrix(n_states)
-        sp = linalg.zeroVector(n_states)
+        i_minus_eq = linalg.identity_matrix(n_states)
+        sp = linalg.zero_vector(n_states)
         for i in range(n_states):
             ip = p_index[rs[i]]
             # compute the i-th element in vector SP
@@ -710,7 +710,7 @@ class MarkovChain:
             # solve the equation: (I-EQ) x = H
 
             n_states = len(rs)
-            hh = linalg.zeroVector(n_states)
+            hh = linalg.zero_vector(n_states)
             for i in range(n_states):
                 # compute the i-th element in vector H
                 si = rs[i]
@@ -743,7 +743,7 @@ class MarkovChain:
         if self._transition_matrix is None:
             raise DTMCException("Transition matrix has not been determined.")
         n_indices = len(indices)
-        res = linalg.zeroMatrix(n_indices, n_indices)
+        res = linalg.zero_matrix(n_indices, n_indices)
         for k in range(n_indices):
             for m in range(n_indices):
                 res[k][m] = self._transition_matrix[indices[k]][indices[m]]
@@ -764,7 +764,7 @@ class MarkovChain:
         self.transition_matrix()
 
         n_states = len(self._states)
-        res = linalg.zeroMatrix(n_states, n_states)
+        res = linalg.zero_matrix(n_states, n_states)
 
         _, r_classes =  self.classify_transient_recurrent_classes()
 
@@ -774,12 +774,12 @@ class MarkovChain:
             # a) solve the balance equations, pi P = pi I , pi.1 = 1
             #       pi (P-I); 1 = [0 1],
             m = len(c)
-            p_minus_i = linalg.subtractMatrix(p_matrix_cl, linalg.identityMatrix(m))
-            q_matrix = linalg.addMatrix(linalg.matrixMatrixProduct(p_minus_i, \
-                            linalg.transpose(p_minus_i)), linalg.oneMatrix(m,m))
+            p_minus_i = linalg.subtract_matrix(p_matrix_cl, linalg.identity_matrix(m))
+            q_matrix = linalg.add_matrix(linalg.matrix_matrix_product(p_minus_i, \
+                            linalg.transpose(p_minus_i)), linalg.one_matrix(m,m))
 
-            q_inverse = linalg.invertMatrix(q_matrix)
-            pi = linalg.columnSum(q_inverse)
+            q_inverse = linalg.invert_matrix(q_matrix)
+            pi = linalg.column_sum(q_inverse)
             h = self.hitting_probabilities_set(list(c))
             # P(i,j) = h_i * pi j
             for sj in c:
@@ -795,13 +795,13 @@ class MarkovChain:
         '''Determine the limiting distribution.'''
         p_matrix = self.limiting_matrix()
         pi0 = self.initial_probability_vector()
-        return linalg.vectorMatrixProduct(pi0, p_matrix)
+        return linalg.vector_matrix_product(pi0, p_matrix)
 
     def long_run_reward(self)-> Fraction:
         '''Determine the long-run expected reward.'''
         pi = self.limiting_distribution()
         r = self.reward_vector()
-        return linalg.innerProduct(pi, r)
+        return linalg.inner_product(pi, r)
 
     @staticmethod
     def from_dsl(dsl_string: str)->Tuple[Optional[str],Optional['MarkovChain']]:
@@ -814,7 +814,7 @@ class MarkovChain:
         factory['SetReward'] = lambda dtmc, s, r: dtmc.set_reward(s, r)
         factory['SetEdgeProbability'] = lambda dtmc, s, d, p: dtmc.set_edge_probability(s, d, p)
         factory['SortNames'] = lambda dtmc: dtmc.sort_state_names()
-        return parseDTMCDSL(dsl_string, factory)
+        return parse_dtmc_dsl(dsl_string, factory)
 
     def __str__(self)->str:
         return str(self._states)

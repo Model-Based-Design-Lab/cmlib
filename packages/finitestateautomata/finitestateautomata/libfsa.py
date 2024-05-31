@@ -1,3 +1,5 @@
+"""Library of finite state automata analysis."""
+
 import copy
 from functools import reduce
 from io import StringIO
@@ -9,7 +11,6 @@ from finitestateautomata.libfsagrammar import parse_fsa_dsl
 
 class FSAException(Exception):
     ''' Exceptions related to FSA '''
-    pass
 
 class Automaton:
 
@@ -860,11 +861,10 @@ class Automaton:
                     for u in interim.next_states(t, symbol):
                         result.add_transition(set_as_state(partition_map[s]), \
                                               symbol, set_as_state(partition_map[u]))
-                if t in interim._epsilon_transitions:
-                    for u in interim._epsilon_transitions[t]:
-                        if partition_map[s] != partition_map[u]:
-                            result.add_epsilon_transition(set_as_state(partition_map[s]), \
-                                set_as_state(partition_map[u]))
+                for t, u in interim.epsilon_transitions():
+                    if partition_map[s] != partition_map[u]:
+                        result.add_epsilon_transition(set_as_state(partition_map[s]), \
+                            set_as_state(partition_map[u]))
         return result
 
     def minimize_buchi(self)->'Automaton':

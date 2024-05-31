@@ -1,3 +1,5 @@
+'''Define module operations.'''
+
 # operations on Markov Chains
 
 OP_DTMC_LIST_STATES = "liststates"
@@ -29,7 +31,17 @@ OP_DTMC_ESTIMATION_HITTING_STATE_SET = "estimationhittingstateset"
 OP_DTMC_ESTIMATION_HITTING_REWARD_SET = "estimationhittingrewardset"
 
 MarkovChainOperations = [
-OP_DTMC_LIST_STATES, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_PERIODICITY, OP_DTMC_MC_TYPE, OP_DTMC_TRANSIENT, OP_DTMC_TRANSIENT_REWARDS, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_MARKOV_TRACE, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_ESTIMATION_HITTING_REWARD_SET
+OP_DTMC_LIST_STATES, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_TRANSIENT_STATES, \
+    OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, \
+    OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_REWARD_TILL_HIT, \
+    OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_PERIODICITY, OP_DTMC_MC_TYPE, OP_DTMC_TRANSIENT, \
+    OP_DTMC_TRANSIENT_REWARDS, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_LIMITING_MATRIX, \
+    OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_EXECUTION_GRAPH, \
+    OP_DTMC_MARKOV_TRACE, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, \
+    OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, \
+    OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_HITTING_STATE, \
+    OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_STATE_SET, \
+    OP_DTMC_ESTIMATION_HITTING_REWARD_SET
 ]
 
 OperationDescriptions = [
@@ -38,43 +50,62 @@ OperationDescriptions = [
         "List all transient states of the markov chain\n\tNo flags",
         "Provides list of communicating state sets\n\tNo flags",
         "Lists the transient and recurrent states\n\tNo flags",
-        "Provides the hitting probability for a specified state\n\trequired flag:\n\t\t[-s, --state]: Target state",
-        "Provides the hitting probability for a specified state set\n\trequired flag:\n\t\t[-ss, --stateset]: Set of target states (comma separated)",
-        "Expected reward until hitting specified state\n\trequired flag:\n\t\t[-s, --state]: Target state",
-        "Expected reward until hitting specified state set\n\trequired flag:\n\t\t[-ss, --stateset]: Set of target states (comma separated)",
+        "Provides the hitting probability for a specified state\n\trequired " \
+            "flag:\n\t\t[-s, --state]: Target state",
+        "Provides the hitting probability for a specified state set\n\trequired " \
+            "flag:\n\t\t[-ss, --stateset]: Set of target states (comma separated)",
+        "Expected reward until hitting specified state\n\trequired flag:\n" \
+            "\t\t[-s, --state]: Target state",
+        "Expected reward until hitting specified state set\n\trequired flag:\n" \
+            "\t\t[-ss, --stateset]: Set of target states (comma separated)",
         "Lists aperiodic and periodic state states\n\tNo flags",
         "Provides type of markov chain: (non-)ergodic (non-)unichain\n\tNo flags",
-        "Transient analysis for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        "Transient analysis of reward after specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
-        "Transient matrix for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
+        "Transient analysis for specified number of steps\n\trequired flag:\n" \
+            "\t\t[-ns, --numberofsteps]: Number of steps",
+        "Transient analysis of reward after specified number of steps\n" \
+            "\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
+        "Transient matrix for specified number of steps\n\trequired flag:\n" \
+            "\t\t[-ns, --numberofsteps]: Number of steps",
         "Provides limiting Matrix\n\tNo flags",
         "Provides limiting Distribution\n\tNo flags",
         "Long-run expected average reward\n\tNo flags",
-        "Prints execution graphs xml file for specified number of steps\n\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
+        "Prints execution graphs xml file for specified number of steps\n" \
+            "\trequired flag:\n\t\t[-ns, --numberofsteps]: Number of steps",
         '''Provides simulation trace through markov chain
         required flag:\n\t\t[-ns, --numberofsteps]: Number of steps
         Optional flag:\n\t\t[-sd, --seed]: SEED''',
         '''Long run expected average reward through simulation
         required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions
         Optional flags:\n\t\t[-sd, --seed]: Seed\n\t\t[-s, --state]: Recurrent state''',
-        '''Cezarolimit distribution through simulation\n\trequired flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions
+        '''Cezarolimit distribution through simulation\n\trequired flag:\n" \
+            "\t\t[-c, --conditions]: Simulation (Stop) conditions
         Optional flags:\n\t\t[-sd, --seed]: Seed\n\t\t[-s, --state]: Recurrent state''',
         '''Estimation of expected reward by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ns, --numberofsteps]: Number of steps
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-ns, --numberofsteps]: Number of steps
         Optional flag:\n\t\t[-sd, --seed]: Seed''',
         '''Estimation of distribution by simulation after specified number of steps
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ns, --numberofsteps]: Number of steps
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-ns, --numberofsteps]: Number of steps
         Optional flag:\n\t\t[-sd, --seed]: Seed''',
         '''Estimation of hitting state probabilities by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-s, --state]: Target state
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-s, --state]: Target state
+        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of " \
+            "starting states to simulate''',
         '''Estimation of cumulative reward hitting state by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-s, --state]: Target state
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-s, --state]: Target state
+        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of " \
+            "starting states to simulate''',
         '''Estimation of hitting state set probabilities by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ss, --stateset]: Set of target states (comma separated)
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate''',
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-ss, --stateset]: Set of target states (comma separated)
+        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set " \
+            "of starting states to simulate''',
         '''Estimation of cumulative reward hitting state set probabilities by simulation
-        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n\t\t[-ss, --stateset]: Set of target states (comma separated)
-        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of starting states to simulate'''
+        required flag:\n\t\t[-c, --conditions]: Simulation (Stop) conditions\n" \
+            "\t\t[-ss, --stateset]: Set of target states (comma separated)
+        Optional flag:\n\t\t[-sd, --seed]: Seed\n\t\t[-sa, --startingset]: Set of " \
+            "starting states to simulate'''
     ]
