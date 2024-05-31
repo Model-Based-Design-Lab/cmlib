@@ -7,9 +7,10 @@ import re
 import sys
 from typing import AbstractSet, Callable, Dict, Iterable, List, Optional,Set, Tuple
 from finitestateautomata.libfsagrammar import parse_fsa_dsl
+from finitestateautomata.utils.utils import FiniteStateAutomataException
 
 
-class FSAException(Exception):
+class FSAException(FiniteStateAutomataException):
     ''' Exceptions related to FSA '''
 
 class Automaton:

@@ -139,7 +139,7 @@ def process(args, dsl):
         name, r = RegEx.fromDSL(dsl)
 
     if args.operation in LTLOperations:
-        name, f = LTLFormula.fromDSL(dsl)
+        name, f = LTLFormula.from_dsl(dsl)
 
     if args.operation not in Operations:
         print("Unknown operation or no operation provided")
@@ -267,7 +267,7 @@ def process(args, dsl):
 
     # convertLTL (requires ltl formula)
     if args.operation == OP_LTL_CONVERT_LTL:
-        res = require_ltl_formula(f).asFSA()
+        res = require_ltl_formula(f).as_fsa()
         print(res.as_dsl(OP_LTL_CONVERT_LTL_NAME(name)))
 
     # asRegEx

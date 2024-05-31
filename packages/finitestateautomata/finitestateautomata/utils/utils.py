@@ -3,6 +3,9 @@
 import sys
 from typing import List, Set
 
+class FiniteStateAutomataException(Exception):
+    """Exceptions related to this package"""
+
 def warn(s: str):
     '''Print warning.'''
     print("Warning: " + s)

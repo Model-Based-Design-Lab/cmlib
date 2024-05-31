@@ -13,8 +13,8 @@ LTLGrammar = """
 
 LTLModel:
 	'ltl' 'formula' name=LTLID '='
-	formula = LTLFormula	
-	('alphabet' alphabet = SetOfSymbols 
+	formula = LTLFormula
+	('alphabet' alphabet = SetOfSymbols
 	)?
 	('where' (definitions = Definition )*
 	)?
@@ -29,19 +29,19 @@ SetOfSymbols:
 ;
 
 LTLFormula:
-	formula = LTLFormula1 
+	formula = LTLFormula1
 	(
-		'or' 
-		alternatives = LTLFormula1 
+		'or'
+		alternatives = LTLFormula1
 		('or' alternatives = LTLFormula1 )*
 	)?
 ;
 
 LTLFormula1:
-	formula = LTLFormula2 
+	formula = LTLFormula2
 	(
-		'and' 
-		alternatives = LTLFormula2 
+		'and'
+		alternatives = LTLFormula2
 		('and' alternatives = LTLFormula2 )*
 	)?
 ;
@@ -60,8 +60,8 @@ LTLFormula4:
 ;
 
 LTLFormula5:
-		('X' nextSubexpression = LTLFormula5) | 
-		('F' eventuallySubexpression = LTLFormula5) | 
+		('X' nextSubexpression = LTLFormula5) |
+		('F' eventuallySubexpression = LTLFormula5) |
 		('G' alwaysSubexpression = LTLFormula5) |
 		('not' notSubexpression = LTLFormula5) |
 		subexpression = LTLFormula6
@@ -104,7 +104,7 @@ Comment:
 
 MetaModelLTL = metamodel_from_str(LTLGrammar, classes=[])
 
-def parseLTLDSL(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,Tuple[Any,Optional[Set[str]],Optional[Dict[str,Set[str]]]]]]:
+def parse_ltl_dsl(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,Tuple[Any,Optional[Set[str]],Optional[Dict[str,Set[str]]]]]]:
     try:
         model =  MetaModelLTL.model_from_str(content)
     except TextXSyntaxError as err:
@@ -135,7 +135,7 @@ def parseLTLFormula(f: Any, factory: Any)->Any:
         for phi in f.alternatives:
             fs.append(parseLTLFormula1(phi, factory))
         return factory['Disjunction'](fs)
-    else: 
+    else:
         return parseLTLFormula1(f.formula, factory)
 
 def parseLTLFormula1(f: Any, factory: Any)->Any:
@@ -144,7 +144,7 @@ def parseLTLFormula1(f: Any, factory: Any)->Any:
         for phi in f.alternatives:
             fs.append(parseLTLFormula2(phi, factory))
         return factory['Conjunction'](fs)
-    else: 
+    else:
         return parseLTLFormula2(f.formula, factory)
 
 def parseLTLFormula2(f: Any, factory: Any)->Any:
@@ -153,7 +153,7 @@ def parseLTLFormula2(f: Any, factory: Any)->Any:
         phi2 = parseLTLFormula2(f.subexpression2, factory)
 
         return factory['Until'](phi1, phi2)
-    else: 
+    else:
         return phi1
 
 def parseLTLFormula3(f: Any, factory: Any)->Any:
@@ -161,7 +161,7 @@ def parseLTLFormula3(f: Any, factory: Any)->Any:
     if f.subexpression2:
         phi2 = parseLTLFormula3(f.subexpression2, factory)
         return factory['Release'](phi1, phi2)
-    else: 
+    else:
         return phi1
 
 def parseLTLFormula4(f: Any, factory: Any)->Any:
@@ -169,7 +169,7 @@ def parseLTLFormula4(f: Any, factory: Any)->Any:
     if f.consequence:
         phi2 = parseLTLFormula4(f.consequence, factory)
         return factory['Disjunction']([factory['Negation'](phi1), phi2])
-    else: 
+    else:
         return phi1
 
 def parseLTLFormula5(f: Any, factory: Any)->Any:
@@ -190,7 +190,7 @@ def parseLTLFormula6(f: Any, factory: Any)->Any:
         return factory['False']()
     if f.propositionExpression:
         return factory['Proposition'](f.propositionExpression)
-    else: 
+    else:
         return parseLTLFormula(f.expression, factory)
 
 
