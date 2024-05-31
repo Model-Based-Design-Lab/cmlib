@@ -129,15 +129,15 @@ class Regular_expression_pytest(Model_pytest):
         # Open model
         with open(self.model_loc, 'r', encoding='utf-8') as regFile:
             dsl = regFile.read()
-        self.name, self.model = RegEx.fromDSL(dsl)
+        self.name, self.model = RegEx.from_dsl(dsl)
 
     def Correct_behavior_tests(self):
-        if self.model.isFiniteRegEx():
-            self.function_test(lambda: vars(self.model.asFSA()), "convert_to_FSA", sort = True)
+        if self.model.is_finite_reg_ex():
+            self.function_test(lambda: vars(self.model.as_fsa()), "convert_to_FSA", sort = True)
 
-        if self.model.isOmegaRegEx():
-            self.function_test(lambda: vars(self.model.asNBA()), "convert_to_NBA", sort = True)
-        self.function_test(lambda: self.model.asDSL("TestName"), "convert_to_DSL", sort = True)
+        if self.model.is_omega_reg_ex():
+            self.function_test(lambda: vars(self.model.as_nba()), "convert_to_NBA", sort = True)
+        self.function_test(lambda: self.model.as_dsl("TestName"), "convert_to_DSL", sort = True)
 
     def Incorrect_behavior_tests(self):
         pass

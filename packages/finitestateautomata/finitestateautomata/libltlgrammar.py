@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from textx import metamodel_from_str, TextXSyntaxError
+'''DSL grammar parsing support for linear temporal logic.'''
+
 import sys
+from typing import Any, Dict, Optional, Set, Tuple, Union
+from textx import metamodel_from_str, TextXSyntaxError
 
 # This is TextX version of the XText grammar in the clang repository
 # Xtext file:
@@ -9,10 +11,10 @@ import sys
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 
 
-LTLGrammar = """
+LTL_GRAMMAR = """
 
 LTLModel:
-	'ltl' 'formula' name=LTLID '='
+	'ltl' 'formula' name=LTL_ID '='
 	formula = LTLFormula
 	('alphabet' alphabet = SetOfSymbols
 	)?
@@ -21,11 +23,11 @@ LTLModel:
 ;
 
 Definition:
-	proposition = LTLID '=' symbols = SetOfSymbols
+	proposition = LTL_ID '=' symbols = SetOfSymbols
 ;
 
 SetOfSymbols:
-	'{' (symbols = LTLID) (',' symbols = LTLID)* '}'
+	'{' (symbols = LTL_ID) (',' symbols = LTL_ID)* '}'
 ;
 
 LTLFormula:
@@ -48,23 +50,23 @@ LTLFormula1:
 
 
 LTLFormula2:
-		(subexpression1 = LTLFormula3) ('U' subexpression2 = LTLFormula2)?
+		(sub_expression_1 = LTLFormula3) ('U' sub_expression_2 = LTLFormula2)?
 ;
 
 LTLFormula3:
-		(subexpression1 = LTLFormula4) ('R' subexpression2 = LTLFormula3)?
+		(sub_expression_1 = LTLFormula4) ('R' sub_expression_2 = LTLFormula3)?
 ;
 
 LTLFormula4:
-		subexpression = LTLFormula5 ('=>' consequence = LTLFormula4)?
+		sub_expression = LTLFormula5 ('=>' consequence = LTLFormula4)?
 ;
 
 LTLFormula5:
-		('X' nextSubexpression = LTLFormula5) |
-		('F' eventuallySubexpression = LTLFormula5) |
-		('G' alwaysSubexpression = LTLFormula5) |
-		('not' notSubexpression = LTLFormula5) |
-		subexpression = LTLFormula6
+		('X' next_sub_expression = LTLFormula5) |
+		('F' eventually_sub_expression = LTLFormula5) |
+		('G' always_sub_expression = LTLFormula5) |
+		('not' not_sub_expression = LTLFormula5) |
+		sub_expression = LTLFormula6
 ;
 
 
@@ -82,10 +84,10 @@ PropositionExpression:
 ;
 
 Proposition:
-	LTLID | STRING
+	LTL_ID | STRING
 ;
 
-LTLID:
+LTL_ID:
 	/[a-zA-Z][a-zA-Z0-9]*/
 ;
 True:
@@ -102,88 +104,86 @@ Comment:
 
 """
 
-MetaModelLTL = metamodel_from_str(LTLGrammar, classes=[])
+MetaModelLTL = metamodel_from_str(LTL_GRAMMAR, classes=[])
 
-def parse_ltl_dsl(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,Tuple[Any,Optional[Set[str]],Optional[Dict[str,Set[str]]]]]]:
+def parse_ltl_dsl(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,Tuple[Any, \
+                    Optional[Set[str]],Optional[Dict[str,Set[str]]]]]]:
+    '''Parse LTL formula from DSL string.'''
     try:
         model =  MetaModelLTL.model_from_str(content)
     except TextXSyntaxError as err:
-        sys.stderr.write("Syntax error in line %d col %d: %s" % (err.line, err.col, err.message))
+        sys.stderr.write(f"Syntax error in line {err.line} col {err.col}: {err.message}")
         return (None, None)
-    return (model.name, parseLTLModel(model, factory))
+    return (model.name, _parse_lt_model(model, factory))
 
-def parseLTLModel(model: Any, factory: Any)->Tuple[Any,Optional[Set[str]],Optional[Dict[str,Set[str]]]]:
-    return (parseLTLFormula(model.formula, factory), parseAlphabet(model.alphabet), parseDefinitions(model.definitions))
+def _parse_lt_model(model: Any, factory: Any)->Tuple[Any,Optional[Set[str]], \
+                                                     Optional[Dict[str,Set[str]]]]:
+    return (_parse_ltl_formula(model.formula, factory), _parse_alphabet(model.alphabet), \
+            _parse_definitions(model.definitions))
 
 
-def parseAlphabet(alphabet: Any)->Optional[Set[str]]:
+def _parse_alphabet(alphabet: Any)->Optional[Set[str]]:
     if alphabet is None:
         return None
     return set(alphabet.symbols)
 
-def parseDefinitions(definitions)->Optional[Dict[str,Set[str]]]:
+def _parse_definitions(definitions)->Optional[Dict[str,Set[str]]]:
     if len(definitions) == 0:
         return None
-    defs = dict()
+    defs = {}
     for d in definitions:
         defs[d.proposition] = set(d.symbols.symbols)
     return defs
 
-def parseLTLFormula(f: Any, factory: Any)->Any:
+def _parse_ltl_formula(f: Any, factory: Any)->Any:
     if len(f.alternatives) > 0:
-        fs = [ parseLTLFormula1(f.formula, factory) ]
+        fs = [ _parse_ltl_formula_1(f.formula, factory) ]
         for phi in f.alternatives:
-            fs.append(parseLTLFormula1(phi, factory))
+            fs.append(_parse_ltl_formula_1(phi, factory))
         return factory['Disjunction'](fs)
-    else:
-        return parseLTLFormula1(f.formula, factory)
+    return _parse_ltl_formula_1(f.formula, factory)
 
-def parseLTLFormula1(f: Any, factory: Any)->Any:
+def _parse_ltl_formula_1(f: Any, factory: Any)->Any:
     if len(f.alternatives) > 0:
-        fs = [ parseLTLFormula2(f.formula, factory) ]
+        fs = [ _parse_ltl_formula_2(f.formula, factory) ]
         for phi in f.alternatives:
-            fs.append(parseLTLFormula2(phi, factory))
+            fs.append(_parse_ltl_formula_2(phi, factory))
         return factory['Conjunction'](fs)
-    else:
-        return parseLTLFormula2(f.formula, factory)
+    return _parse_ltl_formula_2(f.formula, factory)
 
-def parseLTLFormula2(f: Any, factory: Any)->Any:
-    phi1 = parseLTLFormula3(f.subexpression1, factory)
-    if f.subexpression2:
-        phi2 = parseLTLFormula2(f.subexpression2, factory)
-
+def _parse_ltl_formula_2(f: Any, factory: Any)->Any:
+    phi1 = _parse_ltl_formula_3(f.sub_expression_1, factory)
+    if f.sub_expression_2:
+        phi2 = _parse_ltl_formula_2(f.sub_expression_2, factory)
         return factory['Until'](phi1, phi2)
-    else:
-        return phi1
+    return phi1
 
-def parseLTLFormula3(f: Any, factory: Any)->Any:
-    phi1 = parseLTLFormula4(f.subexpression1, factory)
-    if f.subexpression2:
-        phi2 = parseLTLFormula3(f.subexpression2, factory)
+def _parse_ltl_formula_3(f: Any, factory: Any)->Any:
+    phi1 = _parse_ltl_formula_4(f.sub_expression_1, factory)
+    if f.sub_expression_2:
+        phi2 = _parse_ltl_formula_3(f.sub_expression_2, factory)
         return factory['Release'](phi1, phi2)
-    else:
-        return phi1
+    return phi1
 
-def parseLTLFormula4(f: Any, factory: Any)->Any:
-    phi1 = parseLTLFormula5(f.subexpression, factory)
+def _parse_ltl_formula_4(f: Any, factory: Any)->Any:
+    phi1 = _parse_ltl_formula_5(f.sub_expression, factory)
     if f.consequence:
-        phi2 = parseLTLFormula4(f.consequence, factory)
+        phi2 = _parse_ltl_formula_4(f.consequence, factory)
         return factory['Disjunction']([factory['Negation'](phi1), phi2])
-    else:
-        return phi1
+    return phi1
 
-def parseLTLFormula5(f: Any, factory: Any)->Any:
-    if f.nextSubexpression:
-        return factory['Next'](parseLTLFormula5(f.nextSubexpression, factory))
-    if f.eventuallySubexpression:
-        return factory['Eventually'](parseLTLFormula5(f.eventuallySubexpression, factory))
-    if f.alwaysSubexpression:
-        return factory['Always'](parseLTLFormula5(f.alwaysSubexpression, factory))
-    if f.notSubexpression:
-        return factory['Negation'](parseLTLFormula5(f.notSubexpression, factory))
-    return parseLTLFormula6(f.subexpression, factory)
+def _parse_ltl_formula_5(f: Any, factory: Any)->Any:
+    if f.next_sub_expression:
+        return factory['Next'](_parse_ltl_formula_5(f.next_sub_expression, factory))
+    if f.eventually_sub_expression:
+        return factory['Eventually'](_parse_ltl_formula_5(f.eventually_sub_expression, factory))
+    if f.always_sub_expression:
+        return factory['Always'](_parse_ltl_formula_5(f.always_sub_expression, factory))
+    if f.not_sub_expression:
+        return factory['Negation'](_parse_ltl_formula_5(f.not_sub_expression, factory))
+    return _parse_ltl_formula_6(f.sub_expression, factory)
 
-def parseLTLFormula6(f: Any, factory: Any)->Any:
+def _parse_ltl_formula_6(f: Any, factory: Any)->Any:
     if f.trueExpression:
         return factory['True']()
     if f.falseExpression:
@@ -191,6 +191,4 @@ def parseLTLFormula6(f: Any, factory: Any)->Any:
     if f.propositionExpression:
         return factory['Proposition'](f.propositionExpression)
     else:
-        return parseLTLFormula(f.expression, factory)
-
-
+        return _parse_ltl_formula(f.expression, factory)

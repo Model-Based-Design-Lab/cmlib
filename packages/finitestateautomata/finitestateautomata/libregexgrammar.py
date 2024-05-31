@@ -1,6 +1,8 @@
-from typing import Any, Dict, Optional, Tuple
-from textx import metamodel_from_str, TextXSyntaxError
+'''DSL grammar parsing support for regular expressions.'''
+
 import sys
+from typing import Any, Dict, Optional, Tuple
+from textx import TextXSyntaxError, metamodel_from_str
 
 # This is TextX version of the XText grammar in the clang repository
 # Xtext file:
@@ -9,21 +11,21 @@ import sys
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 
 
-RegExGrammar = """
+REG_EX_GRAMMAR = """
 RegExModel:
 	'regular' 'expression' name=ID '='
 	expression = RegularExpression
 	('where' (definitions = Definition )*
-	)?	
+	)?
 ;
 Definition:
 	symbol = ID '=' expression = RegularExpression
 ;
 RegularExpression:
-	expression = RegularExpression1 
+	expression = RegularExpression1
 	(
-		'+' 
-		alternatives = RegularExpression1 
+		'+'
+		alternatives = RegularExpression1
 		('+' alternatives = RegularExpression1 )*
 	)?
 ;
@@ -36,10 +38,10 @@ RegularExpression1:
  	)?
 ;
 RegularExpression2:
-		subexpression = RegularExpression3 
+		subexpression = RegularExpression3
 		(
-			(omega = '**')|		
-			(kleene = '*') 
+			(omega = '**')|
+			(kleene = '*')
 		)?
 ;
 
@@ -64,9 +66,9 @@ ReferenceExpression:
 	'@' reference = ID
 ;
 Letter:
-	SIMPLELETTER | STRING
+	SIMPLE_LETTER | STRING
 ;
-SIMPLELETTER:
+SIMPLE_LETTER:
 	/[a-zA-Z]/
 ;
 
@@ -84,57 +86,56 @@ Comment:
 
 """
 
-MetaModelRegEx = metamodel_from_str(RegExGrammar, classes=[])
+MetaModelRegEx = metamodel_from_str(REG_EX_GRAMMAR, classes=[])
 
-def parseRegExDSL(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
+def parse_reg_ex_dsl(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
+    '''Parse string to regular expression model.'''
     try:
         model =  MetaModelRegEx.model_from_str(content)
     except TextXSyntaxError as err:
-        sys.stderr.write("Syntax error in line %d col %d: %s" % (err.line, err.col, err.message))
+        sys.stderr.write(f"Syntax error in line {err.line} col {err.col}: {err.message}")
         return (None, None)
-    regex = parseRefsAndRegularExpression(model, factory)
+    regex = _parse_refs_and_regular_expression(model, factory)
     return (model.name, regex)
 
-def parseRefsAndRegularExpression(m: Any, factory: Any)->Any:
-    references = dict()
+def _parse_refs_and_regular_expression(m: Any, factory: Any)->Any:
+    references = {}
     if m.definitions:
-        references = parseRefs(m.definitions)
-    return parseRegularExpression(m.expression, references, factory)
+        references = _parse_refs(m.definitions)
+    return _parse_regular_expression(m.expression, references, factory)
 
-def parseRefs(defs:Dict[Any,Any])->Dict[str,Any]:
-    res:Dict[str,Any] = dict()
+def _parse_refs(defs:Dict[Any,Any])->Dict[str,Any]:
+    res:Dict[str,Any] = {}
     res['_processed'] = set()
     for d in defs:
         res[d.symbol] = d.expression
-    return res    
+    return res
 
-def parseRegularExpression(m: Any, references:Dict[str,Any], factory: Any)->Any:
+def _parse_regular_expression(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if len(m.alternatives) > 0:
-        expr = [ parseRegularExpression1(m.expression, references, factory) ]
+        expr = [ _parse_regular_expression1(m.expression, references, factory) ]
         for n in m.alternatives:
-            expr.append(parseRegularExpression1(n, references, factory))
+            expr.append(_parse_regular_expression1(n, references, factory))
         return factory['Alternatives'](expr)
-    else: 
-        return parseRegularExpression1(m.expression, references, factory)
+    return _parse_regular_expression1(m.expression, references, factory)
 
-def parseRegularExpression1(m: Any, references:Dict[str,Any], factory: Any)->Any:
+def _parse_regular_expression1(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if len(m.concatenations) > 0:
-        expr = [ parseRegularExpression2(m.expression, references, factory) ]
+        expr = [ _parse_regular_expression_2(m.expression, references, factory) ]
         for n in m.concatenations:
-            expr.append(parseRegularExpression2(n, references, factory))
+            expr.append(_parse_regular_expression_2(n, references, factory))
         return factory['Concatenations'](expr)
-    else: 
-        return parseRegularExpression2(m.expression, references, factory)
+    return _parse_regular_expression_2(m.expression, references, factory)
 
-def parseRegularExpression2(m: Any, references:Dict[str,Any], factory: Any)->Any:
+def _parse_regular_expression_2(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if m.kleene:
-        return factory['Kleene'](parseRegularExpression3(m.subexpression, references, factory))
+        return factory['Kleene'](_parse_regular_expression_3(m.subexpression, references, factory))
     if m.omega:
-        return factory['Omega'](parseRegularExpression3(m.subexpression, references, factory))
-    else: 
-        return parseRegularExpression3(m.subexpression, references, factory)
+        return factory['Omega'](_parse_regular_expression_3(m.subexpression, references, factory))
+    else:
+        return _parse_regular_expression_3(m.subexpression, references, factory)
 
-def parseRegularExpression3(m: Any, references:Dict[str,Any], factory: Any)->Any:
+def _parse_regular_expression_3(m: Any, references:Dict[str,Any], factory: Any)->Any:
     if m.emptyLangExpression:
         return factory['EmptyLanguage']()
     if m.emptyWordExpression:
@@ -145,8 +146,8 @@ def parseRegularExpression3(m: Any, references:Dict[str,Any], factory: Any)->Any
         ref = m.referenceExpression.reference
         exp = references[ref]
         if not ref in references['_processed']:
-            exp = parseRegularExpression(exp, references, factory)
+            exp = _parse_regular_expression(exp, references, factory)
             references['_processed'].add(ref)
             references[ref] = exp
         return exp
-    return parseRegularExpression(m.expression, references, factory)
+    return _parse_regular_expression(m.expression, references, factory)

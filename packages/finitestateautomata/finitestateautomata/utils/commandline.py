@@ -136,7 +136,7 @@ def process(args, dsl):
         name, a = Automaton.from_dsl(dsl)
 
     if args.operation in RegExOperations:
-        name, r = RegEx.fromDSL(dsl)
+        name, r = RegEx.from_dsl(dsl)
 
     if args.operation in LTLOperations:
         name, f = LTLFormula.from_dsl(dsl)
@@ -257,12 +257,12 @@ def process(args, dsl):
 
     # convertRegEx (requires regular expression)
     if args.operation == OP_REGEX_CONVERT_FSA:
-        res = require_reg_ex(r).asFSA()
+        res = require_reg_ex(r).as_fsa()
         print(res.asDSL(name))  # type: ignore
 
     # convertOmegaRegEx (requires omega-regular expression)
     if args.operation == OP_REGEX_CONVERT_OMEGA_REGEX:
-        res = require_reg_ex(r).asNBA()
+        res = require_reg_ex(r).as_nba()
         print(res.asDSL(name))  # type: ignore
 
     # convertLTL (requires ltl formula)
@@ -272,8 +272,8 @@ def process(args, dsl):
 
     # asRegEx
     if args.operation == OP_FSA_AS_REGEX:
-        res = RegEx.fromFSA(a, OP_FSA_AS_REGEX_NAME(name))
-        print(res.asDSL(OP_FSA_AS_REGEX_NAME(name)))
+        res = RegEx.from_fsa(a, OP_FSA_AS_REGEX_NAME(name))
+        print(res.as_dsl(OP_FSA_AS_REGEX_NAME(name)))
 
     # # test parser
     # if args.operation == 'testLTLParser':
