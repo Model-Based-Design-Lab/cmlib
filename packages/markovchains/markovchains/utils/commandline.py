@@ -148,7 +148,7 @@ def require_stop_criteria(args: Any)->StopConditions:
 def set_seed(args: Any, mc: MarkovChain):
     """Set set for random simulation."""
     if args.Seed is not None:
-        mc.setSeed(int(args.Seed))
+        mc.set_seed(int(args.Seed))
 
 def set_starting_state_set(args: Any, mc: MarkovChain):
     """Parse starting state set."""
@@ -174,7 +174,7 @@ def process(args, dsl):
     mc = None
 
     if operation in MarkovChainOperations:
-        _, mc = MarkovChain.fromDSL(dsl)
+        _, mc = MarkovChain.from_dsl(dsl)
         if mc is None:
             sys.exit(1)
 
@@ -188,18 +188,18 @@ def process(args, dsl):
 
     # list the recurrent states
     if operation == OP_DTMC_LIST_RECURRENT_STATES:
-        _, recurrent_states = mc.classifyTransientRecurrent()
+        _, recurrent_states = mc.classify_transient_recurrent()
         print_sorted_list(recurrent_states)
 
     # list the transient states
     if operation == OP_DTMC_LIST_TRANSIENT_STATES:
-        trans, _ = mc.classifyTransientRecurrent()
+        trans, _ = mc.classify_transient_recurrent()
         print_sorted_list(trans)
 
     # create graph for a number of steps
     if operation == OP_DTMC_EXECUTION_GRAPH:
         n_steps = require_number_of_steps(args)
-        trace = linalg.transpose(mc.executeSteps(n_steps))
+        trace = linalg.transpose(mc.execute_steps(n_steps))
         states = mc.states()
         data = {}
         data['k'] = range(0,n_steps+1)
@@ -212,12 +212,12 @@ def process(args, dsl):
     # determine classes of communicating states
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
-        for s in mc.communicatingClasses():
+        for s in mc.communicating_classes():
             print_sorted_set(s)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
-        trans, recurrent_states = mc.classifyTransientRecurrent()
+        trans, recurrent_states = mc.classify_transient_recurrent()
         print("Transient states:")
         print_sorted_set(trans)
         print("Recurrent states:")
@@ -225,7 +225,7 @@ def process(args, dsl):
 
     # classify transient and recurrent states
     if operation == OP_DTMC_PERIODICITY:
-        per = mc.classifyPeriodicity()
+        per = mc.classify_periodicity()
         print("The set of aperiodic recurrent states is:")
         aper_states =  [s for s in per.keys() if per[s] == 1]
         print_sorted_set(aper_states)
@@ -241,13 +241,13 @@ def process(args, dsl):
 
     # classify transient and recurrent states
     if operation == OP_DTMC_MC_TYPE:
-        mc_type = mc.determineMCType()
+        mc_type = mc.determine_mc_type()
         print(f"The type of the MC is: {mc_type}")
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT:
         n_steps = require_number_of_steps(args)
-        trace = mc.executeSteps(n_steps)
+        trace = mc.execute_steps(n_steps)
         states = mc.states()
 
         print("Transient analysis:\n")
@@ -262,19 +262,19 @@ def process(args, dsl):
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_REWARDS:
         n_steps = require_number_of_steps(args)
-        trace = mc.executeSteps(n_steps)
+        trace = mc.execute_steps(n_steps)
 
         print("Transient reward analysis:")
         for k in range(n_steps+1):
             print(f"\nStep {k}:")
             print("Expected Reward: ", end='')
-            pretty_print_value(mc.rewardForDistribution(trace[k]))
+            pretty_print_value(mc.reward_for_distribution(trace[k]))
 
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_MATRIX:
         n_steps = require_number_of_steps(args)
-        mat = mc.transitionMatrix()
+        mat = mc.transition_matrix()
 
         print ("State vector:")
         print_list_of_strings(mc.states())
@@ -283,14 +283,14 @@ def process(args, dsl):
         pretty_print_matrix(matPower(mat, n_steps))
 
     if operation == OP_DTMC_LIMITING_MATRIX:
-        mat = mc.limitingMatrix()
+        mat = mc.limiting_matrix()
         print ("State vector:")
         print_list_of_strings(mc.states())
         print ("Limiting Matrix:\n")
         pretty_print_matrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
-        l_dist: TVector = mc.limitingDistribution()
+        l_dist: TVector = mc.limiting_distribution()
 
         print ("State vector:")
         print_list_of_strings(mc.states())
@@ -298,8 +298,8 @@ def process(args, dsl):
         pretty_print_vector(l_dist)
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
-        mc_type = mc.determineMCType()
-        r = mc.longRunReward()
+        mc_type = mc.determine_mc_type()
+        r = mc.long_run_reward()
         if 'non-ergodic' in mc_type:
             print(f"The long-run expected average reward is: {r}\n")
         else:
@@ -307,21 +307,21 @@ def process(args, dsl):
 
     if operation == OP_DTMC_HITTING_PROBABILITY:
         s = require_target_state(mc, args)
-        prob = mc.hittingProbabilities(s)
+        prob = mc.hitting_probabilities(s)
         print(f"The hitting probabilities for {s} are:")
         for t in sort_names(mc.states()):
             print(f"f({t}, {s}) = {prob[t]}")
 
     if operation == OP_DTMC_REWARD_TILL_HIT:
         s = require_target_state(mc, args)
-        res = mc.rewardTillHit(s)
+        res = mc.reward_till_hit(s)
         print(f"The expected rewards until hitting {s} are:")
         for s in sort_names(res.keys()):
             print(f"From state {s}: {res[s]}")
 
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
         target_state_set = require_target_state_set(mc, args)
-        prob = mc.hittingProbabilitiesSet(target_state_set)
+        prob = mc.hitting_probabilities_set(target_state_set)
         print(f"The hitting probabilities for {{{', '.join(prob)}}} are:")
         ss = ', '.join(target_state_set)
         for t in sort_names(mc.states()):
@@ -337,15 +337,15 @@ def process(args, dsl):
     if operation == OP_DTMC_MARKOV_TRACE:
         set_seed(args, mc)
         n_steps = require_number_of_steps(args)
-        trace = mc.markovTrace(n_steps)
+        trace = mc.markov_trace(n_steps)
         print(f"{trace}")
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
         set_seed(args, mc)
         if args.targetState:
-            mc.setRecurrentState(args.targetState)
+            mc.set_recurrent_state(args.targetState)
         crit = require_stop_criteria(args)
-        statistics, stop = mc.longRunExpectedAverageReward(crit)
+        statistics, stop = mc.long_run_expected_average_reward(crit)
         if statistics.cycle_count() == 0:
             print("Recurrent state has not been reached, no realizations found")
         else:
@@ -364,9 +364,9 @@ def process(args, dsl):
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
         set_seed(args, mc)
         if args.targetState:
-            mc.setRecurrentState(args.targetState)
+            mc.set_recurrent_state(args.targetState)
         crit = require_stop_criteria(args)
-        distribution_statistics, stop = mc.cezaroLimitDistribution(crit)
+        distribution_statistics, stop = mc.cezaro_limit_distribution(crit)
 
         if distribution_statistics is None:
             print("Recurrent state has not been reached, no realizations found")
@@ -396,7 +396,7 @@ def process(args, dsl):
         set_seed(args, mc)
         n_steps = require_number_of_steps(args)
         crit = require_stop_criteria(args)
-        statistics, stop = mc.estimationExpectedReward(crit, n_steps)
+        statistics, stop = mc.estimation_expected_reward(crit, n_steps)
         print(f"Simulation termination reason: {stop}")
         er = optional_float_or_string_to_string(statistics.mean_estimate_result())
         print(f"\tExpected reward: {er}")
@@ -413,7 +413,7 @@ def process(args, dsl):
         states = mc.states()
         n_steps = require_number_of_steps(args)
         crit = require_stop_criteria(args)
-        distribution_statistics, stop = mc.estimationTransientDistribution(crit, n_steps)
+        distribution_statistics, stop = mc.estimation_transient_distribution(crit, n_steps)
         print(f"Simulation termination reason: {stop}")
         print(f"The estimated distribution after {n_steps} steps of " \
               f"[{', '.join(states)}] is as follows:")
@@ -431,7 +431,7 @@ def process(args, dsl):
         state_set = set_starting_state_set(args, mc)
         s = require_target_state(mc, args)
         crit = require_stop_criteria(args)
-        statistics_dict, stop = mc.estimationHittingProbabilityState(crit, s, state_set)
+        statistics_dict, stop = mc.estimation_hitting_probability_state(crit, s, state_set)
         if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
@@ -456,7 +456,7 @@ def process(args, dsl):
         state_set = set_starting_state_set(args, mc)
         s = require_target_state(mc, args)
         crit = require_stop_criteria(args)
-        statistics_dict, stop = mc.estimationRewardUntilHittingState(crit, s, state_set)
+        statistics_dict, stop = mc.estimation_reward_until_hitting_state(crit, s, state_set)
         if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
@@ -485,7 +485,7 @@ def process(args, dsl):
         state_set = set_starting_state_set(args, mc)
         s = require_target_state_set(mc, args)
         crit = require_stop_criteria(args)
-        statistics_dict, stop = mc.estimationHittingProbabilityStateSet(crit, s, state_set)
+        statistics_dict, stop = mc.estimation_hitting_probability_state_set(crit, s, state_set)
         if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
@@ -514,7 +514,7 @@ def process(args, dsl):
         state_set = set_starting_state_set(args, mc)
         s = require_target_state_set(mc, args)
         crit = require_stop_criteria(args)
-        statistics_dict, stop = mc.estimationRewardUntilHittingStateSet(crit, s, state_set)
+        statistics_dict, stop = mc.estimation_reward_until_hitting_state_set(crit, s, state_set)
         if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:

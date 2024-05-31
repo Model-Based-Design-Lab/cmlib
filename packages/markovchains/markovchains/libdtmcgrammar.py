@@ -29,7 +29,7 @@ EdgeSpecs:
 EdgeAnnotation:
 	('probability' ':' probability=Probability)
 	|
-	(probability=Probability) 
+	(probability=Probability)
 ;
 
 State:
@@ -38,22 +38,22 @@ State:
 ;
 
 StateSpecs:
-	'[' 
+	'['
 	annotations += StateAnnotation (';' annotations += StateAnnotation)*
 	']'
 ;
 
 StateAnnotation:
 	(((('initial' 'probability') | ('p')) ':') initprob=Probability) |
-	(((('reward') | ('r')) ':') reward=Reward) 	 
+	(((('reward') | ('r')) ':') reward=Reward)
 ;
 
 Reward:
-	ratio=Ratio | float=Float | int=INT  
+	ratio=Ratio | float=Float | int=INT
 ;
 
 Probability:
-	ratio=Ratio | float=Float | int=INT  
+	ratio=Ratio | float=Float | int=INT
 ;
 
 Ratio:
@@ -115,9 +115,9 @@ def parseDTMCDSL(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]
 
 	factory['SortNames'](DTMCModel)
 
-	DTMCModel.completeInitialProbabilities()
-	DTMCModel.completeRewards()
-	DTMCModel.addImplicitTransitions()
+	DTMCModel.complete_initial_probabilities()
+	DTMCModel.complete_rewards()
+	DTMCModel.add_implicit_transitions()
 
 	return (model.name, DTMCModel)
-    
+
