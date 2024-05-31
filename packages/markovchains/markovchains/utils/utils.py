@@ -14,6 +14,10 @@ NUM_FORMAT = '{:.5f}'
 NUM_SCIENTIFIC = '{:.5e}'
 COMPLEXITY_THRESHOLD: int = 50
 
+class MarkovChainException(Exception):
+    """Exceptions related to this package"""
+
+
 # Frac = lambda n : Fraction(n).limit_denominator(max_denominator=1000000) if not np.isnan(n) else n
 
 def warn(s: str):

@@ -2,22 +2,43 @@
 '''Operations on Markov chains '''
 
 import argparse
+import sys
 from typing import Any, Dict, List, Optional, Union
 
+import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plotSvg
-from markovchains.utils.linalgebra import matPower, TVector
+from markovchains.utils.linalgebra import TVector, matPower
+from markovchains.utils.operations import (
+    OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT,
+    OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_ESTIMATION_DISTRIBUTION,
+    OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD,
+    OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE,
+    OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_EXECUTION_GRAPH,
+    OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET,
+    OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX,
+    OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES,
+    OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD,
+    OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_MC_TYPE,
+    OP_DTMC_PERIODICITY, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET,
+    OP_DTMC_TRANSIENT, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS,
+    MarkovChainOperations, OperationDescriptions)
 from markovchains.utils.statistics import StopConditions
-from markovchains.utils.utils import sort_names, string_to_float, stop_criteria, nr_of_steps, print_sorted_list, print_sorted_set, print_list_of_strings, print_optional_interval, print_optional_list, print_optional_list_of_intervals, pretty_print_matrix, pretty_print_vector, pretty_print_value, optional_float_or_string_to_string, print_table
-import markovchains.utils.linalgebra as linalg
-
-
-from markovchains.utils.operations import MarkovChainOperations, OperationDescriptions, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT, OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_EXECUTION_GRAPH, OP_DTMC_LIST_RECURRENT_STATES, OP_DTMC_LIST_STATES, OP_DTMC_LIST_TRANSIENT_STATES, OP_DTMC_MC_TYPE, OP_DTMC_PERIODICITY, OP_DTMC_TRANSIENT, OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_ESTIMATION_DISTRIBUTION, OP_DTMC_ESTIMATION_EXPECTED_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD, OP_DTMC_ESTIMATION_HITTING_REWARD_SET, OP_DTMC_ESTIMATION_HITTING_STATE, OP_DTMC_ESTIMATION_HITTING_STATE_SET, OP_DTMC_HITTING_PROBABILITY, OP_DTMC_HITTING_PROBABILITY_SET, OP_DTMC_LIMITING_DISTRIBUTION, OP_DTMC_LIMITING_MATRIX, OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD, OP_DTMC_LONG_RUN_REWARD, OP_DTMC_MARKOV_TRACE, OP_DTMC_REWARD_TILL_HIT, OP_DTMC_REWARD_TILL_HIT_SET, OP_DTMC_TRANSIENT_MATRIX, OP_DTMC_TRANSIENT_REWARDS
-import sys
-
+from markovchains.utils.utils import (MarkovChainException, nr_of_steps,
+                                      optional_float_or_string_to_string,
+                                      pretty_print_matrix, pretty_print_value,
+                                      pretty_print_vector,
+                                      print_list_of_strings,
+                                      print_optional_interval,
+                                      print_optional_list,
+                                      print_optional_list_of_intervals,
+                                      print_sorted_list, print_sorted_set,
+                                      print_table, sort_names, stop_criteria,
+                                      string_to_float)
 
 
 def main():
+    """Main entry point of the application."""
 
     # optional help flag explaining usage of each individual operation
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
@@ -26,145 +47,162 @@ def main():
 
     if options.opHelp: # Check if -oh has been called
         if options.opHelp not in MarkovChainOperations:
-            print("Operation '{}' does not exist. List of operations:\n\t- {}".format(options.opHelp, "\n\t- ".join(MarkovChainOperations)))
+            print("Operation '{}' does not exist. List of operations:\n\t- {}".format( \
+                options.opHelp, '\n\t- '.join(MarkovChainOperations)))
         else:
-            print("{}: {}".format(options.opHelp, OperationDescriptions[MarkovChainOperations.index(options.opHelp)]))
-        exit(1)
+            print(f"{options.opHelp}: " \
+                  f"{OperationDescriptions[MarkovChainOperations.index(options.opHelp)]}")
+        sys.exit(1)
 
     parser = argparse.ArgumentParser(
-        description='Perform operations on discrete-time Markov chains.\nhttps://computationalmodeling.info')
+        description='Perform operations on discrete-time Markov chains.\n" \
+            "https://computationalmodeling.info')
     parser.add_argument('markovchain', help="the Markov chain to analyze")
-    parser.add_argument('-op', '--operation', dest='operation',
-                        help="the operation or analysis to perform, one of : {}.\nUse 'markovchains -oh OPERATION' for information about the specific operation.".format("; \n".join(MarkovChainOperations)))
+    parser.add_argument('-op', '--operation', dest='operation', \
+                        help="the operation or analysis to perform, one of : {}.\nUse " \
+                            "'markovchains -oh OPERATION' for information about the specific "\
+                            "operation.".format("; \n".join(MarkovChainOperations)))
     parser.add_argument('-ns', '--numberofsteps', dest='numberOfSteps',
                         help="the number of steps to execute")
     parser.add_argument('-s', '--state', dest='targetState',
                         help="the state for the operation")
-    parser.add_argument('-ss', '--stateset', dest='targetStateSet',
-                        help="the set of state for the operation as a non-empty comma-separated list")
-    parser.add_argument('-r', '--rewardset', dest='stateRewardSet',
-                        help="the set of state reward for the operation as a non-empty comma-separated list")
+    parser.add_argument('-ss', '--stateset', dest='targetStateSet', \
+                        help="the set of state for the operation as a non-empty " \
+                            "comma-separated list")
+    parser.add_argument('-r', '--rewardset', dest='stateRewardSet',\
+                        help="the set of state reward for the operation as a non-empty " \
+                        "comma-separated list")
     parser.add_argument('-sa', '--startingset', dest='stateStartingSet',
-                        help="the set of starting states for the simulation hitting operations as a non-empty comma-separated list")
+                        help="the set of starting states for the simulation hitting operations " \
+                        "as a non-empty comma-separated list")
     parser.add_argument('-c', '--conditions', dest='Conditions',
-                        help="The stop conditions for simulating the markovchain [confidence,abError,reError,numberOfSteps,numberOfPaths,timeInSeconds]")
+                        help="The stop conditions for simulating the markovchain [confidence," \
+                        "abError,reError,numberOfSteps,numberOfPaths,timeInSeconds]")
     parser.add_argument('-sd', '--seed', dest='Seed',
                         help="Simulation seed for pseudo random variables")
 
     args = parser.parse_args(remainder)
 
     if args.operation not in MarkovChainOperations:
-        sys.stderr.write("Unknown operation: {}\n".format(args.operation))
-        exit(1)
+        sys.stderr.write(f"Unknown operation: {args.operation}\n")
+        sys.exit(1)
 
     dsl:str = ""
 
     if args.markovchain:
         try:
-            with open(args.markovchain, 'r', encoding='utf-8') as dtmcFile:
-                dsl = dtmcFile.read()
-        except FileNotFoundError as e:
-            sys.stderr.write("File does not exist: {}\n.".format(args.markovchain))
-            exit(1)
+            with open(args.markovchain, 'r', encoding='utf-8') as dtmc_file:
+                dsl = dtmc_file.read()
+        except FileNotFoundError:
+            sys.stderr.write(f"File does not exist: {args.markovchain}\n.")
+            sys.exit(1)
 
     try:
         process(args, dsl)
-    except Exception as e:
-        sys.stderr.write("{}\n".format(e))
+    except MarkovChainException as e:
+        sys.stderr.write(f"{e}\n")
         # raise e
-        exit(1)
+        sys.exit(1)
 
-    exit(0)
+    sys.exit(0)
 
 
-def requireNumberOfSteps(args: Any)->int:
+def require_number_of_steps(args: Any)->int:
+    """Ensure number of steps is specified."""
     if args.numberOfSteps is None:
-        raise Exception("number of steps (-ns option) must be specified.")
+        raise MarkovChainException("number of steps (-ns option) must be specified.")
     try:
         ns: int = nr_of_steps(int(args.numberOfSteps))
-    except Exception as e:
-        raise Exception("Failed to determine number of steps.")
+    except Exception:
+        raise MarkovChainException("Failed to determine number of steps.") # pylint: disable=raise-missing-from
     if ns < 0:
-        raise Exception("Number of steps must be a non-negative number.")
+        raise MarkovChainException("Number of steps must be a non-negative number.")
     return ns
 
-def requireTargetState(M: MarkovChain, args: Any)->str:
+def require_target_state(mc: MarkovChain, args: Any)->str:
+    """Ensure target state is specified."""
     if args.targetState is None:
-        raise Exception("A target state must be specified with the -s option.")
+        raise MarkovChainException("A target state must be specified with the -s option.")
     s: str = args.targetState
-    if not s in M.states():
-            raise(Exception("The specified target state {} does not exist.".format(s)))
+    if not s in mc.states():
+        raise MarkovChainException(f"The specified target state {s} does not exist.")
     return args.targetState
 
-def requireTargetStateSet(M: MarkovChain, args: Any)->List[str]:
+def require_target_state_set(mc: MarkovChain, args: Any)->List[str]:
+    """Ensure target state set is specified."""
     if args.targetStateSet is None:
-        raise Exception("A target state set must be specified with the -ss option.")
-    stateSet = [s.strip() for s in args.targetStateSet.split(',')]
-    for s in stateSet:
-        if not s in M.states():
-            raise(Exception("State {} in specified state set does not exist.".format(s)))
-    return stateSet
+        raise MarkovChainException("A target state set must be specified with the -ss option.")
+    state_set = [s.strip() for s in args.targetStateSet.split(',')]
+    for s in state_set:
+        if not s in mc.states():
+            raise MarkovChainException(f"State {s} in specified state set does not exist.")
+    return state_set
 
-def requireStopCriteria(args: Any)->StopConditions:
+def require_stop_criteria(args: Any)->StopConditions:
+    """Ensure stop criteria are specified."""
     if args.Conditions is None:
-        raise Exception("Stop conditions must be specified with the -c option.")
+        raise MarkovChainException("Stop conditions must be specified with the -c option.")
     cc = stop_criteria([string_to_float(i, -1.0) for i in args.Conditions[1:-1].split(',')])
     return cc
 
-def setSeed(args: Any, M: MarkovChain):
+def set_seed(args: Any, mc: MarkovChain):
+    """Set set for random simulation."""
     if args.Seed is not None:
-        M.setSeed(int(args.Seed))
+        mc.setSeed(int(args.Seed))
 
-def setStartingStateSet(args: Any, M: MarkovChain):
-    S: List[str]
+def set_starting_state_set(args: Any, mc: MarkovChain):
+    """Parse starting state set."""
+    state_set: List[str]
     if args.stateStartingSet is not None:
-        S = [s.strip() for s in args.stateStartingSet.split(',')]
+        state_set = [s.strip() for s in args.stateStartingSet.split(',')]
     else:
-        S = M.states()
-    return S
+        state_set = mc.states()
+    return state_set
 
 
-def requireMarkovChain(M: Optional[MarkovChain]) -> MarkovChain:
-    if M is None:
-        raise Exception("A Markov Chain is needed.")
-    return M
+def require_markov_chain(mc: Optional[MarkovChain]) -> MarkovChain:
+    """Ensure a Markov Chain is specified."""
+    if mc is None:
+        raise MarkovChainException("A Markov Chain is needed.")
+    return mc
 
 def process(args, dsl):
+    """Process the command line arguments."""
 
     operation = args.operation
 
-    M = None
+    mc = None
 
     if operation in MarkovChainOperations:
-        _, M = MarkovChain.fromDSL(dsl)
-        if M is None:
-            exit(1)
+        _, mc = MarkovChain.fromDSL(dsl)
+        if mc is None:
+            sys.exit(1)
 
     # let the type checker know that we certainly have a Markov Chain from here
-    M = requireMarkovChain(M)
+    mc = require_markov_chain(mc)
 
     # just list all states
     if operation == OP_DTMC_LIST_STATES:
-        res = M.states()
+        res = mc.states()
         print_sorted_list(res)
 
     # list the recurrent states
     if operation == OP_DTMC_LIST_RECURRENT_STATES:
-        _, recurrentStates = M.classifyTransientRecurrent()
-        print_sorted_list(recurrentStates)
+        _, recurrent_states = mc.classifyTransientRecurrent()
+        print_sorted_list(recurrent_states)
 
     # list the transient states
     if operation == OP_DTMC_LIST_TRANSIENT_STATES:
-        trans, _ = M.classifyTransientRecurrent()
+        trans, _ = mc.classifyTransientRecurrent()
         print_sorted_list(trans)
 
     # create graph for a number of steps
     if operation == OP_DTMC_EXECUTION_GRAPH:
-        N = requireNumberOfSteps(args)
-        trace = linalg.transpose(M.executeSteps(N))
-        states = M.states()
-        data = dict()
-        data['k'] = range(0,N+1)
+        n_steps = require_number_of_steps(args)
+        trace = linalg.transpose(mc.executeSteps(n_steps))
+        states = mc.states()
+        data = {}
+        data['k'] = range(0,n_steps+1)
         k = 0
         for s in sort_names(states):
             data[s] = trace[k]
@@ -174,308 +212,331 @@ def process(args, dsl):
     # determine classes of communicating states
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
-        for s in M.communicatingClasses():
+        for s in mc.communicatingClasses():
             print_sorted_set(s)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT:
-        trans, recurrentStates = M.classifyTransientRecurrent()
+        trans, recurrent_states = mc.classifyTransientRecurrent()
         print("Transient states:")
         print_sorted_set(trans)
         print("Recurrent states:")
-        print_sorted_set(recurrentStates)
+        print_sorted_set(recurrent_states)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_PERIODICITY:
-        per = M.classifyPeriodicity()
+        per = mc.classifyPeriodicity()
         print("The set of aperiodic recurrent states is:")
-        aperStates =  [s for s in per.keys() if per[s] == 1]
-        print_sorted_set(aperStates)
+        aper_states =  [s for s in per.keys() if per[s] == 1]
+        print_sorted_set(aper_states)
 
-        if len(aperStates) < len(per):
+        if len(aper_states) < len(per):
             periodicities = set(per.values())
             if 1 in periodicities:
                 periodicities.remove(1)
             for p in periodicities:
-                print("The set of periodic recurrent states with periodicity {} is.".format(p))
-                pPeriodicStates =  [s for s in per.keys() if per[s] == p]
-                print_sorted_set(pPeriodicStates)
+                print(f"The set of periodic recurrent states with periodicity {p} is.")
+                p_periodic_states =  [s for s in per.keys() if per[s] == p]
+                print_sorted_set(p_periodic_states)
 
     # classify transient and recurrent states
     if operation == OP_DTMC_MC_TYPE:
-        mcType = M.determineMCType()
-        print("The type of the MC is: {}".format(mcType))
+        mc_type = mc.determineMCType()
+        print(f"The type of the MC is: {mc_type}")
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT:
-        N = requireNumberOfSteps(args)
-        trace = M.executeSteps(N)
-        states = M.states()
+        n_steps = require_number_of_steps(args)
+        trace = mc.executeSteps(n_steps)
+        states = mc.states()
 
         print("Transient analysis:\n")
         print ("State vector:")
         print_list_of_strings(states)
 
-        for k in range(N+1):
-            print("Step {}:".format(k))
+        for k in range(n_steps+1):
+            print(f"Step {k}:")
             print("Distribution: ", end="")
             pretty_print_vector(trace[k])
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_REWARDS:
-        N = requireNumberOfSteps(args)
-        trace = M.executeSteps(N)
+        n_steps = require_number_of_steps(args)
+        trace = mc.executeSteps(n_steps)
 
         print("Transient reward analysis:")
-        for k in range(N+1):
-            print("\nStep {}:".format(k))
+        for k in range(n_steps+1):
+            print(f"\nStep {k}:")
             print("Expected Reward: ", end='')
-            pretty_print_value(M.rewardForDistribution(trace[k]))
+            pretty_print_value(mc.rewardForDistribution(trace[k]))
 
 
     # determine transient behavior for a number of steps
     if operation == OP_DTMC_TRANSIENT_MATRIX:
-        N = requireNumberOfSteps(args)
-        mat = M.transitionMatrix()
+        n_steps = require_number_of_steps(args)
+        mat = mc.transitionMatrix()
 
         print ("State vector:")
-        print_list_of_strings(M.states())
+        print_list_of_strings(mc.states())
         print("Transient analysis:\n")
-        print("Matrix for {} steps:\n".format(N))
-        pretty_print_matrix(matPower(mat, N))
+        print(f"Matrix for {n_steps} steps:\n")
+        pretty_print_matrix(matPower(mat, n_steps))
 
     if operation == OP_DTMC_LIMITING_MATRIX:
-        mat = M.limitingMatrix()
+        mat = mc.limitingMatrix()
         print ("State vector:")
-        print_list_of_strings(M.states())
+        print_list_of_strings(mc.states())
         print ("Limiting Matrix:\n")
         pretty_print_matrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
-        lDist: TVector = M.limitingDistribution()
+        l_dist: TVector = mc.limitingDistribution()
 
         print ("State vector:")
-        print_list_of_strings(M.states())
+        print_list_of_strings(mc.states())
         print ("Limiting Distribution:")
-        pretty_print_vector(lDist)
+        pretty_print_vector(l_dist)
 
     if operation == OP_DTMC_LONG_RUN_REWARD:
-        mcType = M.determineMCType()
-        r = M.longRunReward()
-        if 'non-ergodic' in mcType:
-            print("The long-run expected average reward is: {}\n".format(r))
+        mc_type = mc.determineMCType()
+        r = mc.longRunReward()
+        if 'non-ergodic' in mc_type:
+            print(f"The long-run expected average reward is: {r}\n")
         else:
-            print("The long-run expected reward is: {}\n".format(r))
+            print(f"The long-run expected reward is: {r}\n")
 
     if operation == OP_DTMC_HITTING_PROBABILITY:
-        s = requireTargetState(M, args)
-        prob = M.hittingProbabilities(s)
-        print("The hitting probabilities for {} are:".format(s))
-        for t in sort_names(M.states()):
-            print("f({}, {}) = {}".format(t, s, prob[t]))
+        s = require_target_state(mc, args)
+        prob = mc.hittingProbabilities(s)
+        print(f"The hitting probabilities for {s} are:")
+        for t in sort_names(mc.states()):
+            print(f"f({t}, {s}) = {prob[t]}")
 
     if operation == OP_DTMC_REWARD_TILL_HIT:
-        s = requireTargetState(M, args)
-        res = M.rewardTillHit(s)
-        print("The expected rewards until hitting {} are:".format(s))
+        s = require_target_state(mc, args)
+        res = mc.rewardTillHit(s)
+        print(f"The expected rewards until hitting {s} are:")
         for s in sort_names(res.keys()):
-            print("From state {}: {}".format(s, res[s]))
+            print(f"From state {s}: {res[s]}")
 
     if operation == OP_DTMC_HITTING_PROBABILITY_SET:
-        targetStateSet = requireTargetStateSet(M, args)
-        prob = M.hittingProbabilitiesSet(targetStateSet)
-        print("The hitting probabilities for {{{}}} are:".format(', '.join(prob)))
-        ss = ', '.join(targetStateSet)
-        for t in sort_names(M.states()):
-            print("f({}, {{{}}}) = {}".format(t, ss, prob[t]))
+        target_state_set = require_target_state_set(mc, args)
+        prob = mc.hittingProbabilitiesSet(target_state_set)
+        print(f"The hitting probabilities for {{{', '.join(prob)}}} are:")
+        ss = ', '.join(target_state_set)
+        for t in sort_names(mc.states()):
+            print(f"f({t}, {{{ss}}}) = {prob[t]}")
 
     if operation == OP_DTMC_REWARD_TILL_HIT_SET:
-        s = requireTargetStateSet(M, args)
-        res = M.rewardTillHitSet(s)
-        print("The expected rewards until hitting {{{}}} are:".format(', '.join(s)))
+        s = require_target_state_set(mc, args)
+        res = mc.rewardTillHitSet(s)
+        print(f"The expected rewards until hitting {{{', '.join(s)}}} are:")
         for t in sort_names(res.keys()):
-            print("From state {}: {}".format(t, res[t]))
+            print(f"From state {t}: {res[t]}")
 
     if operation == OP_DTMC_MARKOV_TRACE:
-        setSeed(args, M)
-        N = requireNumberOfSteps(args)
-        trace = M.markovTrace(N)
-        print("{}".format(trace))
+        set_seed(args, mc)
+        n_steps = require_number_of_steps(args)
+        trace = mc.markovTrace(n_steps)
+        print(f"{trace}")
 
     if operation == OP_DTMC_LONG_RUN_EXPECTED_AVERAGE_REWARD:
-        setSeed(args, M)
+        set_seed(args, mc)
         if args.targetState:
-            M.setRecurrentState(args.targetState)
-        C = requireStopCriteria(args)
-        statistics, stop = M.longRunExpectedAverageReward(C)
+            mc.setRecurrentState(args.targetState)
+        crit = require_stop_criteria(args)
+        statistics, stop = mc.longRunExpectedAverageReward(crit)
         if statistics.cycle_count() == 0:
             print("Recurrent state has not been reached, no realizations found")
         else:
-            print("Simulation termination reason: {}".format(stop))
+            print(f"Simulation termination reason: {stop}")
             print("The long run expected average reward is:")
-            print("\tEstimated mean: {}".format(optional_float_or_string_to_string(statistics.mean_estimate_result())))
-            print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidence_interval())))
-            print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.ab_error())))
-            print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.re_error())))
-            print("\tNumber of cycles: {}".format(statistics.cycle_count()))
+            print("\tEstimated mean: " \
+                f"{optional_float_or_string_to_string(statistics.mean_estimate_result())}")
+            print("\tConfidence interval: " \
+                f"{print_optional_interval(statistics.confidence_interval())}")
+            print("\tAbsolute error bound: " \
+                f"{optional_float_or_string_to_string(statistics.ab_error())}")
+            print("\tRelative error bound: " \
+                f"{optional_float_or_string_to_string(statistics.re_error())}")
+            print(f"\tNumber of cycles: {statistics.cycle_count()}")
 
     if operation == OP_DTMC_CEZARO_LIMIT_DISTRIBUTION:
-        setSeed(args, M)
+        set_seed(args, mc)
         if args.targetState:
-            M.setRecurrentState(args.targetState)
-        C = requireStopCriteria(args)
-        distributionStatistics, stop = M.cezaroLimitDistribution(C)
+            mc.setRecurrentState(args.targetState)
+        crit = require_stop_criteria(args)
+        distribution_statistics, stop = mc.cezaroLimitDistribution(crit)
 
-        if distributionStatistics is None:
+        if distribution_statistics is None:
             print("Recurrent state has not been reached, no realizations found")
         else:
-            print("Simulation termination reason: {}".format(stop))
-            print("Cezaro limit distribution: {}".format(print_optional_list(distributionStatistics.point_estimates(), "Could not be determined")))
-            print("Number of cycles: {}\n".format(distributionStatistics.cycle_count()))
-            dist: Optional[List[float]] = distributionStatistics.point_estimates()
+            print(f"Simulation termination reason: {stop}")
+            cld = print_optional_list(distribution_statistics.point_estimates(), \
+                                      'Could not be determined')
+            print(f"Cezaro limit distribution: {cld}")
+            print(f"Number of cycles: {distribution_statistics.cycle_count()}\n")
+            dist: Optional[List[float]] = distribution_statistics.point_estimates()
             if dist is not None:
-                intervals = distributionStatistics.confidence_intervals()
-                abError = distributionStatistics.ab_error()
-                reError = distributionStatistics.re_error()
-                states: List[str] = M.states()
-                for i in range(len(states)):
-                    print("[{}]: {:.4f}".format(states[i], dist[i]))
-                    print("\tConfidence interval: {}".format(print_optional_interval(None if intervals is None else intervals[i])))
-                    print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(abError[i])))
-                    print("\tRelative error bound: {}".format(optional_float_or_string_to_string(reError[i])))
+                intervals = distribution_statistics.confidence_intervals()
+                ab_error = distribution_statistics.ab_error()
+                re_error = distribution_statistics.re_error()
+                states: List[str] = mc.states()
+                for i, s in enumerate(states):
+                    print(f"[{s}]: {dist[i]:.4f}")
+                    ci = print_optional_interval(None if intervals is None else intervals[i])
+                    print(f"\tConfidence interval: {ci}")
+                    aeb = optional_float_or_string_to_string(ab_error[i])
+                    print(f"\tAbsolute error bound: {aeb}")
+                    reb = optional_float_or_string_to_string(re_error[i])
+                    print(f"\tRelative error bound: {reb}")
                     print("\n")
 
     if operation == OP_DTMC_ESTIMATION_EXPECTED_REWARD:
-        setSeed(args, M)
-        N = requireNumberOfSteps(args)
-        C = requireStopCriteria(args)
-        statistics, stop = M.estimationExpectedReward(C, N)
-        print("Simulation termination reason: {}".format(stop))
-        print("\tExpected reward: {}".format(optional_float_or_string_to_string(statistics.mean_estimate_result())))
-        print("\tConfidence interval: {}".format(print_optional_interval(statistics.confidence_interval())))
-        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(statistics.ab_error())))
-        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(statistics.re_error())))
+        set_seed(args, mc)
+        n_steps = require_number_of_steps(args)
+        crit = require_stop_criteria(args)
+        statistics, stop = mc.estimationExpectedReward(crit, n_steps)
+        print(f"Simulation termination reason: {stop}")
+        er = optional_float_or_string_to_string(statistics.mean_estimate_result())
+        print(f"\tExpected reward: {er}")
+        ci = print_optional_interval(statistics.confidence_interval())
+        print(f"\tConfidence interval: {ci}")
+        aeb = optional_float_or_string_to_string(statistics.ab_error())
+        print(f"\tAbsolute error bound: {aeb}")
+        reb = optional_float_or_string_to_string(statistics.re_error())
+        print(f"\tRelative error bound: {reb}")
         print("\tNumber of realizations: ", statistics.cycle_count())
 
     if operation == OP_DTMC_ESTIMATION_DISTRIBUTION:
-        setSeed(args, M)
-        states = M.states()
-        N = requireNumberOfSteps(args)
-        C = requireStopCriteria(args)
-        distributionStatistics, stop = M.estimationTransientDistribution(C, N)
-        print("Simulation termination reason: {}".format(stop))
-        print("The estimated distribution after {} steps of [{}] is as follows:".format(N, ", ".join(states)))
-        print("\tDistribution: {}".format(print_optional_list(distributionStatistics.point_estimates())))
-        print("\tConfidence intervals: {}".format(print_optional_list_of_intervals(distributionStatistics.confidence_intervals())))
-        print("\tAbsolute error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.max_ab_error())))
-        print("\tRelative error bound: {}".format(optional_float_or_string_to_string(distributionStatistics.max_re_error())))
-        print("\tNumber of realizations: ", distributionStatistics.cycle_count())
+        set_seed(args, mc)
+        states = mc.states()
+        n_steps = require_number_of_steps(args)
+        crit = require_stop_criteria(args)
+        distribution_statistics, stop = mc.estimationTransientDistribution(crit, n_steps)
+        print(f"Simulation termination reason: {stop}")
+        print(f"The estimated distribution after {n_steps} steps of " \
+              f"[{', '.join(states)}] is as follows:")
+        print(f"\tDistribution: {print_optional_list(distribution_statistics.point_estimates())}")
+        ci = print_optional_list_of_intervals(distribution_statistics.confidence_intervals())
+        print(f"\tConfidence intervals: {ci}")
+        aeb = optional_float_or_string_to_string(distribution_statistics.max_ab_error())
+        print(f"\tAbsolute error bound: {aeb}")
+        reb = optional_float_or_string_to_string(distribution_statistics.max_re_error())
+        print(f"\tRelative error bound: {reb}")
+        print("\tNumber of realizations: ", distribution_statistics.cycle_count())
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE:
-        setSeed(args, M)
-        S = setStartingStateSet(args, M)
-        s = requireTargetState(M, args)
-        C = requireStopCriteria(args)
-        statisticsDict, stop = M.estimationHittingProbabilityState(C, s, S)
-        if statisticsDict is None:
+        set_seed(args, mc)
+        state_set = set_starting_state_set(args, mc)
+        s = require_target_state(mc, args)
+        crit = require_stop_criteria(args)
+        statistics_dict, stop = mc.estimationHittingProbabilityState(crit, s, state_set)
+        if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
-            dStop: Dict[str,str] = stop  # type: ignore
-            print("Estimated hitting probabilities for {} are:".format(s))
-            tableHS: List[Union[str,List[str]]] = []
-            for i, t in enumerate(S):
-                statistics = statisticsDict[t]
-                tableHS.append([
-                    "f({}, {}) = {}".format(t, s, optional_float_or_string_to_string(statistics.mean_estimate_result())),
-                    "int: {}".format(print_optional_interval(statistics.confidence_interval())),
-                    "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
-                    "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
-                    "#paths: {}".format(statistics.nr_paths()),
-                    "stop: {}".format(dStop[t])
+            d_stop: Dict[str,str] = stop  # type: ignore
+            print(f"Estimated hitting probabilities for {s} are:")
+            table_hs: List[Union[str,List[str]]] = []
+            for i, t in enumerate(state_set):
+                statistics = statistics_dict[t]
+                table_hs.append([
+                    f"f({t}, {s}) = " \
+                        f"{optional_float_or_string_to_string(statistics.mean_estimate_result())}",
+                    f"int: {print_optional_interval(statistics.confidence_interval())}",
+                    f"abEr: {optional_float_or_string_to_string(statistics.ab_error())}",
+                    f"reEr: {optional_float_or_string_to_string(statistics.re_error())}",
+                    f"#paths: {statistics.nr_paths()}",
+                    f"stop: {d_stop[t]}"
                 ])
-            print_table(tableHS, 4)
+            print_table(table_hs, 4)
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD:
-        setSeed(args, M)
-        S = setStartingStateSet(args, M)
-        s = requireTargetState(M, args)
-        C = requireStopCriteria(args)
-        statisticsDict, stop = M.estimationRewardUntilHittingState(C, s, S)
-        if statisticsDict is None:
+        set_seed(args, mc)
+        state_set = set_starting_state_set(args, mc)
+        s = require_target_state(mc, args)
+        crit = require_stop_criteria(args)
+        statistics_dict, stop = mc.estimationRewardUntilHittingState(crit, s, state_set)
+        if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
-            print("Estimated cumulative reward until hitting {} are:".format(s))
-            tableRS: List[Union[str,List[str]]] = []
-            for i, t in enumerate(S):
-                statistics = statisticsDict[t]
+            print(f"Estimated cumulative reward until hitting {s} are:")
+            table_rs: List[Union[str,List[str]]] = []
+            for i, t in enumerate(state_set):
+                statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
-                    tableRS.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())))
+                    table_rs.append(f"From state {state_set[i]}: " \
+                        f"{optional_float_or_string_to_string(statistics.mean_estimate_result())}")
                 else:
-                    dStop: Dict[str,str] = stop  # type: ignore
-                    tableRS.append([
-                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())),
-                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
-                        "#paths: {}".format(statistics.nr_paths()),
-                        "stop: {}".format(dStop[t])
+                    d_stop: Dict[str,str] = stop  # type: ignore
+                    ss = optional_float_or_string_to_string(statistics.mean_estimate_result())
+                    table_rs.append([
+                        f"From state {state_set[i]}: {ss}",
+                        f"int: {print_optional_interval(statistics.confidence_interval())}",
+                        f"abEr: {optional_float_or_string_to_string(statistics.ab_error())}",
+                        f"reEr: {optional_float_or_string_to_string(statistics.re_error())}",
+                        f"#paths: {statistics.nr_paths()}",
+                        f"stop: {d_stop[t]}"
                     ])
-            print_table(tableRS, 4)
+            print_table(table_rs, 4)
 
     if operation == OP_DTMC_ESTIMATION_HITTING_STATE_SET:
-        setSeed(args, M)
-        S = setStartingStateSet(args, M)
-        s = requireTargetStateSet(M, args)
-        C = requireStopCriteria(args)
-        statisticsDict, stop = M.estimationHittingProbabilityStateSet(C, s, S)
-        if statisticsDict is None:
+        set_seed(args, mc)
+        state_set = set_starting_state_set(args, mc)
+        s = require_target_state_set(mc, args)
+        crit = require_stop_criteria(args)
+        statistics_dict, stop = mc.estimationHittingProbabilityStateSet(crit, s, state_set)
+        if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
-            print("Estimated hitting probabilities for {{{}}} are:".format(', '.join(s)))
+            print(f"Estimated hitting probabilities for {{{', '.join(s)}}} are:")
             table: List[Union[str,List[str]]] = []
-            for i, t in enumerate(S):
-                statistics = statisticsDict[t]
+            for i, t in enumerate(state_set):
+                statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
-                    table.append("From state {}: {}".format(S[i], statistics.mean_estimate_result()))
+                    table.append(f"From state {state_set[i]}: {statistics.mean_estimate_result()}")
                 else:
-                    dStop: Dict[str,str] = stop  # type: ignore
+                    d_stop: Dict[str,str] = stop  # type: ignore
+                    mer = optional_float_or_string_to_string(statistics.mean_estimate_result())
                     table.append([
-                        "f({}, {{{}}}) = {}".format(S[i], ', '.join(s), optional_float_or_string_to_string(statistics.mean_estimate_result())),
-                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
-                        "#paths: {}".format(statistics.nr_paths()),
-                        "stop: {}".format(dStop[t])
+                        f"f({state_set[i]}, {{{', '.join(s)}}}) = {mer}",
+                        f"int: {print_optional_interval(statistics.confidence_interval())}",
+                        f"abEr: {optional_float_or_string_to_string(statistics.ab_error())}",
+                        f"reEr: {optional_float_or_string_to_string(statistics.re_error())}",
+                        f"#paths: {statistics.nr_paths()}",
+                        f"stop: {d_stop[t]}"
                     ])
             print_table(table, 4)
 
 
     if operation == OP_DTMC_ESTIMATION_HITTING_REWARD_SET:
-        setSeed(args, M)
-        S = setStartingStateSet(args, M)
-        s = requireTargetStateSet(M, args)
-        C = requireStopCriteria(args)
-        statisticsDict, stop = M.estimationRewardUntilHittingStateSet(C, s, S)
-        if statisticsDict is None:
+        set_seed(args, mc)
+        state_set = set_starting_state_set(args, mc)
+        s = require_target_state_set(mc, args)
+        crit = require_stop_criteria(args)
+        statistics_dict, stop = mc.estimationRewardUntilHittingStateSet(crit, s, state_set)
+        if statistics_dict is None:
             print("A timeout has occurred during the analysis.")
         else:
-            print("Estimated cumulative reward until hitting {{{}}} are:".format(', '.join(s)))
-            tableRSet: List[Union[str,List[str]]] = []
-            for i, t in enumerate(S):
-                statistics = statisticsDict[t]
+            print(f"Estimated cumulative reward until hitting {{{', '.join(s)}}} are:")
+            table_r_set: List[Union[str,List[str]]] = []
+            for i, t in enumerate(state_set):
+                statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
-                    tableRSet.append("From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())))
+                    table_r_set.append(f"From state {state_set[i]}: " \
+                        f"{optional_float_or_string_to_string(statistics.mean_estimate_result())}")
                 else:
-                    dStop: Dict[str,str] = stop  # type: ignore
-                    tableRSet.append([
-                        "From state {}: {}".format(S[i], optional_float_or_string_to_string(statistics.mean_estimate_result())),
-                        "int: {}".format(print_optional_interval(statistics.confidence_interval())),
-                        "abEr: {}".format(optional_float_or_string_to_string(statistics.ab_error())),
-                        "reEr: {}".format(optional_float_or_string_to_string(statistics.re_error())),
-                        "#paths: {}".format(statistics.nr_paths()),
-                        "stop: {}".format(dStop[t])
+                    d_stop: Dict[str,str] = stop  # type: ignore
+                    mer = optional_float_or_string_to_string(statistics.mean_estimate_result())
+                    table_r_set.append([
+                        f"From state {state_set[i]}: {mer}",
+                        f"int: {print_optional_interval(statistics.confidence_interval())}",
+                        f"abEr: {optional_float_or_string_to_string(statistics.ab_error())}",
+                        f"reEr: {optional_float_or_string_to_string(statistics.re_error())}",
+                        f"#paths: {statistics.nr_paths()}",
+                        f"stop: {d_stop[t]}"
                     ])
-            print_table(tableRSet, 4)
+            print_table(table_r_set, 4)
 
 if __name__ == "__main__":
     main()
