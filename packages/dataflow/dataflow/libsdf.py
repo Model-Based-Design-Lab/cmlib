@@ -6,12 +6,12 @@ from io import StringIO
 import sys
 from typing import Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
-from dataflow.libsdfgrammar import parseSDFDSL
+from dataflow.libsdfgrammar import parse_sdf_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
-from dataflow.maxplus.maxplus import TThroughputValue, mpThroughput, mpGeneralizedThroughput, \
-      mpMatrixMinusScalar, mpStarClosure, mpMultiplyMatrices, mpMultiplyMatrixVector, \
-      mpMinusInfVector, mpTransposeMatrix, mpZeroVector, mpMaxMatrices, mpMaxVectors, \
-      mpScaleVector, mpSplitSequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
+from dataflow.maxplus.maxplus import TThroughputValue, mp_throughput, mp_generalized_throughput, \
+      mp_matrix_minus_scalar, mp_star_closure, mp_multiply_matrices, mp_multiply_matrix_vector, \
+      mp_minus_inf_vector, mp_transpose_matrix, mp_zero_vector, mp_max_matrices, mp_max_vectors, \
+      mp_scale_vector, mp_split_sequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 from dataflow.libmpm import MaxPlusMatrixModel
 
@@ -414,11 +414,11 @@ class DataflowGraph:
 
     def _symbolic_time_stamp_max(self, ts1: TMPVector, ts2: TMPVector)->TMPVector:
         '''Determine the maximum of two symbolic time stamp vectors.'''
-        return mpMaxVectors(ts1, ts2)
+        return mp_max_vectors(ts1, ts2)
 
     def _symbolic_time_stamp_scale(self, c: TTimeStamp, ts: TMPVector)->TMPVector:
         '''Scale the symbolic time stamp vector.'''
-        return mpScaleVector(c, ts)
+        return mp_scale_vector(c, ts)
 
     def _symbolic_firing(self, a: str, n: int, timestamps:Dict[str,TMPVector])->bool:
         '''Attempt to fire actor a for the n'th time in the symbolic simulation of the graph.
@@ -674,7 +674,7 @@ class DataflowGraph:
         # compute state-space representation
         _, ssr = self.state_space_matrices()
         # compute throughput from the state matrix
-        return mpThroughput(ssr[0])
+        return mp_throughput(ssr[0])
 
     def throughput_output(self, output: str)->TThroughputValue:
         '''
@@ -683,7 +683,7 @@ class DataflowGraph:
         # compute state-space representation
         _, ssr = self.state_space_matrices()
         # compute throughput from the state matrix
-        tp: List[TThroughputValue] = mpGeneralizedThroughput(ssr[0])
+        tp: List[TThroughputValue] = mp_generalized_throughput(ssr[0])
         i = self.index_of_output(output)
         # find the minimum in tp for all non-minus-infinity elements in row number i of the C matrix
         min_val: TThroughputValue = "infinite"
@@ -722,23 +722,23 @@ class DataflowGraph:
             (matrix_m[0], matrix_m[1], matrix_m[2], matrix_m[3])
 
         if x0 is None:
-            x0 = mpZeroVector(self.number_of_initial_tokens())
+            x0 = mp_zero_vector(self.number_of_initial_tokens())
 
         # Compute the following latency matrix:
         # Lambda = (C ( A-mu )^{*} ( x0 \otimes [0 .inputs.. 0] oplus ( B - mu))  oplus D
 
-        matrix_a_mu= mpMatrixMinusScalar(matrix_a, mu)
+        matrix_a_mu= mp_matrix_minus_scalar(matrix_a, mu)
         try:
-            sc_a_mu = mpStarClosure(matrix_a_mu)
+            sc_a_mu = mp_star_closure(matrix_a_mu)
         except PositiveCycleException:
             raise SDFException('The requested period mu is smaller than smallest period the' \
                                ' system can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
-        c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
-        x00 = mpMultiplyMatrices(mpTransposeMatrix([x0]), [mpZeroVector(len(self._inputs))])
-        b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
-        x_00_b_m_mu = mpMaxMatrices(x00, b_m_mu)
-        c_sc_a_mu_x_00_b_m_mu = mpMultiplyMatrices(c_sc_a_mu, x_00_b_m_mu)
-        return mpMaxMatrices(c_sc_a_mu_x_00_b_m_mu, matrix_d)
+        c_sc_a_mu = mp_multiply_matrices(matrix_c, sc_a_mu)
+        x00 = mp_multiply_matrices(mp_transpose_matrix([x0]), [mp_zero_vector(len(self._inputs))])
+        b_m_mu= mp_matrix_minus_scalar(matrix_b, mu)
+        x_00_b_m_mu = mp_max_matrices(x00, b_m_mu)
+        c_sc_a_mu_x_00_b_m_mu = mp_multiply_matrices(c_sc_a_mu, x_00_b_m_mu)
+        return mp_max_matrices(c_sc_a_mu_x_00_b_m_mu, matrix_d)
 
     def generalized_latency(self, mu: Fraction):
         '''Determine the mu-periodic latency of the dataflow graph in the form of separate
@@ -755,17 +755,17 @@ class DataflowGraph:
         # Lambda_IO =  = (C ( A-mu )^{*} (B - mu)  oplus D
         # Lambda_x =   (C ( A-mu )^{*}
 
-        a_mu= mpMatrixMinusScalar(matrix_a, mu)
+        a_mu= mp_matrix_minus_scalar(matrix_a, mu)
         try:
-            sc_a_mu = mpStarClosure(a_mu)
+            sc_a_mu = mp_star_closure(a_mu)
         except PositiveCycleException:
             raise SDFException('The requested period mu is smaller than smallest period the '\
                                'system can sustain. Therefore, it has no latency.') # pylint: disable=raise-missing-from
-        c_sc_a_mu = mpMultiplyMatrices(matrix_c, sc_a_mu)
+        c_sc_a_mu = mp_multiply_matrices(matrix_c, sc_a_mu)
 
-        b_m_mu= mpMatrixMinusScalar(matrix_b, mu)
-        c_sc_a_mu_b_m_mu = mpMultiplyMatrices(c_sc_a_mu, b_m_mu)
-        return c_sc_a_mu, mpMaxMatrices(c_sc_a_mu_b_m_mu, matrix_d)
+        b_m_mu= mp_matrix_minus_scalar(matrix_b, mu)
+        c_sc_a_mu_b_m_mu = mp_multiply_matrices(c_sc_a_mu, b_m_mu)
+        return c_sc_a_mu, mp_max_matrices(c_sc_a_mu_b_m_mu, matrix_d)
 
     def is_single_rate(self)->bool:
         '''Check if the graph is single-rate.'''
@@ -842,7 +842,7 @@ class DataflowGraph:
             if not i in self._inputs:
                 res.add_input_signal(i, s_i)
             else:
-                seqs = mpSplitSequence(s_i, rep_vec[i])
+                seqs = mp_split_sequence(s_i, rep_vec[i])
                 for n in range(rep_vec[i]):
                     res.add_input_signal(_actor_name(i, n, rep_vec), seqs[n])
 
@@ -878,7 +878,7 @@ class DataflowGraph:
         input_vector_size = reduce(lambda sum, i: sum+repetition_vector[i], self.inputs(), 0)
 
         if x0 is None:
-            x0 = mpZeroVector(matrices['A'].number_of_columns())
+            x0 = mp_zero_vector(matrices['A'].number_of_columns())
 
         inp_sig = self.input_signals()
         inputs: List[TTimeStampList] = []
@@ -889,22 +889,22 @@ class DataflowGraph:
                     ios_l: TTimeStampList = input_override[s]  # type: ignore
                     # the input is given as an list of time stamps.
                     # split it according to the inputs within one graph iteration
-                    inputs.extend(mpSplitSequence(ios_l, self.repetitions(s)))
+                    inputs.extend(mp_split_sequence(ios_l, self.repetitions(s)))
                 else:
                     # the input is given as a name referring to an input sequence specified
                     #  in the model
                     ios_s: str = input_override[s]  # type: ignore
                     if input_override[s] not in inp_sig:
                         raise SDFException(f"Unknown event sequence: {input_override[s]}.")
-                    inputs.extend(mpSplitSequence(inp_sig[ios_s], self.repetitions(s)))
+                    inputs.extend(mp_split_sequence(inp_sig[ios_s], self.repetitions(s)))
             else:
                 # the input is not specified in override
                 if s in inp_sig:
                     # it is defined in the model, use it
-                    inputs.extend(mpSplitSequence(inp_sig[s], self.repetitions(s)))
+                    inputs.extend(mp_split_sequence(inp_sig[s], self.repetitions(s)))
                 else:
                     # it is not specified at all, use an event sequence with minus infinity
-                    inputs.extend([mpMinusInfVector(ni)] * self.repetitions(s))
+                    inputs.extend([mp_minus_inf_vector(ni)] * self.repetitions(s))
 
         # Compute the vector trace
         vt = MaxPlusMatrixModel.vector_trace(matrices, x0, ni, inputs)
@@ -916,7 +916,7 @@ class DataflowGraph:
         ssvt = [v[input_vector_size:state_vector_size+input_vector_size]+ \
                 v[0:input_vector_size] for v in vt]
         # compute the firing starting times using the trace matrix H
-        firing_starts = [mpMultiplyMatrixVector(matrix_h, s)  for s in ssvt]
+        firing_starts = [mp_multiply_matrix_vector(matrix_h, s)  for s in ssvt]
         # collect the firing durations
         firing_durations= [self.execution_time_of_actor(a) for a in \
                            self.actors_without_inputs_outputs()]
@@ -1041,7 +1041,7 @@ class DataflowGraph:
         factory['AddInputPort'] = lambda sdf, i: sdf.add_input_port(i)
         factory['AddOutputPort'] = lambda sdf, i: sdf.add_output_port(i)
         factory['AddInputSignal'] = lambda sdf, n, s: sdf.add_input_signal(n, s)
-        result = parseSDFDSL(dsl_string, factory)
+        result = parse_sdf_dsl(dsl_string, factory)
         if result[0] is None:
             sys.exit(1)
         return result  # type: ignore

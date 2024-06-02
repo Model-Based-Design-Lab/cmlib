@@ -192,7 +192,7 @@ def invert_matrix(ma: TMatrix)->TMatrix:
 
     # map for indirect manipulation of A' w.r.t original A
     # A'[c][r] = A[c][rowIndex[r]]
-    row_index = dict()
+    row_index = {}
     for r in range(a_size):
         row_index[r]=r
     for r in range(a_size):

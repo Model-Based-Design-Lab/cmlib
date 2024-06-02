@@ -1,8 +1,9 @@
+'''Printing of max-plus related objects.'''
 
 from fractions import Fraction
 from functools import reduce
 from math import floor, gcd, log
-from typing import List, Optional
+from typing import List, Optional, Union
 from dataflow.maxplus.types import TMPMatrix, TMPVector, TMPVectorList, TTimeStamp
 from dataflow.maxplus.algebra import MP_MINUSINFINITY, MP_MINUSINFINITY_STR
 
@@ -14,224 +15,250 @@ def lcm(a: int, b: int)->int:
     '''Least common multiple (does not exist in math library python version <=3.8)'''
     return abs(a*b) // gcd(a, b)
 
-def mpElementToString(x: TTimeStamp, w: Optional[int]=None)->str:
+def mp_element_to_string(x: TTimeStamp, w: Optional[int]=None)->str:
+    '''Convert time stamp to string.'''
     if x is MP_MINUSINFINITY:
-        return rightAlign(MP_MINUSINFINITY_STR,w) if w else MP_MINUSINFINITY_STR
+        return right_align(MP_MINUSINFINITY_STR,w) if w else MP_MINUSINFINITY_STR
     ex = 0 if x==0.0 else log(abs(x),10) # type: ignore
-    fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC 
-    return rightAlign(fmt.format(float(x)),w) if w else fmt.format(float(x))  # type: ignore
+    fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC
+    return right_align(fmt.format(float(x)),w) if w else fmt.format(float(x))  # type: ignore
 
-def rightAlign(s: str, w: int)->str:
+def right_align(s: str, w: int)->str:
+    '''Right align string to length w.'''
     return (' '*(w-len(s)))+s
 
-def mpElementToFractionString(x: TTimeStamp, w: Optional[int]=None)->str:
+def mp_element_to_fraction_string(x: TTimeStamp, w: Optional[int]=None)->str:
+    '''Convert time stamp to fraction representation.g.'''
     if x is MP_MINUSINFINITY:
-        return rightAlign(MP_MINUSINFINITY_STR, w) if w else MP_MINUSINFINITY_STR
-    return rightAlign('{}'.format(x), w) if w else '{}'.format(x)
+        return right_align(MP_MINUSINFINITY_STR, w) if w else MP_MINUSINFINITY_STR
+    return right_align(f'{x}', w) if w else f'{x}'
 
 
-def mpVectorToString(v: TMPVector, w: Optional[int]=None)->str:
+def mp_vector_to_string(v: TMPVector, w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
-        w = determineMaxWidthVector(v)
-    return '[ {} ]'.format(' '.join([mpElementToString(x,w) for x in v]))
+        w = determine_max_width_vector(v)
+    elements = ' '.join([mp_element_to_string(x,w) for x in v])
+    return f'[ {elements} ]'
 
-def mpVectorToFractionString(v: TMPVector, w: Optional[int]=None)->str:
+def mp_vector_to_fraction_string(v: TMPVector, w: Optional[int]=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
-        w = determineMaxFractionWidthVector(v)
-    return '[ {} ]'.format('  '.join([mpElementToFractionString(x, w) for x in v]))
+        w = determine_max_fraction_width_vector(v)
+    elements = '  '.join([mp_element_to_fraction_string(x, w) for x in v])
+    return f'[ {elements} ]'
 
-def mpPrettyVectorToString(v: TMPVector)->str:
+def mp_pretty_vector_to_string(v: TMPVector)->str:
+    '''Print vector to string, as fractions is nicer.'''
     # get common denominator
-    den = commonDenominatorList(v)
-    if isComplex(den):
-        return mpVectorToString(v)
-    else:
-        return mpVectorToFractionString(v)
+    den = common_denominator_list(v)
+    if is_complex(den):
+        return mp_vector_to_string(v)
+    return mp_vector_to_fraction_string(v)
 
-def mpPrettyValue(v: TTimeStamp)->str:
+def mp_pretty_value(v: TTimeStamp)->str:
+    '''Print timestamp to string, as fraction if nicer.'''
     # get common denominator
     den = 0
     if v is not None:
         den = v.denominator
-    if isComplex(den):
-        return mpElementToString(v)
-    else:
-        return mpElementToFractionString(v)
+    if is_complex(den):
+        return mp_element_to_string(v)
+    return mp_element_to_fraction_string(v)
 
-def exponent(e: Optional[float])->Optional[int]:
+def exponent(e: Union[TTimeStamp,Optional[float]])->Optional[int]:
+    '''Determine order of magnitude.'''
     if e is None:
         return None
-    else:
-        if e==0.0:
-            return None
-        return floor(log(abs(e), 10.0))
+    if e==0.0:
+        return None
+    return floor(log(abs(e), 10.0))
 
-def maxOpt(l: List[Optional[int]])-> Optional[int]:
+def max_opt(l: List[Optional[int]])-> Optional[int]:
+    '''Determine maximum of list of optional numbers.'''
     return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
 
-def minOpt(l: List[Optional[int]])-> Optional[int]:
+def min_opt(l: List[Optional[int]])-> Optional[int]:
+    '''Determine minimum of list of optional numbers.'''
     return reduce(lambda m, v: v if m is None else (m if v is None else min(v,m)), l, None)
 
-def determineMaxExp(M):
-    mo = maxOpt([maxOpt([exponent(e) for e in r]) for r in M])
+def determine_max_exp(matrix: TMPMatrix):
+    '''Determine the maximum order of magnitude in matrix M'''
+    mo = max_opt([max_opt([exponent(e) for e in r]) for r in matrix])
     if mo is None:
         return 0
     return mo
 
-def determineMinExp(M):
-    mo = minOpt([minOpt([exponent(e) for e in r]) for r in M])
+def determine_min_exp(matrix: TMPMatrix):
+    '''Determine the minimum order of magnitude in matrix M'''
+    mo = min_opt([min_opt([exponent(e) for e in r]) for r in matrix])
     if mo is None:
         return 0
     return mo
 
-def expMatrix(M: TMPMatrix, ex: int) -> TMPMatrix:
+def exp_matrix(matrix: TMPMatrix, ex: int) -> TMPMatrix:
+    '''Factor out exponent from matrix.'''
     f = pow(10,ex)
-    return [[None if e is None else e * f for e in r] for r in M]
+    return [[None if e is None else e * f for e in r] for r in matrix]
 
 
-def printMPMatrixWithExponent(M: TMPMatrix, ex: int):
+def print_mp_matrix_with_exponent(matrix: TMPMatrix, ex: int):
+    '''Print a matrix with factored out exponent.'''
 
-    M = expMatrix(M, -ex)
+    matrix = exp_matrix(matrix, -ex)
 
-    expPrefix = '10^{} x '.format(ex)
-    spcPrefix = ' ' * (len(expPrefix)+1)
+    exp_prefix = f'10^{ex} x '
+    spc_prefix = ' ' * (len(exp_prefix)+1)
 
-    w: Optional[int] = determineMaxWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
-            print(expPrefix+'[', end="")
+            print(exp_prefix+'[', end="")
         else:
-            print(spcPrefix, end="")
-        print(mpVectorToString(v, w), end='')
-        if i < len(M)-1:
+            print(spc_prefix, end="")
+        print(mp_vector_to_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
-def printMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
+def print_mp_matrix(matrix: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
     '''Print matrix M to the console.'''
-    if len(M) == 0:
-        printEmptyMatrix(nr, nc)
+    if len(matrix) == 0:
+        print_empty_matrix(nr, nc)
         return
-    maxE: int = determineMaxExp(M)
-    minE: int = determineMinExp(M)
-    if maxE > 3 or maxE < -2:
-        printMPMatrixWithExponent(M, maxE)
+    max_e: int = determine_max_exp(matrix)
+    if max_e > 3 or max_e < -2:
+        print_mp_matrix_with_exponent(matrix, max_e)
         return
 
-    w: Optional[int] = determineMaxWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
         else:
             print(' ', end="")
-        print(mpVectorToString(v, w), end='')
-        if i < len(M)-1:
+        print(mp_vector_to_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
-def determineFractionWidth(e: TTimeStamp)->int:
+def determine_fraction_width(e: TTimeStamp)->int:
+    '''Determine width of the representation as a fraction.'''
     if e is MP_MINUSINFINITY:
         return len(MP_MINUSINFINITY_STR)
-    return len('{}'.format(e))
+    return len(f'{e}')
 
-def determineWidth(e: TTimeStamp)->int:
-    return len(mpElementToString(e))
+def determine_width(e: TTimeStamp)->int:
+    '''Determine width of the representation.'''
+    return len(mp_element_to_string(e))
 
-def printEmptyMatrix(nr: Optional[int]=None, nc: Optional[int]=None):
-    emptyRow='  '.join('[]'*nc) if nc else '[]'
+def print_empty_matrix(nr: Optional[int]=None, nc: Optional[int]=None):
+    '''Print an empty matrix with the given number of rows and columns.'''
+    empty_row='  '.join('[]'*nc) if nc else '[]'
     if not nr:
-        print('[{}]'.format(emptyRow))
+        print(f'[{empty_row}]')
     else:
         for n in range(nr):
             if n==0:
                 print('[ ', end='')
             else:
                 print('  ', end='')
-            print(emptyRow)
+            print(empty_row)
             if n==nr-1:
                 print(']', end='')
         print()
 
-def determineMaxFractionWidth(M: TMPMatrix)->Optional[int]:
-    return maxOpt([determineMaxFractionWidthVector(r) for r in M])
+def determine_max_fraction_width(matrix: TMPMatrix)->Optional[int]:
+    '''Determine the maximum width of the representations of the elements of the
+    matrix as fractions.'''
+    return max_opt([determine_max_fraction_width_vector(r) for r in matrix])
 
-def determineMaxFractionWidthVector(v: TMPVector)->Optional[int]:
-    return maxOpt([determineFractionWidth(e) for e in v])
+def determine_max_fraction_width_vector(v: TMPVector)->Optional[int]:
+    '''Determine the maximum width of the representations of the elements of the
+    vector as fractions.'''
+    return max_opt([determine_fraction_width(e) for e in v])
 
-def determineMaxWidth(M: TMPMatrix)->Optional[int]:
-    return maxOpt([determineMaxWidthVector(r) for r in M])
+def determine_max_width(matrix: TMPMatrix)->Optional[int]:
+    '''Determine the maximum width of the representations of the elements of the
+    matrix.'''
+    return max_opt([determine_max_width_vector(r) for r in matrix])
 
-def determineMaxWidthVector(v: TMPVector)->Optional[int]:
-    return maxOpt([determineWidth(e) for e in v])
+def determine_max_width_vector(v: TMPVector)->Optional[int]:
+    '''Determine the maximum width of the representations of the elements of the
+    vector.'''
+    return max_opt([determine_width(e) for e in v])
 
 
-def printFractionMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
+def print_fraction_mp_matrix(matrix: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
     '''Print matrix M to the console.'''
-    if len(M) == 0:
-        printEmptyMatrix(nr, nc)
+    if len(matrix) == 0:
+        print_empty_matrix(nr, nc)
         return
-    w: Optional[int] = determineMaxFractionWidth(M)
-    for i, v in enumerate(M):
+    w: Optional[int] = determine_max_fraction_width(matrix)
+    for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
         else:
             print(' ', end="")
-        print(mpVectorToFractionString(v, w), end='')
-        if i < len(M)-1:
+        print(mp_vector_to_fraction_string(v, w), end='')
+        if i < len(matrix)-1:
             print('')
         else:
             print(']')
 
 
-def printMPVectorList(vl: TMPVectorList):
+def print_mp_vector_list(vl: TMPVectorList):
     '''Print list of vectors to the console.'''
     for i, v in enumerate(vl):
         if i == 0:
             print('[', end="")
         else:
             print(' ', end="")
-        print(mpVectorToString(v), end='')
+        print(mp_vector_to_string(v), end='')
         if i < len(vl)-1:
             print('')
         else:
             print(']')
 
-def prettyPrintMPMatrix(M: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
+def pretty_print_mp_matrix(matrix: TMPMatrix, nr: Optional[int]=None, nc: Optional[int]=None):
     '''Print matrix M to the console.'''
     # get common denominator
     den: int = 1
-    for r in M:
-        den = commonDenominatorList(r, den)
+    for r in matrix:
+        den = common_denominator_list(r, den)
 
-    if isComplex(den):
-        printMPMatrix(M, nr, nc)
+    if is_complex(den):
+        print_mp_matrix(matrix, nr, nc)
     else:
-        printFractionMPMatrix(M, nr, nc)
+        print_fraction_mp_matrix(matrix, nr, nc)
 
 
-# pretty printing, consider the maximum prime factor and the number of prime factors (use their product?) of th common denominator to determine the 'complexity' of fractions, before switching to decimal.
+# pretty printing, consider the maximum prime factor and the number of prime factors
+# of the common denominator to determine the 'complexity' of fractions, before switching to decimal.
 
-def commonDenominator(den: int, v: Fraction)->int:
+def common_denominator(den: int, v: Fraction)->int:
+    '''Determine the common denominator between denominator den and the denominator of v.'''
     return lcm(den,v.denominator)
 
-def commonDenominatorList(l: List[Optional[Fraction]], den: int=1)->int:
+def common_denominator_list(l: List[Optional[Fraction]], den: int=1)->int:
+    '''Determine the common denominator of a list of fractions.'''
     for v in l:
         if v is not None:
-            den = commonDenominator(den, v)
+            den = common_denominator(den, v)
     return den
 
-def commonDenominatorMatrix(l: List[List[Optional[Fraction]]])->int:
+def common_denominator_matrix(l: List[List[Optional[Fraction]]])->int:
+    '''Determine the common denominator of the elements of a matrix.'''
     den: int = 1
     for r in l:
-        den = commonDenominatorList(r, den)
+        den = common_denominator_list(r, den)
     return den
 
 
-def primeFactors(n: int)->List[int]:
+def prime_factors(n: int)->List[int]:
+    '''Determine the prime factors of a number.'''
     i = 2
     factors = []
     while i * i <= n:
@@ -247,12 +274,15 @@ def primeFactors(n: int)->List[int]:
 COMPLEXITY_THRESHOLD: int = 42
 
 def complexity(n: int):
-    primeFactorList = primeFactors(n)
-    if len(primeFactorList) == 0:
+    '''Determine a measure of complexity of a number, defined as the number of distinct prime
+    factors multiplied by the largest prime factor.'''
+    prime_factor_list = prime_factors(n)
+    if len(prime_factor_list) == 0:
         return 1
-    return len(primeFactorList)*max(primeFactorList)
+    return len(prime_factor_list)*max(prime_factor_list)
 
-def isComplex(n: int)->bool:
+def is_complex(n: int)->bool:
+    '''Decide of a number is 'complex' or not.'''
     if n>1024:
         return True
     return complexity(n)>COMPLEXITY_THRESHOLD

@@ -8,11 +8,11 @@ from typing import Any, Dict
 
 from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.libsdf import DataflowGraph
-from dataflow.maxplus.maxplus import mpTransposeMatrix
-from dataflow.maxplus.utils.printing import (mpElementToString, mpPrettyValue,
-                                             mpPrettyVectorToString,
-                                             prettyPrintMPMatrix,
-                                             printMPVectorList)
+from dataflow.maxplus.maxplus import mp_transpose_matrix
+from dataflow.maxplus.utils.printing import (mp_element_to_string, mp_pretty_value,
+                                             mp_pretty_vector_to_string,
+                                             pretty_print_mp_matrix,
+                                             print_mp_vector_list)
 from dataflow.utils.operations import (OP_MPM_CONVOLUTION,
                                        OP_MPM_CONVOLUTION_TRANSFORM,
                                        OP_MPM_DELAY_SEQUENCE,
@@ -208,7 +208,7 @@ def process_dataflow_operation(args, dsl):
         print(dataflow_graph.list_of_inputs_str())
         print('Outputs:')
         print(dataflow_graph.list_of_outputs_str())
-        prettyPrintMPMatrix(dataflow_graph.latency(x0, mu))
+        pretty_print_mp_matrix(dataflow_graph.latency(x0, mu))
 
     # generalized latency
     if args.operation == OP_SDF_GENERALIZED_LATENCY:
@@ -224,9 +224,9 @@ def process_dataflow_operation(args, dsl):
         svs = len(dataflow_graph.state_element_labels())
         lambda_x, lambda_io = dataflow_graph.generalized_latency(mu)
         print('IO latency matrix:')
-        prettyPrintMPMatrix(lambda_io, ovs, ivs)
+        pretty_print_mp_matrix(lambda_io, ovs, ivs)
         print('Initial state latency matrix:')
-        prettyPrintMPMatrix(lambda_x, ovs, svs)
+        pretty_print_mp_matrix(lambda_x, ovs, svs)
 
     if args.operation == OP_SDF_STATE_MATRIX:
         _, st_sp_matrices = dataflow_graph.state_space_matrices()
@@ -235,7 +235,7 @@ def process_dataflow_operation(args, dsl):
         print(svl)
         print()
         print('State matrix A:')
-        prettyPrintMPMatrix(st_sp_matrices[0])
+        pretty_print_mp_matrix(st_sp_matrices[0])
         print()
 
     if args.operation == OP_SDF_STATE_SPACE_REPRESENTATION:
@@ -254,16 +254,16 @@ def process_dataflow_operation(args, dsl):
         print(svl)
         print()
         print('State matrix A:')
-        prettyPrintMPMatrix(st_sp_matrices[0])
+        pretty_print_mp_matrix(st_sp_matrices[0])
         print()
         print('Input matrix B:')
-        prettyPrintMPMatrix(st_sp_matrices[1], svs, ivs)
+        pretty_print_mp_matrix(st_sp_matrices[1], svs, ivs)
         print()
         print('Output matrix C:')
-        prettyPrintMPMatrix(st_sp_matrices[2], ovs, svs)
+        pretty_print_mp_matrix(st_sp_matrices[2], ovs, svs)
         print()
         print('Feed forward matrix D:')
-        prettyPrintMPMatrix(st_sp_matrices[3], ovs, ivs)
+        pretty_print_mp_matrix(st_sp_matrices[3], ovs, ivs)
 
 
     if args.operation == OP_SDF_STATE_MATRIX_MODEL:
@@ -376,7 +376,7 @@ def process_max_plus_operation(args, dsl):
     if args.operation == OP_MPM_EIGENVALUE:
         mat = get_square_matrix(matrices, args)
         print(f"The largest eigenvalue of matrix {mat} is:")
-        print(mpPrettyValue(matrices[mat].eigenvalue()))
+        print(mp_pretty_value(matrices[mat].eigenvalue()))
 
     # eigenvectors
     if args.operation == OP_MPM_EIGENVECTORS:
@@ -387,12 +387,12 @@ def process_max_plus_operation(args, dsl):
             print('None')
         else:
             for v in ev:
-                print(f'{mpPrettyVectorToString(v[0])}, with eigenvalue: {mpPrettyValue(v[1])}')
+                print(f'{mp_pretty_vector_to_string(v[0])}, with eigenvalue: {mp_pretty_value(v[1])}')
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
-                print(f'{mpPrettyVectorToString(v[0])}, with generalized eigenvalue: ' \
-                      f'{mpPrettyVectorToString(v[1])}')
+                print(f'{mp_pretty_vector_to_string(v[0])}, with generalized eigenvalue: ' \
+                      f'{mp_pretty_vector_to_string(v[1])}')
 
     # precedence graph
     if args.operation == OP_MPM_PRECEDENCEGRAPH:
@@ -416,7 +416,7 @@ def process_max_plus_operation(args, dsl):
         success, cl = matrices[mat].star_closure()
         if success:
             m: MaxPlusMatrixModel = cl  # type: ignore
-            prettyPrintMPMatrix(m.mp_matrix())
+            pretty_print_mp_matrix(m.mp_matrix())
         else:
             print("The matrix has no star closure.")
 
@@ -427,9 +427,9 @@ def process_max_plus_operation(args, dsl):
         result = MaxPlusMatrixModel.multiply_sequence(matrices)
         print(f"The product of {', '.join(names)} is:")
         if isinstance(result, VectorSequenceModel):
-            printMPVectorList(result.vectors())
+            print_mp_vector_list(result.vectors())
         else:
-            prettyPrintMPMatrix(result.mp_matrix())
+            pretty_print_mp_matrix(result.mp_matrix())
 
     # multiplytransform
     if args.operation == OP_MPM_MULTIPLY_TRANSFORM:
@@ -459,7 +459,7 @@ def process_max_plus_operation(args, dsl):
         labels, vt = _make_vector_trace(matrices, vector_sequences, event_sequences, args)
         print(f"Vector elements: [{', '.join(labels)}]")
         print('Trace:')
-        print(', '.join([mpPrettyVectorToString(v) for v in vt]))
+        print(', '.join([mp_pretty_vector_to_string(v) for v in vt]))
 
     # vectortracetransform
     if args.operation == OP_MPM_VECTOR_TRACE_TRANSFORM:
@@ -512,14 +512,14 @@ def process_max_plus_operation(args, dsl):
         for s in sequences:
             if s in vector_sequences:
                 vs = vector_sequences[s]
-                for r in mpTransposeMatrix(vs.vectors()):
+                for r in mp_transpose_matrix(vs.vectors()):
                     vt.append(r[:trace_len])
             else:
                 es = event_sequences[s]
                 vt.append(es.sequence()[:trace_len])
 
         # transpose the result
-        vt = mpTransposeMatrix(vt)
+        vt = mp_transpose_matrix(vt)
 
         print_xml_trace(fraction_to_float_optional_l_list(vt), labels)
 
@@ -562,7 +562,7 @@ def process_max_plus_operation(args, dsl):
         scale = require_parameter_mp_value(args)
         seq = require_one_event_sequence(event_sequences, args)
         res = event_sequences[seq].scale(scale)
-        print(f"The scaled sequence of {seq} by scaling factor {mpElementToString(scale)} is:")
+        print(f"The scaled sequence of {seq} by scaling factor {mp_element_to_string(scale)} is:")
         print(res)
 
 

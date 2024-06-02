@@ -1,0 +1,6 @@
+ltl formula phi = (p U q) R ((q U r) U ( r U p))
+alphabet {a, b, c, d}
+where
+    p = {a, b}
+    q = {c, d}
+    r = {a, d}

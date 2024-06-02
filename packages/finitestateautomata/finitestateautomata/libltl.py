@@ -821,6 +821,9 @@ class LTLFormula:
         '''Convert the LTL formula to a Büchi automaton that accepts precisely all the
         words that satisfy the formula.'''
 
+        class SetOfSubformulas:
+            """Keep set of subformulas with sorting."""
+
         def _unfold(s: AbstractSet[LTLSubFormula])->AbstractSet[Tuple[TConjunctiveNormalForm, \
                                     TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]:
             '''Unfold set of subformulas into DNF and splitting now and next.'''
@@ -926,7 +929,7 @@ class LTLFormula:
         initial_state_names = set()
         # statesToUnfold keeps track of newly created states that need to be unfolded
         # into now and next, initialized with the initial states
-        states_to_unfold: Set[AbstractSet[LTLSubFormula]] = initial_states.copy()  # type: ignore
+        states_to_unfold: Set[SetOfSubformulas] = initial_states.copy()  # type: ignore
 
         # check if we have an explicit alphabet, otherwise, compute
         alphabet = self._determine_alphabet()
@@ -936,6 +939,10 @@ class LTLFormula:
         state_index_f = {}
         states = set()
         state_index = {}
+
+        # for s in sorted(states_to_unfold):
+        #     for t in sorted(s):
+        #         print(t)
 
         # add the states we start from as initial states
         for s in sorted(states_to_unfold):

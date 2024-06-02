@@ -69,12 +69,15 @@ OperationDescriptions = [
     OP_FSA_COMPLEMENT + ' (determine the complement FSA)',
     OP_FSA_PRODUCT + ' (determine product with secondary automaton)',
     OP_FSA_STRICT_PRODUCT + ' (determine strict product with secondary automaton)',
-    OP_FSA_PRODUCT_BUCHI + ' (determine product of a Buchi automaton with secondary Buchi automaton)',
-    OP_FSA_STRICT_PRODUCT_BUCHI + '(determine the strict product of a Buchi automaton with secondary Buchi automaton)',
+    OP_FSA_PRODUCT_BUCHI + ' (determine product of a Buchi automaton with secondary ' \
+        'Buchi automaton)',
+    OP_FSA_STRICT_PRODUCT_BUCHI + '(determine the strict product of a Buchi automaton ' \
+        'with secondary Buchi automaton)',
     OP_FSA_REACHABLE_STATES + ' (determine the reachable states of the automaton)',
     OP_FSA_LANGUAGE_EMPTY + ' (check if the language of the automaton is empty)',
     OP_FSA_LANGUAGE_EMPTY_BUCHI + ' (check if the language of the Buchi automaton is empty)',
-    OP_FSA_LANGUAGE_INCLUDED + ' (check if the language is included in the language of the secondary automaton)',
+    OP_FSA_LANGUAGE_INCLUDED + ' (check if the language is included in the language ' \
+        'of the secondary automaton)',
     OP_FSA_MINIMIZE + ' (minimize the automaton)',
     OP_FSA_MINIMIZE_BUCHI + ' (minimize the Buchi automaton)',
     OP_FSA_RELABEL + ' (relabel the states of the automaton)',
@@ -83,4 +86,3 @@ OperationDescriptions = [
     OP_REGEX_CONVERT_OMEGA_REGEX + ' (convert the omega-regular expression to a Buchi automaton)',
     OP_LTL_CONVERT_LTL + ' (convert the LTL formula to an automaton)'
 ]
-

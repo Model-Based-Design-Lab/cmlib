@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
-from markovchains.utils.graphs import plotSvg
+from markovchains.utils.graphs import plot_svg
 from markovchains.utils.linalgebra import TVector, mat_power
 from markovchains.utils.operations import (
     OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT,
@@ -207,7 +207,7 @@ def process(args, dsl):
         for s in sort_names(states):
             data[s] = trace[k]
             k += 1
-        print(plotSvg(data, states))
+        print(plot_svg(data, states))
 
     # determine classes of communicating states
     if operation == OP_DTMC_COMMUNICATINGSTATES:

@@ -1,8 +1,10 @@
-from typing import Union,Tuple,Any
-from textx import metamodel_from_str, TextXSyntaxError
-from fractions import Fraction
-import sys
+'''DSL grammar parsing support for max-plus models.'''
 
+import sys
+from fractions import Fraction
+from typing import Any, Tuple, Union
+
+from textx import TextXSyntaxError, metamodel_from_str
 
 # This is TextX version of the XText grammar in the clang repository
 # Xtext file:
@@ -13,7 +15,7 @@ import sys
 MIN_INF_GRAMMAR_STRING = "-inf"
 MIN_INF_VAL = None
 
-SDFGrammar = """
+SDF_GRAMMAR = """
 
 DataflowModel:
 	('author' '=' author=ID)?
@@ -38,7 +40,7 @@ EdgeSpecs:
 EdgeAnnotation:
 	(('initial' 'tokens' ':' )? initialtokens=INT)
 	|
-	('production' 'rate' ':' prodrate=INT) 
+	('production' 'rate' ':' prodrate=INT)
 	|
 	('consumption' 'rate' ':' consrate=INT)
 	|
@@ -53,13 +55,13 @@ Actor:
 ;
 
 ActorSpecs:
-	'[' 
+	'['
 	annotations += ActorAnnotation (';' annotations += ActorAnnotation)*
 	']'
 ;
 
 ActorAnnotation:
-	( ('execution' 'time' ':')? executiontime=Number) 
+	( ('execution' 'time' ':')? executiontime=Number)
 ;
 
 PortList:
@@ -78,10 +80,10 @@ InputSignals:
 
 Signal:
 	name=ID '='
-	'[' 
+	'['
 	 (
 		 ( timestamps = TimeStamp)
-	 	(',' timestamps = TimeStamp)* 
+	 	(',' timestamps = TimeStamp)*
 	)?
 	']'
 ;
@@ -108,14 +110,18 @@ Comment:
 
 """
 
-MetaModelSDF = metamodel_from_str(SDFGrammar, classes=[])
+MetaModelSDF = metamodel_from_str(SDF_GRAMMAR, classes=[])
 
-def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
+class SDFParsingException(Exception):
+    '''Parsing exception.'''
+
+
+def parse_sdf_dsl(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
     '''
     Parse the provided content. Using the factory operations to build the result.
     Returns a pair with the name of the model and the constructed result.
     factory is a dictionary with lambda functions with the following keys:
-    - 'Init' = lambda 
+    - 'Init' = lambda
     - 'AddActor' = lambda sdf, a, specs
     - 'AddChannel' = lambda sdf, a1, a2, specs
     - 'AddInputPort' = lambda sdf, i
@@ -123,32 +129,33 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
     - 'AddInputSignal' = lambda sdf, n, s
     '''
 
-    def _getNumber(n):
-        if n.ratio != None:
-            return Fraction("{}/{}".format(n.ratio.numerator, n.ratio.denominator)).limit_denominator()
-        if n.float != None:
+    def _get_number(n):
+        if n.ratio is not None:
+            return Fraction(f"{n.ratio.numerator}/{n.ratio.denominator}").limit_denominator()
+        if n.float is not None:
             return Fraction(n.float).limit_denominator()
-        if n.int != None:
+        if n.int is not None:
             return Fraction(n.int).limit_denominator()
+        # we cannot get here
+        raise SDFParsingException("Parser error.")
 
-
-    def _parseActorSpecs(specs):
-        res = dict()
+    def _parse_actor_specs(specs):
+        res = {}
         for a in specs.annotations:
-            res['executionTime'] = _getNumber(a.executiontime)
+            res['executionTime'] = _get_number(a.executiontime)
         return res
 
 
-    def _parseActor(a, sdf, factory):
-        specs = dict()
+    def _parse_actor(a, sdf, factory):
+        specs = {}
         if a.specs is not None:
-            specs = _parseActorSpecs(a.specs)
+            specs = _parse_actor_specs(a.specs)
         factory['AddActor'](sdf, a.name, specs)
         return a.name
 
 
-    def _parseEdgeSpecs(specs):
-        res = dict()
+    def _parse_edge_specs(specs):
+        res = {}
         for a in specs.annotations:
             if a.initialtokens != 0:
                 res['initialTokens'] = a.initialtokens
@@ -162,23 +169,23 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
                 res['tokenSize'] = a.tokensize
         return res
 
-    def _parseEdge(e, sdf, factory):
-        srcActor = _parseActor(e.srcact, sdf, factory)
-        dstActor = _parseActor(e.dstact, sdf, factory)
+    def _parse_edge(e, sdf, factory):
+        src_actor = _parse_actor(e.srcact, sdf, factory)
+        dst_actor = _parse_actor(e.dstact, sdf, factory)
 
-        specs = dict()
+        specs = {}
         if e.specs:
-            specs = _parseEdgeSpecs(e.specs)
-        factory['AddChannel'](sdf, srcActor, dstActor, specs)
-    
+            specs = _parse_edge_specs(e.specs)
+        factory['AddChannel'](sdf, src_actor, dst_actor, specs)
+
     try:
         model =  MetaModelSDF.model_from_str(content)
     except TextXSyntaxError as err:
-        sys.stderr.write("Syntax error in line %d col %d: %s" % (err.line, err.col, err.message))
+        sys.stderr.write(f"Syntax error in line {err.line} col {err.col}: {err.message}")
         return (None, None)
     sdf = factory['Init']()
     for e in model.edges:
-        _parseEdge(e, sdf, factory)
+        _parse_edge(e, sdf, factory)
     if model.inputs:
         for i in model.inputs.ports:
             factory['AddInputPort'](sdf, i.name)
@@ -187,7 +194,8 @@ def parseSDFDSL(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
             factory['AddOutputPort'](sdf, o.name)
 
     if model.inputsignals:
-        for inSig in model.inputsignals.signals:
-            factory['AddInputSignal'](sdf, inSig.name, [_getNumber(ts) if ts!=MIN_INF_GRAMMAR_STRING else MIN_INF_VAL for ts in inSig.timestamps])
+        for in_sig in model.inputsignals.signals:
+            factory['AddInputSignal'](sdf, in_sig.name, [_get_number(ts) if \
+                    ts!=MIN_INF_GRAMMAR_STRING else MIN_INF_VAL for ts in in_sig.timestamps])
 
     return (model.name, sdf)
