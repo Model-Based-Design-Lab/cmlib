@@ -619,7 +619,7 @@ class LTLFormulaConjunction(LTLSubFormula):
         # return a set (disjunction) of pairs now, next
 
         res:TUnfolding = SortedSet([
-            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([]), SortedSet([]))
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([]), AcceptanceSet([]))
         ])
 
         for phi in self._subformulas:
@@ -762,7 +762,7 @@ class LTLFormulaNext(LTLSubFormula):
         # X phi
 
         nxt = SortedSet([
-            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self._subformula]), SortedSet([]))
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self._subformula]), AcceptanceSet([]))
         ])
         return nxt
 
@@ -842,7 +842,7 @@ class LTLFormulaAlways(LTLSubFormula):
         uf: TUnfolding
         uf = self._subformula.unfold()
         ng: TUnfolding = SortedSet([
-            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), SortedSet([]))
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), AcceptanceSet([]))
         ])
         return LTLSubFormula.pair_set_dnf_and(uf, ng)
 
@@ -886,7 +886,7 @@ class LTLFormulaEventually(LTLSubFormula):
         uf: TUnfolding = self._subformula.unfold()
         nf: TUnfolding
         nf = SortedSet([
-            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), SortedSet([self]))
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), AcceptanceSet([self]))
         ])
         return uf.union(nf)
 

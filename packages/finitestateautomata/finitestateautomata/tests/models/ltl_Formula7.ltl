@@ -1,0 +1,5 @@
+ltl formula phi = (p U q) or (q U p)
+alphabet {p,q}
+where
+    p = {p}
+    q = {q}

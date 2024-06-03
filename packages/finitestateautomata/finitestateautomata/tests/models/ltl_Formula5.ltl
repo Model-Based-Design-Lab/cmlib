@@ -1,0 +1,5 @@
+ltl formula phi = not (q U p)
+alphabet {p,q}
+where
+    p = {p}
+    q = {q}
