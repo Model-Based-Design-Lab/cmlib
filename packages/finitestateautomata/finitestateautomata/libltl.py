@@ -1000,6 +1000,7 @@ class LTLFormula:
         # state_index_f: SortedDict[str,str]
         state_index_f: SortedDict
         # keep track of the set of acceptance sets associated with the transitions
+        # maps a transition to ...
         acceptance_sets: SortedDict # SortedDict[Tuple[str,str,str],SortedSet[str]]
 
         def add_state(s: ConjunctiveNormalForm, initial: bool = False)->bool:
@@ -1054,17 +1055,17 @@ class LTLFormula:
             # determine the symbols of the alphabet that match the propositional formula on the edge
             symbols = reduce(lambda res, f: f.filter_symbols(res, self._prop_definitions), \
                              edge_propositional_formula, alphabet)
-            for symbol in symbols:
+            for symbol in sorted(symbols):
                 # create an edge from the state corresponding to s to the state
                 # corresponding to t, labelled with symbol
                 trans = (state_index_f[ss], symbol, state_index_f[ts])
                 # create an entry in the acceptanceSets dictionary
                 acceptance_sets[trans] = AcceptanceSet()
                 # add the acceptance sets (as strings) from acc
-                acceptance_sets[trans].update(AcceptanceSet({str(a) for a in acc}))
+                acceptance_sets[trans].update(acc)
 
         # initialize
-        acceptance_sets = SortedDict()
+        acceptance_sets = SortedDict() # of transitions to AcceptanceSets
         # initial states from the initial formula expression
         initial_states: DisjunctiveNormalForm = self._expression.in_negation_normal_form().in_set_dnf()
         initial_state_names = SortedSet()
@@ -1094,9 +1095,10 @@ class LTLFormula:
 
             # determine outgoing transitions from unfolded state
             transitions = _unfold(s)
-            # print(f"transitions = {transitions}")
             for t in transitions:
-                # print(f"trans= {t} {type(t)}")
+                # t[0]: ConjunctiveNormalForm: edge propositional formula
+                # t[1]: ConjunctiveNormalForm: target state
+                # t[2]: AcceptanceSet; acceptance sets satisfied in this transition
                 t1: ConjunctiveNormalForm = t[1]
                 # add state if it doesn't exist yet
                 if add_state(t1):
@@ -1115,13 +1117,12 @@ class LTLFormula:
         # for all transitions, keys of acceptanceSets
         for t in acceptance_sets:
             # add the acceptance set to the set of acceptance sets of the target state
-            acceptance_sets_states[t[2]].add(frozenset(acceptance_sets[t]))
+            acceptance_sets_states[t[2]].add(acceptance_sets[t])
 
         # collect all the acceptance labels from all states
         acceptance_labels: SortedSet
         acceptance_labels = reduce(lambda res, acc: res.union(acc), \
                                    acceptance_sets_states.values(), SortedSet())
-        # print(acceptanceLabels)
 
         # associate all (non empty) acceptance labels with a unique number starting from 1
         state_labels_acceptance: SortedDict = SortedDict()
@@ -1153,7 +1154,7 @@ class LTLFormula:
 
         # construct appropriate transitions
         for t in acceptance_sets:
-            a = frozenset(acceptance_sets[t])
+            a = acceptance_sets[t]
             if len(a) == 0:
                 target_state = build_state_name(t[2], 0)
             else:
