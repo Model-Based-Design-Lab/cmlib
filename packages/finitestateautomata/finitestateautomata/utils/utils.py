@@ -28,3 +28,17 @@ def print_states(states: List[str]):
 def print_set_of_states(states: Set[str]):
     '''Print a set of states.'''
     print("{"+", ".join(states)+"}")
+
+def string_hash(input_string: str)->int:
+    """
+    a deterministic string hash, because Python's default is not it seems.
+    """
+    prime = 31
+    hash_value = 0
+
+    for char in input_string:
+        # Multiply the current hash value by the prime
+        # and add the ASCII value of the character
+        hash_value = (hash_value * prime + ord(char)) % (2**64)  # To keep it within 64 bits
+
+    return hash_value

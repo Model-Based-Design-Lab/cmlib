@@ -10,7 +10,7 @@ from dataflow.libmpm import MaxPlusMatrixModel
 from dataflow.libsdf import DataflowGraph
 from dataflow.utils.commandline import _convolution, _maximum
 from dataflow.utils.utils import get_square_matrix, parse_initial_state
-from modeltest.modeltest import Model_pytest
+from modeltest.modeltest import ModelPytest
 
 TEST_FILE_FOLDER = os.path.dirname(__file__)
 MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
@@ -24,7 +24,7 @@ MODEL_MPM_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".mpm")]
 ### Synchronous Data Flow Models            ###
 ###############################################
 
-class SDFPyTest(Model_pytest):
+class SDFPyTest(ModelPytest):
     """Testing the dataflow domain."""
     def __init__(self, model):
 
@@ -108,7 +108,7 @@ def test_sdf(test_model: str):
 ### Max-Plus Models                         ###
 ###############################################
 
-class MPMPyTest(Model_pytest):
+class MPMPyTest(ModelPytest):
     """Test an MPM model."""
     def __init__(self, model):
 

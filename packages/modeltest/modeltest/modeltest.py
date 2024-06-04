@@ -1,9 +1,11 @@
+'''Model testing support.'''
 import os
 import json
 import warnings
-from modeltest.utils.utils import sortNames, print4F
+from modeltest.utils.utils import sort_names, print_4f
 
-class Model_pytest:
+class ModelPytest:
+    '''Model testing support.'''
 
     def __init__(self, output_loc):
         self.output_loc = output_loc
@@ -32,17 +34,17 @@ class Model_pytest:
         # Sorting algorithms
         if sort:
             try:
-                data = sortNames(data)
-            except:
+                data = sort_names(data)
+            except TypeError:
                 pass
 
             try:
                 data = sorted(data)
-            except:
+            except TypeError:
                 pass
 
-        for n in range(len(data)):
-            data[n] = self._change_type_of_data(data[n], sort, quotes)
+        for n, d in enumerate(data):
+            data[n] = self._change_type_of_data(d, sort, quotes)
 
         return data
 
@@ -52,23 +54,27 @@ class Model_pytest:
         data = self._change_type_of_data(data, sort, quotes)
 
         # Only at the very end round number to 4 decimal floats
-        data = print4F(data)
+        data = print_4f(data)
 
         return data
 
     def _create_output_file(self):
         if not os.path.exists(self.output_loc):
-            with open(self.output_loc, 'w'): pass
+            with open(self.output_loc, 'w', encoding='utf-8'):
+                pass
 
     def _read_output_file(self):
         try:
-            with open(self.output_loc, 'r', encoding='utf-8') as outputFile:
-                self.output = json.load(outputFile)
-        except Exception:
+            with open(self.output_loc, 'r', encoding='utf-8') as output_file:
+                self.output = json.load(output_file)
+        except FileNotFoundError:
+            # Json file is empty
+            self.output = {}
+        except json.JSONDecodeError:
             # Json file is empty
             self.output = {}
 
-    def _single_cfunction_warning(self, func, name, sort, quotes):
+    def _single_c_function_warning(self, func, name, sort, quotes):
         # Function to generate warning when expected result is not inside json file
         result = self._translate_to_str(func(), sort, quotes)
 
@@ -84,42 +90,46 @@ class Model_pytest:
                 item_in_list = True
 
         if not item_in_list:
-            warnings.warn("{}: {} not in {}".format(name, result, expected_result), Warning)
+            warnings.warn(f"{name}: {result} not in {expected_result}", Warning)
             self.output[name].append(result)
 
-    def _single_cfunction_test(self, func, name, sort, quotes):
+    def _single_c_function_test(self, func, name, sort, quotes):
         # lambda function defined in higher class
+        print(f"sort: {sort}")
         result = self._translate_to_str(func(), sort, quotes)
-
         if name in self.output:
             expected_result = self.output[name]
         else:
             self.output[name] = result
             expected_result = self.output[name]
 
-        if not (result == expected_result):
+        if not result == expected_result:
             print("Expected result: " + str(expected_result))
             print("Actual result: " + str(result))
 
         assert result == expected_result
 
     def incorrect_test(self, func, expected_result):
+        '''Test behavior which is expected to fail.'''
         # Argument always necessary for failure of function execution
         try:
             func()
             assert False
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             print("Expected result: " + expected_result)
             print("Actual result: " + str(e))
             assert str(e) == expected_result
 
-    def function_test(self, func, expected_result, deterministic = True, sort = False, quotes = False):
+    def function_test(self, func, test_name, deterministic = True, sort = False, \
+                      quotes = False):
+        '''Test a function that is expected to succeed.'''
         if deterministic:
-            self._single_cfunction_test(func, expected_result, sort, quotes)
+            self._single_c_function_test(func, test_name, sort, quotes)
         else:
-            self._single_cfunction_warning(func, expected_result, sort, quotes)
+            self._single_c_function_warning(func, test_name, sort, quotes)
 
 
     def write_output_file(self):
-        with open(self.output_loc, 'w') as outputFile:
-            json.dump(self.output, outputFile, indent = 4)
+        '''Write self.output to file.'''
+        with open(self.output_loc, 'w', encoding='utf-8') as output_file:
+            json.dump(self.output, output_file, indent = 4)

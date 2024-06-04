@@ -5,7 +5,7 @@ import argparse
 import sys
 from typing import Optional, Tuple
 from finitestateautomata.libfsa import Automaton, FSAException
-from finitestateautomata.libregex import RegEx,RegExTerm
+from finitestateautomata.libregex import RegEx
 from finitestateautomata.libltl import LTLFormula
 from finitestateautomata.utils.utils import print_states, print_set_of_states
 from finitestateautomata.utils.operations import Operations, \

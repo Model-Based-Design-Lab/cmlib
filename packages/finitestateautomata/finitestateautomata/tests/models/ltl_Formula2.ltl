@@ -1,0 +1,6 @@
+ltl formula phi = (p and (q or r)) R X q
+alphabet {p, q, r}
+where
+    p = {p}
+    q = {q}
+    r = {r}

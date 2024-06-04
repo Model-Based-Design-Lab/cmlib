@@ -1,0 +1,4 @@
+ltl formula phi = false U true
+alphabet {p}
+where
+    p = {p}

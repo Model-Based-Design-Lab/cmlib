@@ -856,7 +856,8 @@ class RegEx:
         '''Create regular expression from string.'''
 
         # find the name
-        match = re.search(r".*regular\s+expression\s+(?P<name>[^\s]+)\s*=\s*(?P<regex>[^\s]*?)\s*$", regex_string, re.MULTILINE|re.DOTALL)
+        reg_ex_regex = r".*regular\s+expression\s+(?P<name>[^\s]+)\s*=\s*(?P<regex>[^\s]*?)\s*$"
+        match = re.search(reg_ex_regex, regex_string, re.MULTILINE|re.DOTALL)
         if match is None:
             raise RegExException("Input is not a valid RegEx")
         name = match.group('name')

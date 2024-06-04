@@ -3,7 +3,7 @@
 import os
 from typing import Dict, Optional, Union
 import pytest
-from modeltest.modeltest import Model_pytest # Import Model_pytest class from modeltest package
+from modeltest.modeltest import ModelPytest # Import ModelPytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.utils import MarkovChainException, sort_names
 from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
@@ -14,7 +14,7 @@ MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
 OUTPUT_FOLDER = os.path.join(TEST_FILE_FOLDER, "output")
 MODEL_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".dtmc")]
 
-class MarkovPytest(Model_pytest):
+class MarkovPytest(ModelPytest):
 
     model: MarkovChain
     state: str

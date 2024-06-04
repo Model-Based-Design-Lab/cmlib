@@ -4,7 +4,7 @@ import re
 from fractions import Fraction
 import sys
 from typing import Any, Dict, Optional, Tuple, Union, List
-from dataflow.maxplus.maxplus import mpParseVector, mpZeroVector
+from dataflow.maxplus.maxplus import mp_parse_vector, mp_zero_vector
 from dataflow.maxplus.algebra import MP_MINUSINFINITY_STR, MP_MINUSINFINITY
 from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
 from dataflow.libmpm import EventSequenceModel, VectorSequenceModel, MaxPlusMatrixModel
@@ -48,7 +48,10 @@ def print_xml_trace(vt: List[TTimeStampFloatList], labels: List[str]):
     print('</vectors>')
     print('</vectortrace>')
 
-def xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: List[TTimeStampFloatList]):
+def xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: \
+        List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], \
+        input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: \
+        List[TTimeStampFloatList]):
     """Make an XML Gantt chart representation."""
     xml = '<?xml version="1.0"?>\n'
     xml += '<trace>\n'
@@ -62,7 +65,9 @@ def xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts
             for _ in range(rep_vec[a]):
                 if v[k] != MP_MINUSINFINITY:
                     vk: float = v[k]  # type: ignore
-                    xml += f'        <firing id="{f_id}" start="{vk}" end="{vk+firing_durations[n]}" actor="{a}" iteration="{it}" scenario="s"/>\n'
+                    xml += f'        <firing id="{f_id}" start="{vk}" ' \
+                        f'end="{vk+firing_durations[n]}" actor="{a}" iteration="{it}" ' \
+                            'scenario="s"/>\n'
                     f_id += 1
                 k += 1
             n += 1
@@ -96,7 +101,10 @@ def xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts
     return xml
 
 
-def print_xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: List[TTimeStampFloatList]):
+def print_xml_gantt_chart(actor_names: List[str], rep_vec:Dict[str,int], firing_starts: \
+        List[TTimeStampFloatList], firing_durations: List[float], input_names: List[str], \
+        input_traces: List[TTimeStampFloatList], output_names: List[str], output_traces: \
+        List[TTimeStampFloatList]):
     """Print an XML representation of the Gantt chart."""
     print(xml_gantt_chart(actor_names, rep_vec, firing_starts, firing_durations, \
                           input_names, input_traces, output_names, output_traces))
@@ -106,7 +114,8 @@ def input_traces_reg_ex():
     '''
     syntax for inputtrace: comma-separated list of: (ID=)?([...]|ID)
     '''
-    return r"(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*)))(,(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*))))*"
+    return r"(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*)))" \
+        r"(,(([a-zA-Z][a-zA-Z0-9_]*=)?((\[.*?\])|([a-zA-Z][a-zA-Z0-9_]*))))*"
 
 def input_trace_reg_ex():
     '''
@@ -126,7 +135,9 @@ def sequence_literal_reg_ex():
     '''
     return r"\[.*?\]"
 
-def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None],Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
+def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], \
+        vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None], \
+        Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
     '''
     return dictionary of named traces and list of unnamed traces
     '''
@@ -165,7 +176,7 @@ def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequen
             name = named_match.group(1)
             expr = named_match.group(2)
             if re.match(sequence_literal_reg_ex(), expr):
-                res_nt[name] = mpParseVector(expr)
+                res_nt[name] = mp_parse_vector(expr)
             else:
                 if expr in eventsequences:
                     # ugly, but if the model is SDF, this is a list, if the model
@@ -185,7 +196,7 @@ def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequen
         else:
             # check if it is a literal, unnamed, event sequence, e.g. [1,2,3]
             if re.match(sequence_literal_reg_ex(), t):
-                res_ut.append(mpParseVector(t))
+                res_ut.append(mp_parse_vector(t))
             else:
                 if t in eventsequences:
                     es = eventsequences[t]
@@ -265,8 +276,8 @@ def require_parameter_mp_value(args)->TTimeStamp:
 def parse_initial_state(args: Any, state_size: int) -> TMPVector:
     """Parse initial state."""
     if args.initialstate is None:
-        return mpZeroVector(state_size)
-    x0 = mpParseVector(args.initialstate)
+        return mp_zero_vector(state_size)
+    x0 = mp_parse_vector(args.initialstate)
     if len(x0) != state_size:
         raise DataflowException('Provided initial state is not of the expected size.') # pylint: disable=raise-missing-from
     return x0

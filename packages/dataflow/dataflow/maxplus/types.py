@@ -1,3 +1,5 @@
+'''Type definitions for max-plus algebra'''
+
 from fractions import Fraction
 from typing import List, Union
 

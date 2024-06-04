@@ -5,14 +5,137 @@ import re
 import sys
 from typing import AbstractSet, Callable, Dict, Optional, Set, Tuple
 
+from sortedcontainers import SortedDict, SortedSet
+
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libltlgrammar import parse_ltl_dsl
-from finitestateautomata.utils.utils import FiniteStateAutomataException
+from finitestateautomata.utils.utils import FiniteStateAutomataException, string_hash
 
 LTL_PROPOSITION_SIMPLE = re.compile(r"^[a-zA-Z]$")
 
-TDisjunctiveNormalForm = Set[AbstractSet['LTLSubFormula']]
-TConjunctiveNormalForm = AbstractSet['LTLSubFormula']
+class ConjunctiveNormalForm(SortedSet):
+    '''Representing a conjunction of formulas as sorted set of formulas.'''
+    def __init__(self, iterable=None, key=None):
+        super().__init__(iterable)
+
+    def __hash__(self)->int:
+        result: int = 1
+        for el in self:
+            result = hash((result, el))
+        return result
+
+    def __eq__(self, other: 'ConjunctiveNormalForm')->bool:
+        assert(isinstance(other, ConjunctiveNormalForm))
+        if len(self) != len(other):
+            return False
+        if hash(self) != hash(other):
+            return False
+        for si, oi in zip(self, other):
+            if not si.__eq__(oi):
+                return False
+        return True
+
+    def __lt__(self, other: 'ConjunctiveNormalForm')->bool:
+        assert isinstance(other, ConjunctiveNormalForm)
+        ls = len(self)
+        lo = len(other)
+        if ls != lo:
+            return ls<lo
+        hs = hash(self)
+        ho = hash(other)
+        if hs != ho:
+            return hs<ho
+        for si, oi in zip(self, other):
+            if si.__lt__(oi):
+                return True
+            if oi.__lt__(si):
+                return False
+        return False
+
+# TAcceptanceSet = SortedSet['LTLSubFormula']
+# TODO: I guess we need to make the acceptance set hashable.
+# TAcceptanceSet = SortedSet
+class AcceptanceSet(SortedSet):
+    '''Representing a of (until) formulas that represent acceptance sets for a translated formula.'''
+    def __init__(self, iterable=None, key=None):
+        super().__init__(iterable)
+
+    def __hash__(self)->int:
+        return hash(frozenset(self))
+
+    def __eq__(self, other: 'AcceptanceSet')->bool:
+        assert isinstance(other, AcceptanceSet)
+        if len(self) != len(other):
+            return False
+        if hash(self) != hash(other):
+            return False
+        for si, oi in zip(self, other):
+            if not si.__eq__(oi):
+                return False
+        return True
+
+    def __lt__(self, other: 'AcceptanceSet')->bool:
+        assert isinstance(other, AcceptanceSet)
+        ls = len(self)
+        lo = len(other)
+        if ls != lo:
+            return ls<lo
+        hs = hash(self)
+        ho = hash(other)
+        if hs != ho:
+            return hs<ho
+        for si, oi in zip(self, other):
+            if si.__lt__(oi):
+                return True
+            if oi.__lt__(si):
+                return False
+        return False
+
+
+# TUnfolding = SortedSet[Tuple[ConjunctiveNormalForm,ConjunctiveNormalForm, \
+#                                          TAcceptanceSet]]
+TUnfolding = SortedSet
+
+# TDisjunctiveNormalForm = Set[ConjunctiveNormalForm]
+class DisjunctiveNormalForm(SortedSet):
+    '''Representing a disjunction of conjunctive formulas as sorted set of ConjunctiveNormalForm.
+    Note that it should contain only objects of type ConjunctiveNormalForm'''
+    def __init__(self, iterable=None, key=None):
+        super().__init__(iterable)
+
+    def __hash__(self)->int:
+        # TODO: is this really deterministic?
+        return hash(frozenset(self))
+
+    def __eq__(self, other: 'DisjunctiveNormalForm')->bool:
+        assert(isinstance(other, DisjunctiveNormalForm))
+        if len(self) != len(other):
+            return False
+        if hash(self) != hash(other):
+            return False
+        for si, oi in zip(self, other):
+            if not si.__eq__(oi):
+                return False
+        return True
+
+    def __lt__(self, other: 'DisjunctiveNormalForm')->bool:
+        assert isinstance(other, DisjunctiveNormalForm)
+        ls = len(self)
+        lo = len(other)
+        if ls != lo:
+            return ls<lo
+        hs = hash(self)
+        ho = hash(other)
+        if hs != ho:
+            return hs<ho
+        for si, oi in zip(self, other):
+            if si.__lt__(oi):
+                return True
+            if oi.__lt__(si):
+                return False
+        return False
+
+
 
 class LTLException(FiniteStateAutomataException):
     ''' Exceptions related to LTL '''
@@ -46,49 +169,50 @@ class LTLSubFormula:
         or not.'''
         raise LTLException("To be implemented in subclasses")
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
-        '''Return formula in disjunctive normal form as a set (disjunction) of
+    def in_set_dnf(self)->DisjunctiveNormalForm:
+        '''Return formula in disjunctive normal form as a set (representing disjunction) of
         sets (conjunction) of formulas.'''
 
         # default behavior, override where needed!
-        conj: Set['LTLSubFormula'] = set()
+        conj: ConjunctiveNormalForm = ConjunctiveNormalForm()
         conj.add(self)
-        result: AbstractSet[AbstractSet[LTLSubFormula]] = set()
-        result.add(frozenset(conj))
+        result: DisjunctiveNormalForm = DisjunctiveNormalForm()
+        result.add(conj)
         return result
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                         AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         ''' Unfold formula into a set (disjunctive) of 3-tuples consisting of a set
         (conjunctive) of 'now' formulas, a set (conjunctive) of 'next' formulas and
         a set of acceptance sets, i.e., until or eventually formulas whose eventualities
         are satisfied in that disjunctive term. '''
         # default behavior, keep all terms in now. Overwrite when necessary!
         # determine the DNF
-        now = self.in_set_dnf()
+        now: DisjunctiveNormalForm = self.in_set_dnf()
         # return set of triples
-        return {(conj, frozenset([]), frozenset([])) for conj in now }
+        return SortedSet(
+            {(conj, ConjunctiveNormalForm([]), AcceptanceSet([])) for conj in now }
+        )
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
         '''Return the set of all subformulas.'''
         # default behavior, override when necessary
-        return set([self])
+        return SortedSet([self])
 
-    def local_alphabet(self)->Set[str]:
+    def local_alphabet(self)->SortedSet:
         '''Return the set of atomic propositions of the formula. '''
         # default behavior, override when necessary
-        return set()
+        return SortedSet()
 
-    def filter_symbols(self, symbols: Set[str], _prop_defs:Dict[str,Set[str]])->Set[str]:
+    def filter_symbols(self, symbols: SortedSet, _prop_defs:Dict[str,Set[str]])->SortedSet:
         '''Return symbols that satisfy the propositional formula, using prop_defs
         definition of propositions.'''
         # default all, override if necessary
         return symbols
 
-    def alphabet(self)->Set[str]:
+    def alphabet(self)->SortedSet:
         '''Return the set of propositions in the formula.'''
         return reduce(lambda alpha, phi: alpha.union(phi.local_alphabet()), \
-                      self.get_sub_formulas(), set())
+                      self.get_sub_formulas(), SortedSet())
 
     def _is_liveness_formula(self)->bool:
         '''Return if this is a formula representing a liveness constraint.'''
@@ -96,43 +220,41 @@ class LTLSubFormula:
         return False
 
     @staticmethod
-    def _set_dnf_and(s1: TDisjunctiveNormalForm, s2: TDisjunctiveNormalForm) -> \
-        TDisjunctiveNormalForm:
+    def _set_dnf_and(s1: DisjunctiveNormalForm, s2: DisjunctiveNormalForm) -> \
+        DisjunctiveNormalForm:
         '''Perform logical and operation on two formulas in set disjunctive normal form.'''
-        result:TDisjunctiveNormalForm = set()
+        result:DisjunctiveNormalForm = DisjunctiveNormalForm()
         for dt1 in s1:
             for dt2 in s2:
-                nt: TConjunctiveNormalForm = set()
+                nt: ConjunctiveNormalForm = ConjunctiveNormalForm()
                 nt.update(dt1)
                 nt.update(dt2)
-                result.add(frozenset(nt))
+                result.add(nt)
         return result
 
     @staticmethod
-    def set_dnf_or(s1: TDisjunctiveNormalForm, s2: TDisjunctiveNormalForm) -> \
-         TDisjunctiveNormalForm:
+    def set_dnf_or(s1: DisjunctiveNormalForm, s2: DisjunctiveNormalForm) -> \
+         DisjunctiveNormalForm:
         '''Perform logical or operation on two formulas in set disjunctive normal form.'''
         return s1.union(s2)
 
     @staticmethod
     def pair_set_dnf_and(
-        p1: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]],
-        p2: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        ) -> Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]:
+        p1: TUnfolding, p2: TUnfolding) -> TUnfolding:
         '''Perform logical and operation on now, next, acceptance set triples'''
-        res = set()
+        res = SortedSet()
         for dt1 in p1:
             for dt2 in p2:
-                nt_now: TConjunctiveNormalForm = set()
+                nt_now = ConjunctiveNormalForm([])
                 nt_now.update(dt1[0])
                 nt_now.update(dt2[0])
-                nt_nxt: TConjunctiveNormalForm = set()
+                nt_nxt = ConjunctiveNormalForm([])
                 nt_nxt.update(dt1[1])
                 nt_nxt.update(dt2[1])
-                nt_acc:Set['LTLSubFormula'] = set()
+                nt_acc:AcceptanceSet = AcceptanceSet()
                 nt_acc.update(dt1[2])
                 nt_acc.update(dt2[2])
-                res.add((frozenset(nt_now), frozenset(nt_nxt), frozenset(nt_acc)))
+                res.add((nt_now, nt_nxt, nt_acc))
         return res
 
     def __eq__(self, other)->bool:
@@ -165,9 +287,9 @@ class LTLFormulaTrue(LTLSubFormula):
             return LTLFormulaFalse()
         return self
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
-        tt: TConjunctiveNormalForm = frozenset()
-        result: TDisjunctiveNormalForm = set()
+    def in_set_dnf(self)->DisjunctiveNormalForm:
+        tt: ConjunctiveNormalForm = ConjunctiveNormalForm(set())
+        result: DisjunctiveNormalForm = DisjunctiveNormalForm()
         result.add(tt)
         return result
 
@@ -192,14 +314,13 @@ class LTLFormulaFalse(LTLSubFormula):
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
         if prop_neg:
             return LTLFormulaTrue()
-        else:
-            return self
+        return self
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
-        return set()
+    def in_set_dnf(self)->DisjunctiveNormalForm:
+        return DisjunctiveNormalForm()
 
-    def filter_symbols(self, symbols: Set[str], _propDefs:Dict[str,Set[str]])->Set[str]:
-        return set()
+    def filter_symbols(self, symbols: SortedSet, _propDefs:Dict[str,Set[str]])->SortedSet:
+        return SortedSet()
 
     def __str__(self):
         return "false"
@@ -240,7 +361,7 @@ class LTLFormulaProposition(LTLSubFormula):
     def local_alphabet(self)->Set[str]:
         return set([self._proposition])
 
-    def filter_symbols(self, symbols: Set[str], propDefs:Dict[str,Set[str]])->Set[str]:
+    def filter_symbols(self, symbols: SortedSet, propDefs:Dict[str,Set[str]])->SortedSet:
         if propDefs is None:
             prop_symbols = set([self._proposition])
         else:
@@ -274,7 +395,7 @@ class LTLFormulaProposition(LTLSubFormula):
         return self._proposition < other.proposition()
 
     def __hash__(self) -> int:
-        return hash((self._negated, self._proposition))
+        return hash((self._negated, string_hash(self._proposition)))
 
 
 class LTLFormulaUntil(LTLSubFormula):
@@ -303,33 +424,35 @@ class LTLFormulaUntil(LTLSubFormula):
         return LTLFormulaUntil(self._phi1.in_negation_normal_form_prop(False), \
                                self._phi2.in_negation_normal_form_prop(False))
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                         AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next using the following identity
         # phi1 U phi2 = phi2 or (phi1 and X (phi1 U phi2))
         # return a set (disjunction) of triples now, next, acceptance set
 
         # unfold phi2
-        uf2: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        uf2 = self._phi2.unfold()  # type: ignore couldn't make the type checker happy
+        uf2: TUnfolding
+        uf2 = self._phi2.unfold()
 
         # unfold phi1
-        uf1: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        uf1 = self._phi1.unfold()  # type: ignore couldn't make the type checker happy
+        uf1: TUnfolding
+        uf1 = self._phi1.unfold()
 
         # create the next part,  X (phi1 U phi2)
         # note that until formulas create acceptance sets in the equivalent automata
-        nu: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                      AbstractSet[LTLSubFormula]]] = set([(frozenset([]), frozenset([self]), \
-                                                           frozenset([self]))])
+        nu: TUnfolding = SortedSet([
+            (ConjunctiveNormalForm([]),
+             ConjunctiveNormalForm([self]),
+             AcceptanceSet([self])
+            )]
+        )
 
         # return the disjunction (by set union) of uf2  and the conjunction (_pairSetDNFAnd)
         # of uf1 and nu
         return uf2.union(LTLSubFormula.pair_set_dnf_and(uf1, nu))
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
+    def get_sub_formulas(self)->SortedSet: #SortedSet['LTLSubFormula']:
         # self, and recursively the subformulas of phi1 and ph2
-        return set([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
+        return SortedSet([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
 
     def _is_liveness_formula(self):
         return True
@@ -341,14 +464,14 @@ class LTLFormulaUntil(LTLSubFormula):
         return self._phi1 == other.phi1() and self._phi2 == other.phi2()
 
     def __lt__same_class__(self, other)->bool:
-        if self._phi1.__lt__(other.phi1):
+        if self._phi1.__lt__(other.phi1()):
             return True
         if other.phi1().__lt__(self._phi1):
             return False
         return self._phi2 < other.phi2()
 
     def __hash__(self) -> int:
-        return hash((self._phi1, self._phi2, "U"))
+        return hash((self._phi1, self._phi2, string_hash("U")))
 
 
 class LTLFormulaRelease(LTLSubFormula):
@@ -361,6 +484,14 @@ class LTLFormulaRelease(LTLSubFormula):
         self._phi1 = phi1
         self._phi2 = phi2
 
+    def phi1(self):
+        '''Return phi1'''
+        return self._phi1
+
+    def phi2(self):
+        '''Return phi2'''
+        return self._phi2
+
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
         if prop_neg:
             # the negation of a Release formula is an Until formula
@@ -369,30 +500,34 @@ class LTLFormulaRelease(LTLSubFormula):
         return LTLFormulaRelease(self._phi1.in_negation_normal_form_prop(False), \
                                  self._phi2.in_negation_normal_form_prop(False))
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # phi1 R phi2 = phi2 and (phi1 or X (phi1 R phi2))
         # phi1 R phi2 = (phi1 and phi2) or (phi2 and X (phi1 R phi2)))
         # return a set (disjunction) of triples now, next, acceptance / eventualities
 
-        uf2: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        uf2 = self._phi2.unfold()  # type: ignore couldn't make the type checker happy
-        uf1: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        uf1 = self._phi1.unfold()  # type: ignore couldn't make the type checker happy
-        nr: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                      AbstractSet[LTLSubFormula]]] = set([(frozenset([]), frozenset([self]), \
-                                                           frozenset([]))])
+        uf2: TUnfolding
+        uf2 = self._phi2.unfold()
+        uf1: TUnfolding
+        uf1 = self._phi1.unfold()
+        # next part is the release formula itself
+        nr: TUnfolding = SortedSet([
+            (
+                ConjunctiveNormalForm([]),
+                ConjunctiveNormalForm([self]),
+                AcceptanceSet([])
+            )]
+        )
 
         # alternative 1: phi1 and phi2
-        alt1 = LTLSubFormula.pair_set_dnf_and(uf1, uf2)
+        alt1: TUnfolding = LTLSubFormula.pair_set_dnf_and(uf1, uf2)
         # alternative 2: phi2 and X (phi1 R phi2)
-        alt2 = LTLSubFormula.pair_set_dnf_and(uf2, nr)
+        alt2: TUnfolding = LTLSubFormula.pair_set_dnf_and(uf2, nr)
 
         return alt1.union(alt2)
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: #SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
 
     def __str__(self):
         return "("+str(self._phi1) + ") R (" + str(self._phi2) + ")"
@@ -401,14 +536,14 @@ class LTLFormulaRelease(LTLSubFormula):
         return self._phi1 == other.phi1() and self._phi2 == other.phi2()
 
     def __lt__same_class__(self, other)->bool:
-        if self._phi1.__lt__(other.phi1):
+        if self._phi1.__lt__(other.phi1()):
             return True
         if other.phi1().__lt__(self._phi1):
             return False
         return self._phi2 < other.phi2()
 
     def __hash__(self) -> int:
-        return hash((self._phi1, self._phi2, "R"))
+        return hash((self._phi1, self._phi2, string_hash("R")))
 
 
 class LTLFormulaImplication(LTLSubFormula):
@@ -423,19 +558,19 @@ class LTLFormulaImplication(LTLSubFormula):
 
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
         # use the identity that phi1 => phi2 = not phi1 or phi2
-        fs = set()
+        fs = SortedSet()
         fs.add(self._phi1.in_negation_normal_form_prop(not prop_neg))
         fs.add(self._phi2.in_negation_normal_form_prop(prop_neg))
         if prop_neg:
             return LTLFormulaConjunction(fs)
         return LTLFormulaDisjunction(fs)
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
+    def in_set_dnf(self)->DisjunctiveNormalForm:
         "Not implemented. Implication is rewritten to disjunction before using this function."
         raise LTLException("remove implications first")
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: #SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._phi1.get_sub_formulas()).union(self._phi2.get_sub_formulas())
 
     def __str__(self):
         return "("+str(self._phi1) + ") => (" + str(self._phi1) + ")"
@@ -444,62 +579,60 @@ class LTLFormulaImplication(LTLSubFormula):
         return self._phi1 == other.phi1() and self._phi2 == other.phi2()
 
     def __lt__same_class__(self, other)->bool:
-        if self._phi1.__lt__(other.phi1):
+        if self._phi1.__lt__(other.phi1()):
             return True
         if other.phi1().__lt__(self._phi1):
             return False
         return self._phi2 < other.phi2()
 
     def __hash__(self) -> int:
-        return hash((self._phi1, self._phi2, "I"))
+        return hash((self._phi1, self._phi2, string_hash("I")))
 
 
 class LTLFormulaConjunction(LTLSubFormula):
     '''Conjunction of a set (not necessarily two) of subformulas'''
 
-    _subformulas: Set[LTLSubFormula]
+    _subformulas: SortedSet # of LTLSubFormula
 
-    def __init__(self, subformulas: Set[LTLSubFormula]):
+    def __init__(self, subformulas: SortedSet):
         self._subformulas = subformulas
 
-    def subformulas(self):
+    def subformulas(self)->SortedSet:
         '''Get the direct subformulas.'''
         return self._subformulas
 
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
-        fs = {phi.in_negation_normal_form_prop(prop_neg) for phi in self._subformulas}
+        fs = SortedSet({phi.in_negation_normal_form_prop(prop_neg) for phi in self._subformulas})
         if prop_neg:
             return LTLFormulaDisjunction(fs)
         return LTLFormulaConjunction(fs)
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
+    def in_set_dnf(self)->DisjunctiveNormalForm:
         sub = [phi.in_set_dnf() for phi in self._subformulas]
-        result:TDisjunctiveNormalForm = LTLFormulaTrue().in_set_dnf()
+        result:DisjunctiveNormalForm = LTLFormulaTrue().in_set_dnf()
         for s in sub:
             result = LTLSubFormula._set_dnf_and(result, s)
         return result
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # return a set (disjunction) of pairs now, next
 
-        res:AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                              AbstractSet['LTLSubFormula']]] = set([(frozenset([]), frozenset([]), \
-                                                                      frozenset([]))])
+        res:TUnfolding = SortedSet([
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([]), AcceptanceSet([]))
+        ])
 
         for phi in self._subformulas:
-            unfolded_phi: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                    AbstractSet['LTLSubFormula']]]
+            unfolded_phi: TUnfolding
             unfolded_phi = phi.unfold()  # type: ignore
             res = LTLSubFormula.pair_set_dnf_and(res, unfolded_phi)
 
         return res
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        l: Callable[[Set[LTLSubFormula], LTLSubFormula], Set[LTLSubFormula]] = lambda res, \
+    def get_sub_formulas(self)->SortedSet: #SortedSet['LTLSubFormula']:
+        l: Callable[[SortedSet, LTLSubFormula], SortedSet] = lambda res, \
             f: res.union(f.get_sub_formulas())
-        return reduce(l, self._subformulas, set())
+        return reduce(l, self._subformulas, SortedSet())
 
     def __str__(self):
         return " and ".join(["("+str(phi)+")" for phi in self._subformulas])
@@ -507,8 +640,8 @@ class LTLFormulaConjunction(LTLSubFormula):
     def __eq__same_class__(self, other)->bool:
         if not len(self._subformulas) == len(other.subformulas()):
             return False
-        ss = sorted(self._subformulas)
-        so = sorted(other.subformulas())
+        ss = self._subformulas
+        so = other.subformulas()
         for i in range(len(self._subformulas)):
             if not ss[i].__eq__(so[i]):
                 return False
@@ -517,8 +650,8 @@ class LTLFormulaConjunction(LTLSubFormula):
     def __lt__same_class__(self, other)->bool:
         if not len(self._subformulas) == len(other.subformulas()):
             return len(self._subformulas) < len(other.subformulas())
-        ss = sorted(self._subformulas)
-        so = sorted(other.subformulas())
+        ss = self._subformulas
+        so = other.subformulas()
         for i in range(len(self._subformulas)):
             if ss[i].__lt__(so[i]):
                 return True
@@ -527,8 +660,8 @@ class LTLFormulaConjunction(LTLSubFormula):
         return False
 
     def __hash__(self) -> int:
-        ss = sorted(self._subformulas)
-        h = hash("C")
+        ss = self._subformulas
+        h = string_hash("C")
         for phi in ss:
             h = hash((h, phi))
         return h
@@ -537,41 +670,44 @@ class LTLFormulaConjunction(LTLSubFormula):
 class LTLFormulaDisjunction(LTLSubFormula):
     '''Disjunction formula.'''
 
-    _subformulas: Set[LTLSubFormula]
+    _subformulas: SortedSet
 
-    def __init__(self, subformulas: Set[LTLSubFormula]):
+    def __init__(self, subformulas: SortedSet):
         self._subformulas = subformulas
 
+    def subformulas(self)->SortedSet:
+        '''Get the direct subformulas.'''
+        return self._subformulas
+
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
-        fs = {phi.in_negation_normal_form_prop(prop_neg) for phi in self._subformulas}
+        fs = SortedSet({phi.in_negation_normal_form_prop(prop_neg) for phi in self._subformulas})
         if prop_neg:
             return LTLFormulaConjunction(fs)
         return LTLFormulaDisjunction(fs)
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
+    def in_set_dnf(self)->DisjunctiveNormalForm:
         sub = [phi.in_set_dnf() for phi in self._subformulas]
         result = LTLFormulaFalse().in_set_dnf()
         for s in sub:
             result = LTLSubFormula.set_dnf_or(result, s)
         return result
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # return a set (disjunction) of pairs now, next
 
-        res = set()
+        res = SortedSet()
 
         for phi in self._subformulas:
             res.update(phi.unfold())
 
         return res
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
 
-        l: Callable[[Set[LTLSubFormula], LTLSubFormula], Set[LTLSubFormula]] = \
+        l: Callable[[SortedSet, LTLSubFormula], SortedSet] = \
             lambda res, f: res.union(f.get_sub_formulas())
-        return reduce(l, self._subformulas, set())
+        return reduce(l, self._subformulas, SortedSet())
 
     def __str__(self):
         return " or ".join(["("+str(phi)+")" for phi in self._subformulas])
@@ -579,8 +715,8 @@ class LTLFormulaDisjunction(LTLSubFormula):
     def __eq__same_class__(self, other)->bool:
         if not len(self._subformulas) == len(other.subformulas()):
             return False
-        ss = sorted(self._subformulas)
-        so = sorted(other.subformulas())
+        ss = self._subformulas
+        so = other.subformulas()
         for i in range(len(self._subformulas)):
             if not ss[i].__eq__(so[i]):
                 return False
@@ -589,8 +725,8 @@ class LTLFormulaDisjunction(LTLSubFormula):
     def __lt__same_class__(self, other)->bool:
         if not len(self._subformulas) == len(other.subformulas()):
             return len(self._subformulas) < len(other.subformulas())
-        ss = sorted(self._subformulas)
-        so = sorted(other.subformulas())
+        ss = self._subformulas
+        so = other.subformulas()
         for i in range(len(self._subformulas)):
             if ss[i].__lt__(so[i]):
                 return True
@@ -599,8 +735,8 @@ class LTLFormulaDisjunction(LTLSubFormula):
         return False
 
     def __hash__(self) -> int:
-        ss = sorted(self._subformulas)
-        h = hash("D")
+        ss = self._subformulas
+        h = string_hash("D")
         for phi in ss:
             h = hash((h, phi))
         return h
@@ -621,16 +757,17 @@ class LTLFormulaNext(LTLSubFormula):
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
         return LTLFormulaNext(self._subformula.in_negation_normal_form_prop(prop_neg))
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # X phi
 
-        nxt = set([(frozenset([]), frozenset([self._subformula]), frozenset([]))])
+        nxt = SortedSet([
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self._subformula]), AcceptanceSet([]))
+        ])
         return nxt
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._subformula.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._subformula.get_sub_formulas())
 
     def __str__(self):
         return "X " + str(self._subformula)
@@ -642,7 +779,7 @@ class LTLFormulaNext(LTLSubFormula):
         return self._subformula.__lt__(other.subformula())
 
     def __hash__(self) -> int:
-        return hash((self._subformula,"X"))
+        return hash((self._subformula,string_hash("X")))
 
 
 class LTLFormulaNegation(LTLSubFormula):
@@ -660,12 +797,12 @@ class LTLFormulaNegation(LTLSubFormula):
     def in_negation_normal_form_prop(self, prop_neg: bool)->'LTLSubFormula':
         return self._subformula.in_negation_normal_form_prop(not prop_neg)
 
-    def in_set_dnf(self)->TDisjunctiveNormalForm:
+    def in_set_dnf(self)->DisjunctiveNormalForm:
         # not implemented, assumes the formula is transformed to negation normal form first.
         raise LTLException("Transform to negation normal form first")
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._subformula.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._subformula.get_sub_formulas())
 
     def __str__(self):
         return "not (" + str(self._subformula) + ")"
@@ -677,7 +814,7 @@ class LTLFormulaNegation(LTLSubFormula):
         return self._subformula.__lt__(other.subformula())
 
     def __hash__(self) -> int:
-        return hash((self._subformula,"N"))
+        return hash((self._subformula, string_hash("N")))
 
 
 class LTLFormulaAlways(LTLSubFormula):
@@ -698,20 +835,19 @@ class LTLFormulaAlways(LTLSubFormula):
             return LTLFormulaEventually(phi)
         return LTLFormulaAlways(phi)
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # G phi = phi and XG phi
 
-        uf:Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        uf = self._subformula.unfold()  # type: ignore
-        ng: AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                AbstractSet['LTLSubFormula']]] = set([(frozenset([]), \
-                                    frozenset([self]), frozenset([]))])
+        uf: TUnfolding
+        uf = self._subformula.unfold()
+        ng: TUnfolding = SortedSet([
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), AcceptanceSet([]))
+        ])
         return LTLSubFormula.pair_set_dnf_and(uf, ng)
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._subformula.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._subformula.get_sub_formulas())
 
     def __str__(self):
         return "G (" + str(self._subformula) + ")"
@@ -723,7 +859,7 @@ class LTLFormulaAlways(LTLSubFormula):
         return self._subformula.__lt__(other.subformula())
 
     def __hash__(self) -> int:
-        return hash((self._subformula,"G"))
+        return hash((self._subformula, string_hash("G")))
 
 class LTLFormulaEventually(LTLSubFormula):
     '''Eventually formula.'''
@@ -743,18 +879,19 @@ class LTLFormulaEventually(LTLSubFormula):
             return LTLFormulaAlways(phi)
         return LTLFormulaEventually(phi)
 
-    def unfold(self)->AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                        AbstractSet['LTLSubFormula']]]:
+    def unfold(self)->TUnfolding:
         # unfold in now and next
         # F phi = phi or XF phi
 
-        uf = self._subformula.unfold()
-        nf: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]
-        nf = set([(frozenset([]), frozenset([self]), frozenset([self]))])
-        return uf.union(nf)  # type: ignore
+        uf: TUnfolding = self._subformula.unfold()
+        nf: TUnfolding
+        nf = SortedSet([
+            (ConjunctiveNormalForm([]), ConjunctiveNormalForm([self]), AcceptanceSet([self]))
+        ])
+        return uf.union(nf)
 
-    def get_sub_formulas(self)->AbstractSet['LTLSubFormula']:
-        return set([self]).union(self._subformula.get_sub_formulas())
+    def get_sub_formulas(self)->SortedSet: # SortedSet['LTLSubFormula']:
+        return SortedSet([self]).union(self._subformula.get_sub_formulas())
 
     def _is_liveness_formula(self):
         return True
@@ -769,35 +906,35 @@ class LTLFormulaEventually(LTLSubFormula):
         return self._subformula.__lt__(other.subformula())
 
     def __hash__(self) -> int:
-        return hash((self._subformula,"F"))
+        return hash((self._subformula, string_hash("F")))
 
 class LTLFormula:
     '''LTL formula model.'''
 
     _expression: LTLSubFormula
-    _alphabet: Optional[Set[str]]
+    _alphabet: Optional[SortedSet]
     _prop_definitions: Dict[str,Set[str]]
 
-    def __init__(self, expression: LTLSubFormula, alphabet: Optional[Set[str]], \
+    def __init__(self, expression: LTLSubFormula, alphabet: Optional[SortedSet], \
                  definitions: Optional[Dict[str,Set[str]]]):
         self._expression = expression
         self._alphabet = alphabet
         self._prop_definitions = definitions if definitions is not None else {}
 
-    def _set_dnf_and(self, s1: TDisjunctiveNormalForm, s2: TDisjunctiveNormalForm) -> \
-          TDisjunctiveNormalForm:
+    def _set_dnf_and(self, s1: DisjunctiveNormalForm, s2: DisjunctiveNormalForm) -> \
+          DisjunctiveNormalForm:
         '''Determine the conjunction of two formulas in set-disjunctive normal form, i.e., a set
         (disjunction) of sets (conjunctions) of formulas.'''
-        result = set()
+        result = DisjunctiveNormalForm()
         for dt1 in s1:
             for dt2 in s2:
-                nt = set()
+                nt = ConjunctiveNormalForm()
                 nt.update(dt1)
                 nt.update(dt2)
-                result.add(frozenset(nt))
+                result.add(nt)
         return result
 
-    def _determine_alphabet(self)->Set[str]:
+    def _determine_alphabet(self)->SortedSet:
         # if alphabet is explicitly defined return it
         # other wise set of propositions, with those define replace by their sets,
 
@@ -810,7 +947,7 @@ class LTLFormula:
             return propositions
 
         # determine the alphabet from the defined propositions
-        res: Set[str] = set()
+        res: SortedSet = SortedSet()
         for p in propositions:
             if p in self._prop_definitions:
                 res.update(self._prop_definitions[p])
@@ -821,23 +958,28 @@ class LTLFormula:
         '''Convert the LTL formula to a Büchi automaton that accepts precisely all the
         words that satisfy the formula.'''
 
-        def _unfold(s: AbstractSet[LTLSubFormula])->AbstractSet[Tuple[TConjunctiveNormalForm, \
-                                    TConjunctiveNormalForm,AbstractSet['LTLSubFormula']]]:
+        # def _unfold(s: AbstractSet[LTLSubFormula])->SortedSet[Tuple[TConjunctiveNormalForm, \
+        #                             TConjunctiveNormalForm,SortedSet['LTLSubFormula']]]:
+        def _unfold(s: ConjunctiveNormalForm)->TUnfolding:
             '''Unfold set of subformulas into DNF and splitting now and next.'''
 
             # return a set of triples of (frozen) sets of now and next formulas and acceptance sets
-            result:AbstractSet[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                                    AbstractSet['LTLSubFormula']]] = set([(frozenset([]), \
-                                        frozenset([]), frozenset([]))])
-            for phi in sorted(s):
-                unf: Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
-                               AbstractSet['LTLSubFormula']]]
+            # result:Set[Tuple[TConjunctiveNormalForm,TConjunctiveNormalForm, \
+            #                         AbstractSet['LTLSubFormula']]] = set([(frozenset([]), \
+            #                             frozenset([]), frozenset([]))])
+            result:TUnfolding = SortedSet([(
+                ConjunctiveNormalForm(),
+                ConjunctiveNormalForm(),
+                AcceptanceSet()
+            )])
+            for phi in s:
+                unf: SortedSet
                 unf = phi.unfold()  # type: ignore
                 result = LTLSubFormula.pair_set_dnf_and(result, unf)
             return result
 
-        def state_string(s: AbstractSet[LTLSubFormula])->str:
-            return ','.join([str(f) for f in sorted(s)])
+        def state_string(s: SortedSet)->str:
+            return ','.join([str(f) for f in s])
 
         # def printState(s):
         #     print(state_string(s))
@@ -846,19 +988,22 @@ class LTLFormula:
         #     print(','.join([str(f) for f in sorted(s)]))
 
         # set of states by names
-        states: Set[str]
+        states: SortedSet # SortedSet[str]
         # index of the sets of subformulas corresponding to the states
-        state_index: Dict[str,AbstractSet[LTLSubFormula]]
+        # state_index: SortedDict[str,ConjunctiveNormalForm]
+        state_index: SortedDict
         # a counter of how many states we have created
         state_counter: int
         # names of the initial states
-        initial_state_names: Set[str]
+        initial_state_names: SortedSet # SortedSet[str]
         # lookup from set of formulas (as a string) to the name of the corresponding state
-        state_index_f: Dict[str,str]
+        # state_index_f: SortedDict[str,str]
+        state_index_f: SortedDict
         # keep track of the set of acceptance sets associated with the transitions
-        acceptance_sets: Dict[Tuple[str,str,str],Set[str]]
+        # maps a transition to ...
+        acceptance_sets: SortedDict # SortedDict[Tuple[str,str,str],SortedSet[str]]
 
-        def add_state(s: AbstractSet[LTLSubFormula], initial: bool = False)->bool:
+        def add_state(s: ConjunctiveNormalForm, initial: bool = False)->bool:
             '''Add a state. Returns True if the state was added, False if it already exists.'''
 
             nonlocal state_counter
@@ -895,9 +1040,9 @@ class LTLFormula:
         # determine acceptance sets
         # Let FSA reduce Generalized sets
 
-        def add_transition(s: AbstractSet[LTLSubFormula], edge_propositional_formula: \
-                           AbstractSet[LTLSubFormula], t: AbstractSet[LTLSubFormula], \
-                            acc: AbstractSet[LTLSubFormula]):
+        def add_transition(s: ConjunctiveNormalForm, edge_propositional_formula: \
+                           ConjunctiveNormalForm, t: ConjunctiveNormalForm, \
+                            acc: AcceptanceSet):
             '''Add a transition from the state corresponding to s, to the state corresponding
             to t, edges labelled by the propositional formula edgeSpec and by acceptance set acc'''
 
@@ -915,42 +1060,46 @@ class LTLFormula:
                 # corresponding to t, labelled with symbol
                 trans = (state_index_f[ss], symbol, state_index_f[ts])
                 # create an entry in the acceptanceSets dictionary
-                acceptance_sets[trans] = set()
+                acceptance_sets[trans] = AcceptanceSet()
                 # add the acceptance sets (as strings) from acc
-                acceptance_sets[trans].update({str(a) for a in acc})
+                acceptance_sets[trans].update(acc)
 
         # initialize
-        acceptance_sets = {}
+        acceptance_sets = SortedDict() # of transitions to AcceptanceSets
         # initial states from the initial formula expression
-        initial_states = self._expression.in_negation_normal_form().in_set_dnf()
-        initial_state_names = set()
+        initial_states: DisjunctiveNormalForm = self._expression.in_negation_normal_form().in_set_dnf()
+        initial_state_names = SortedSet()
         # statesToUnfold keeps track of newly created states that need to be unfolded
         # into now and next, initialized with the initial states
-        states_to_unfold: Set[AbstractSet[LTLSubFormula]] = initial_states.copy()  # type: ignore
+        states_to_unfold: DisjunctiveNormalForm = initial_states.copy()
 
         # check if we have an explicit alphabet, otherwise, compute
         alphabet = self._determine_alphabet()
 
         # Create the automaton
         state_counter = 1
-        state_index_f = {}
-        states = set()
-        state_index = {}
+        state_index_f = SortedDict()
+        states = SortedSet()
+        state_index = SortedDict()
 
         # add the states we start from as initial states
-        for s in sorted(states_to_unfold):
+        for s in states_to_unfold:
             add_state(s, True)
 
         # as long as we states that still need to be unfolded
         while len(states_to_unfold) > 0:
             # take one state from the set and remove it
-            s = next(iter(states_to_unfold))
+            # s: ConjunctiveNormalForm = states_to_unfold[0] # type: ignore
+            s: ConjunctiveNormalForm = next(iter(states_to_unfold))
             states_to_unfold.remove(s)
 
             # determine outgoing transitions from unfolded state
             transitions = _unfold(s)
-            for t in sorted(transitions):
-                t1: Set[LTLSubFormula] = t[1]  # type: ignore
+            for t in transitions:
+                # t[0]: ConjunctiveNormalForm: edge propositional formula
+                # t[1]: ConjunctiveNormalForm: target state
+                # t[2]: AcceptanceSet; acceptance sets satisfied in this transition
+                t1: ConjunctiveNormalForm = t[1]
                 # add state if it doesn't exist yet
                 if add_state(t1):
                     # the state is new, so needs unfolding
@@ -963,23 +1112,22 @@ class LTLFormula:
         # and store them in a dictionary
         # create initial dictionary with empty sets
         # maps a state (str) to a set of set of str
-        acceptance_sets_states: Dict[str,Set[AbstractSet[str]]]
-        acceptance_sets_states = {s:set() for s in states}
+        acceptance_sets_states: SortedDict
+        acceptance_sets_states = SortedDict({s:SortedSet() for s in states})
         # for all transitions, keys of acceptanceSets
-        for t in sorted(acceptance_sets):
+        for t in acceptance_sets:
             # add the acceptance set to the set of acceptance sets of the target state
-            acceptance_sets_states[t[2]].add(frozenset(acceptance_sets[t]))
+            acceptance_sets_states[t[2]].add(acceptance_sets[t])
 
         # collect all the acceptance labels from all states
-        acceptance_labels: Set[AbstractSet[str]]
+        acceptance_labels: SortedSet
         acceptance_labels = reduce(lambda res, acc: res.union(acc), \
-                                   acceptance_sets_states.values(), set())
-        # print(acceptanceLabels)
+                                   acceptance_sets_states.values(), SortedSet())
 
         # associate all (non empty) acceptance labels with a unique number starting from 1
-        state_labels_acceptance: Dict[AbstractSet[str],int] = {}
+        state_labels_acceptance: SortedDict = SortedDict()
         k = 1
-        for a in sorted(acceptance_labels):
+        for a in acceptance_labels:
             if len(a) > 0:
                 state_labels_acceptance[a] = k
                 k += 1
@@ -991,35 +1139,35 @@ class LTLFormula:
         f = Automaton()
 
         # add states without acceptance label
-        for s in sorted(states):
+        for s in states:
             f.add_state(build_state_name(s, 0))
 
         # make initial states
-        for s in sorted(initial_state_names):
+        for s in initial_state_names:
             f.make_initial_state(build_state_name(s, 0))
 
         # for all states with incoming acceptance labels make different states
-        for s in sorted(acceptance_sets_states):
-            for a in sorted(acceptance_sets_states[s]):
+        for s in acceptance_sets_states:
+            for a in acceptance_sets_states[s]:
                 if len(a) > 0:
                     f.add_state(build_state_name(s, state_labels_acceptance[a]))
 
         # construct appropriate transitions
-        for t in sorted(acceptance_sets):
-            a = frozenset(acceptance_sets[t])
+        for t in acceptance_sets:
+            a = acceptance_sets[t]
             if len(a) == 0:
                 target_state = build_state_name(t[2], 0)
             else:
                 target_state = build_state_name(t[2], state_labels_acceptance[a])
-            for s in sorted(f.states()):
-                if s.startswith("("+t[0]):
-                    f.add_transition(s, t[1], target_state)
+            for st in sorted(f.states()):
+                if st.startswith("("+t[0]):
+                    f.add_transition(st, t[1], target_state)
 
         # compute acceptance sets
         # one for each non-empty set
-        acceptance_sets_keys = reduce(lambda res, acc: res.union(acc), acceptance_labels, set())
+        acceptance_sets_keys = reduce(lambda res, acc: res.union(acc), acceptance_labels, SortedSet())
         generalized_acceptance_sets = []
-        for k in sorted(acceptance_sets_keys):
+        for k in acceptance_sets_keys:
             acceptance_state_labels = [state_labels_acceptance[l] for l in acceptance_labels \
                                        if k in l]
             acc_set_of_states = [s for s in f.states() if _acceptance_index(s) in \
@@ -1029,12 +1177,12 @@ class LTLFormula:
 
         # if there are no acceptance sets, we need to make all states accepting
         if len(generalized_acceptance_sets) == 0:
-            for s in sorted(f.states()):
-                f.make_final_state(s)
+            for st in sorted(f.states()):
+                f.make_final_state(st)
         else:
             # set the first acceptance set as accepting states
-            for s in sorted(generalized_acceptance_sets[0]):
-                f.make_final_state(s)
+            for st in sorted(generalized_acceptance_sets[0]):
+                f.make_final_state(st)
             # add all following ones as transformations
             f = f.add_generalized_buchi_acceptance_sets(generalized_acceptance_sets[1:])
 
@@ -1064,9 +1212,9 @@ class LTLFormula:
         if form is None or name is None:
             sys.exit(1)
         phi: LTLSubFormula
-        alphabet: Optional[Set[str]]
+        alphabet: Optional[SortedSet]
         definitions: Optional[Dict[str,Set[str]]]
-        (phi, alphabet, definitions) = form
+        (phi, alphabet, definitions) = (form[0],SortedSet(form[1]),form[2])
         return name, LTLFormula(phi, alphabet, definitions)
 
     def __str__(self)->str:
