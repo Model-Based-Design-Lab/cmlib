@@ -10,51 +10,10 @@ from sortedcontainers import SortedDict, SortedSet
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libltlgrammar import parse_ltl_dsl
 from finitestateautomata.utils.utils import FiniteStateAutomataException, string_hash
+from finitestateautomata.utils.normalforms import ConjunctiveNormalForm, DisjunctiveNormalForm
 
 LTL_PROPOSITION_SIMPLE = re.compile(r"^[a-zA-Z]$")
 
-class ConjunctiveNormalForm(SortedSet):
-    '''Representing a conjunction of formulas as sorted set of formulas.'''
-    def __init__(self, iterable=None, key=None):
-        super().__init__(iterable)
-
-    def __hash__(self)->int:
-        result: int = 1
-        for el in self:
-            result = hash((result, el))
-        return result
-
-    def __eq__(self, other: 'ConjunctiveNormalForm')->bool:
-        assert(isinstance(other, ConjunctiveNormalForm))
-        if len(self) != len(other):
-            return False
-        if hash(self) != hash(other):
-            return False
-        for si, oi in zip(self, other):
-            if not si.__eq__(oi):
-                return False
-        return True
-
-    def __lt__(self, other: 'ConjunctiveNormalForm')->bool:
-        assert isinstance(other, ConjunctiveNormalForm)
-        ls = len(self)
-        lo = len(other)
-        if ls != lo:
-            return ls<lo
-        hs = hash(self)
-        ho = hash(other)
-        if hs != ho:
-            return hs<ho
-        for si, oi in zip(self, other):
-            if si.__lt__(oi):
-                return True
-            if oi.__lt__(si):
-                return False
-        return False
-
-# TAcceptanceSet = SortedSet['LTLSubFormula']
-# TODO: I guess we need to make the acceptance set hashable.
-# TAcceptanceSet = SortedSet
 class AcceptanceSet(SortedSet):
     '''Representing a of (until) formulas that represent acceptance sets for a translated formula.'''
     def __init__(self, iterable=None, key=None):
@@ -95,46 +54,6 @@ class AcceptanceSet(SortedSet):
 # TUnfolding = SortedSet[Tuple[ConjunctiveNormalForm,ConjunctiveNormalForm, \
 #                                          TAcceptanceSet]]
 TUnfolding = SortedSet
-
-# TDisjunctiveNormalForm = Set[ConjunctiveNormalForm]
-class DisjunctiveNormalForm(SortedSet):
-    '''Representing a disjunction of conjunctive formulas as sorted set of ConjunctiveNormalForm.
-    Note that it should contain only objects of type ConjunctiveNormalForm'''
-    def __init__(self, iterable=None, key=None):
-        super().__init__(iterable)
-
-    def __hash__(self)->int:
-        # TODO: is this really deterministic?
-        return hash(frozenset(self))
-
-    def __eq__(self, other: 'DisjunctiveNormalForm')->bool:
-        assert(isinstance(other, DisjunctiveNormalForm))
-        if len(self) != len(other):
-            return False
-        if hash(self) != hash(other):
-            return False
-        for si, oi in zip(self, other):
-            if not si.__eq__(oi):
-                return False
-        return True
-
-    def __lt__(self, other: 'DisjunctiveNormalForm')->bool:
-        assert isinstance(other, DisjunctiveNormalForm)
-        ls = len(self)
-        lo = len(other)
-        if ls != lo:
-            return ls<lo
-        hs = hash(self)
-        ho = hash(other)
-        if hs != ho:
-            return hs<ho
-        for si, oi in zip(self, other):
-            if si.__lt__(oi):
-                return True
-            if oi.__lt__(si):
-                return False
-        return False
-
 
 
 class LTLException(FiniteStateAutomataException):
@@ -220,37 +139,14 @@ class LTLSubFormula:
         return False
 
     @staticmethod
-    def _set_dnf_and(s1: DisjunctiveNormalForm, s2: DisjunctiveNormalForm) -> \
-        DisjunctiveNormalForm:
-        '''Perform logical and operation on two formulas in set disjunctive normal form.'''
-        result:DisjunctiveNormalForm = DisjunctiveNormalForm()
-        for dt1 in s1:
-            for dt2 in s2:
-                nt: ConjunctiveNormalForm = ConjunctiveNormalForm()
-                nt.update(dt1)
-                nt.update(dt2)
-                result.add(nt)
-        return result
-
-    @staticmethod
-    def set_dnf_or(s1: DisjunctiveNormalForm, s2: DisjunctiveNormalForm) -> \
-         DisjunctiveNormalForm:
-        '''Perform logical or operation on two formulas in set disjunctive normal form.'''
-        return s1.union(s2)
-
-    @staticmethod
     def pair_set_dnf_and(
         p1: TUnfolding, p2: TUnfolding) -> TUnfolding:
         '''Perform logical and operation on now, next, acceptance set triples'''
         res = SortedSet()
         for dt1 in p1:
             for dt2 in p2:
-                nt_now = ConjunctiveNormalForm([])
-                nt_now.update(dt1[0])
-                nt_now.update(dt2[0])
-                nt_nxt = ConjunctiveNormalForm([])
-                nt_nxt.update(dt1[1])
-                nt_nxt.update(dt2[1])
+                nt_now = dt1[0].logical_and(dt2[0])
+                nt_nxt = dt1[1].logical_and(dt2[1])
                 nt_acc:AcceptanceSet = AcceptanceSet()
                 nt_acc.update(dt1[2])
                 nt_acc.update(dt2[2])
@@ -334,7 +230,6 @@ class LTLFormulaFalse(LTLSubFormula):
     def __hash__(self) -> int:
         return 2
 
-
 class LTLFormulaProposition(LTLSubFormula):
     '''Proposition formula.'''
 
@@ -396,7 +291,6 @@ class LTLFormulaProposition(LTLSubFormula):
 
     def __hash__(self) -> int:
         return hash((self._negated, string_hash(self._proposition)))
-
 
 class LTLFormulaUntil(LTLSubFormula):
     '''Until formula.'''
@@ -473,7 +367,6 @@ class LTLFormulaUntil(LTLSubFormula):
     def __hash__(self) -> int:
         return hash((self._phi1, self._phi2, string_hash("U")))
 
-
 class LTLFormulaRelease(LTLSubFormula):
     '''Release formula.'''
 
@@ -545,7 +438,6 @@ class LTLFormulaRelease(LTLSubFormula):
     def __hash__(self) -> int:
         return hash((self._phi1, self._phi2, string_hash("R")))
 
-
 class LTLFormulaImplication(LTLSubFormula):
     '''Implication formula'''
 
@@ -588,7 +480,6 @@ class LTLFormulaImplication(LTLSubFormula):
     def __hash__(self) -> int:
         return hash((self._phi1, self._phi2, string_hash("I")))
 
-
 class LTLFormulaConjunction(LTLSubFormula):
     '''Conjunction of a set (not necessarily two) of subformulas'''
 
@@ -611,7 +502,7 @@ class LTLFormulaConjunction(LTLSubFormula):
         sub = [phi.in_set_dnf() for phi in self._subformulas]
         result:DisjunctiveNormalForm = LTLFormulaTrue().in_set_dnf()
         for s in sub:
-            result = LTLSubFormula._set_dnf_and(result, s)
+            result = result.logical_and(s)
         return result
 
     def unfold(self)->TUnfolding:
@@ -666,7 +557,6 @@ class LTLFormulaConjunction(LTLSubFormula):
             h = hash((h, phi))
         return h
 
-
 class LTLFormulaDisjunction(LTLSubFormula):
     '''Disjunction formula.'''
 
@@ -689,7 +579,7 @@ class LTLFormulaDisjunction(LTLSubFormula):
         sub = [phi.in_set_dnf() for phi in self._subformulas]
         result = LTLFormulaFalse().in_set_dnf()
         for s in sub:
-            result = LTLSubFormula.set_dnf_or(result, s)
+            result = result.logical_or(s)
         return result
 
     def unfold(self)->TUnfolding:
@@ -741,7 +631,6 @@ class LTLFormulaDisjunction(LTLSubFormula):
             h = hash((h, phi))
         return h
 
-
 class LTLFormulaNext(LTLSubFormula):
     '''Next formula.'''
 
@@ -781,7 +670,6 @@ class LTLFormulaNext(LTLSubFormula):
     def __hash__(self) -> int:
         return hash((self._subformula,string_hash("X")))
 
-
 class LTLFormulaNegation(LTLSubFormula):
     '''Negation formula.'''
 
@@ -815,7 +703,6 @@ class LTLFormulaNegation(LTLSubFormula):
 
     def __hash__(self) -> int:
         return hash((self._subformula, string_hash("N")))
-
 
 class LTLFormulaAlways(LTLSubFormula):
     '''Always formula.'''
