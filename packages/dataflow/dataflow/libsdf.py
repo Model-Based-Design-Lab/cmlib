@@ -421,41 +421,38 @@ class DataflowGraph:
         return mp_scale_vector(c, ts)
 
     def _symbolic_firing(self, a: str, n: int, timestamps:Dict[str,TMPVector])->bool:
-        '''Attempt to fire actor a for the n'th time in the symbolic simulation of the graph.
+        '''Attempt to fire actor a for the n'th time in the symbolic simulation of the graph using the symbolic timestamps recoded in timestamps.
         Return if the actor could be fired successfully or not.'''
         # FIXME: this method seems a bit inefficient.
         el: str = self._actor_firing_label(a, n)
-        if el in timestamps:
-            # This firing already has a determined time stamp
-            return False
-        # check if the dependencies are complete
+
+        # check if the dependencies are complete and determine the symbolic timestamp
         ts = self._symbolic_time_stamp_minus_infinity()
+        # check the input channels
         for ch in self.in_channels(a):
+            # how many tokens do we need from this input?
             cr = self.consumption_rate(ch)
-            cons = cr * (n+1)
-            # determine how many initial tokens are consumed in the firing
-            if self.number_of_initial_tokens_of_channel(ch) >= cons:
-                it = cons
-            else:
-                it = self.number_of_initial_tokens_of_channel(ch)
 
-            # determine the symbolic time stamps of the combined initial tokens consumed
-            for k in range(it):
-                ts = self._symbolic_time_stamp_max(ts, timestamps[self._initial_token_label(ch, k)])
+            # for each token we need, check if we have it and incorporate it in
+            # the symbolic time stamp
+            for k in range(cr*n, cr*(n+1)):
+                # check if it is an initial token of the channel
+                if k < self.number_of_initial_tokens_of_channel(ch):
+                    ts = self._symbolic_time_stamp_max(ts, \
+                            timestamps[self._initial_token_label(ch, k)])
+                else:
+                    # if not, determine the producing firing completion
+                    b = self._chan_producer[ch]
+                    pr = self.production_rate(ch)
+                    # which firing produced token k ?
+                    m = (k-self.number_of_initial_tokens_of_channel(ch)) // pr
+                    elm = self._actor_firing_label(b, m)
+                    if not elm in timestamps:
+                        # the production is not available yet
+                        return False
+                    ts = self._symbolic_time_stamp_max(ts, self._symbolic_time_stamp_scale( \
+                            self.execution_time_of_actor(b), timestamps[elm]))
 
-            # determine how many tokens remain to be produced by the producing actor
-            rem = cons - it
-            b = self._chan_producer[ch]
-            pr = self.production_rate(ch)
-            for k in range(rem):
-                # which firing produced token n ?
-                m = k // pr
-                elm = self._actor_firing_label(b, m)
-                if not elm in timestamps:
-                    # the production is not available yet
-                    return False
-                ts = self._symbolic_time_stamp_max(ts, self._symbolic_time_stamp_scale( \
-                    self.execution_time_of_actor(b), timestamps[elm]))
         timestamps[el] = ts
         return True
 
@@ -473,6 +470,8 @@ class DataflowGraph:
         A SDFDeadlockException is raised if the graph deadlocks.
         '''
         self._initialize_symbolic_time_stamps()
+        # keep track of the symbolic timestamp vectors of input tokens, output
+        # tokens, initial tokens and actor firings
         timestamps: Dict[str,TMPVector] = {}
         # set the symbolic time stamps for all input tokens
         for i in self._inputs:
@@ -489,16 +488,21 @@ class DataflowGraph:
         for a in self._actors_and_io:
             actor_firings[a] = 0
 
+        # keep track of the number of computed time stamps at the
+        # beginning and end of iterations of the while loop
         old_len = len(timestamps)
+        # the final number of timestamps we should collect
+        final_len = self.repetition_vector_sum()+self.number_of_initial_tokens()
+
         # while we need to compute more symbolic time stamps to complete an iteration...
-        while len(timestamps)<self.repetition_vector_sum()+self.number_of_initial_tokens():
+        while len(timestamps)<final_len:
             # try to fire the actors, inputs and outputs one by one
             for a in self._actors_and_io:
                 # only if it still needs firings to complete the iteration
                 if actor_firings[a] < self.repetitions(a):
                     # determine the label
                     el = self._actor_firing_label(a, actor_firings[a])
-                    # and if we don't yet have it
+                    # and if we don't yet have it (inputs are already defined)
                     if not el in timestamps:
                         # try to execute the symbolic firing
                         if self._symbolic_firing(a, actor_firings[a], timestamps):
