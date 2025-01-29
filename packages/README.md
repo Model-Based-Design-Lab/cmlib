@@ -193,6 +193,7 @@ dataflow model [-h] [-op OPERATION] [-p PERIOD] [-is INITIALSTATE] [-it INPUTTRA
 |```ganttchart```|make a Gantt chart of the graph as an XML file for the cmtrace tool (<https://github.com/Model-Based-Design-Lab/cmtrace>)|```-op, -ni```|
 |```ganttchart-zero-based```|make a Gantt chart of the graph as an XML file for the cmtrace tool (<https://github.com/Model-Based-Design-Lab/cmtrace>) assuming actor firings cannot start before time 0|```-op```|
 |```converttosinglerate```|convert to a single rate graph|```-op```|
+|```converttosdfx```|convert to the SDF3 xml format|```-op```|
 
 ### Max-Plus Matrix models
 
