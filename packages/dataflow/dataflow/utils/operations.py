@@ -67,6 +67,7 @@ OperationDescriptions = [
     'computes repetition vector',
     'checks graph for deadlock',
     'computes throughput' ,
+    'computes throughput of a given output' ,
     'compute latency, requires period and optional initial state',
     'compute generalized latency, requires period',
     'compute state space representation of the graph',

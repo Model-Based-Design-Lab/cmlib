@@ -4,6 +4,9 @@ import copy
 from functools import reduce
 from io import StringIO
 import sys
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+
 from typing import Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
 from dataflow.libsdfgrammar import parse_sdf_dsl
@@ -14,7 +17,6 @@ from dataflow.maxplus.maxplus import TThroughputValue, mp_throughput, mp_general
       mp_scale_vector, mp_split_sequence, TTimeStamp, TTimeStampList, TMPVector, TMPMatrix
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 from dataflow.libmpm import MaxPlusMatrixModel
-import xml.etree.ElementTree as ET
 
 # constants
 DEFAULT_ACTOR_EXECUTION_TIME = Fraction(1.0)
@@ -136,6 +138,26 @@ class DataflowGraph:
                 return self._channel_specs[ch][CONS_RATE_SPEC_KEY]
         return 1
 
+    def outgoing_channels_of_actor(self, a: str)->Set[str]:
+        '''Return the set of outgoing channels of actor a.'''
+        if a in self._out_channels:
+            return self._out_channels[a]
+        return set()
+
+    def incoming_channels_of_actor(self, a: str)->Set[str]:
+        '''Return the set of incoming channels of actor a.'''
+        if a in self._in_channels:
+            return self._in_channels[a]
+        return set()
+
+    def consumer_of_channel(self, ch: str)->str:
+        '''Get the consumer of the channel ch.'''
+        return self._chan_consumer[ch]
+
+    def producer_of_channel(self, ch: str)->str:
+        '''Get the producer of the channel ch.'''
+        return self._chan_producer[ch]
+
     def production_rate(self, ch: str)->int:
         '''Get the production rate of the channel. Defaults to 1 if it is not specified.'''
         if ch in self._channel_specs:
@@ -242,14 +264,6 @@ class DataflowGraph:
     def add_input_signal(self, n: str, s: TTimeStampList):
         '''Add input signal with name n and sequences s.'''
         self._input_signals[n] = s
-
-    def producer_of_channel(self, ch: str):
-        '''Get the producer to channel ch.'''
-        return self._chan_producer[ch]
-
-    def consumer_of_channel(self, ch):
-        '''Get the consumer from channel ch.'''
-        return self._chan_consumer[ch]
 
     def _new_channel_name(self)->str:
         '''Generate a free channel name'''
@@ -967,36 +981,20 @@ class DataflowGraph:
         '''Convert the model to a string representation in SDF3's xml format using
         the provided name.'''
 
-        def _actor_specs(a: str, actors_with_spec: Set[str])->str:
-            # if the specs of actor a have already been added to some instance of the actor,
-            # return an empty string
-            if a in actors_with_spec:
-                return ''
-            # mark that the specs have been written
-            actors_with_spec.add(a)
-            # if a has no specs
-            if not a in self._actor_specs:
-                return ''
-            # if a has specs, but no execution time spec
-            if not EXECUTION_TIME_SPEC_KEY in self._actor_specs[a]:
-                return ''
-            # otherwise return the execution time spec for the DSL
-            return f'[{self._actor_specs[a][EXECUTION_TIME_SPEC_KEY]}]'
+        def out_port_name(c: str)->str:
+            return f"to_{c}"
 
-        def _channel_specs(ch: str)->str:
-            '''Generate the channel spec for the channel.'''
-            specs = []
-            if ch in self._channel_specs:
-                if CONS_RATE_SPEC_KEY in self._channel_specs[ch]:
-                    specs.append(' consumption rate: ' \
-                                 f'{self._channel_specs[ch][CONS_RATE_SPEC_KEY]} ')
-                if PROD_RATE_SPEC_KEY in self._channel_specs[ch]:
-                    specs.append(' production rate: ' \
-                                 f'{self._channel_specs[ch][PROD_RATE_SPEC_KEY]} ')
-                if INITIAL_TOKENS_SPEC_KEY in self._channel_specs[ch]:
-                    specs.append(' initial tokens: ' \
-                                 f'{self._channel_specs[ch][INITIAL_TOKENS_SPEC_KEY]} ')
-            return ';'.join(specs)
+        def in_port_name(c: str)->str:
+            return f"from_{c}"
+
+        def ports_of_actor(a: str)->List[Dict[str,str]]:
+            '''Return the list of ports of actor a.'''
+            res: List[Dict[str,str]] = []
+            for c in self.outgoing_channels_of_actor(a):
+                res.append({'name': out_port_name(c), 'type': 'out', 'rate': str(self.production_rate(c))})
+            for c in self.incoming_channels_of_actor(a):
+                res.append({'name': in_port_name(c), 'type': 'in', 'rate': str(self.consumption_rate(c))})
+            return res
 
         # create string writer for the output
         # Create the root element
@@ -1013,58 +1011,61 @@ class DataflowGraph:
         sdf_node.set("name", name)
         sdf_node.set("type", name)
 
-        for a in self.actors_without_inputs_outputs:
+        proper_actors = self.actors_without_inputs_outputs()
+        for a in proper_actors:
             actor_node = ET.SubElement(sdf_node, "actor")
             actor_node.set("name", a)
             actor_node.set("type", a)
-            for p in portsOfActor(a):
+            for p in ports_of_actor(a):
                 port_node = ET.SubElement(actor_node, "port")
                 port_node.set("name", p["name"])
                 port_node.set("type", p["type"])
                 port_node.set("rate", p["rate"])
 
-        for c in self.channels:
+        for i in self.inputs():
+            input_node = ET.SubElement(sdf_node, "input")
+            input_node.set("name", i)
+
+        for o in self.outputs():
+            output_node = ET.SubElement(sdf_node, "output")
+            output_node.set("name", o)
+
+        for c in self.channels():
             channel_node = ET.SubElement(sdf_node, "channel")
-            channel_node.set("name", a)
-
-        for i in self.inputs:
-            pass
-
-        for i in self.outputs:
-            pass
+            channel_node.set("name", c)
+            if (self.producer_of_channel(c) in proper_actors):
+                channel_node.set("srcActor", self.producer_of_channel(c))
+                channel_node.set("srcPort", out_port_name(c))
+            else:
+                channel_node.set("srcInput", self.producer_of_channel(c))
+            if (self.consumer_of_channel(c) in proper_actors):
+                channel_node.set("dstActor", self.consumer_of_channel(c))
+                channel_node.set("dstPort", in_port_name(c))
+            else:
+                channel_node.set("dstOutput", self.consumer_of_channel(c))
+            if self.number_of_initial_tokens_of_channel(c) > 0:
+                channel_node.set("initialTokens", str(self.number_of_initial_tokens_of_channel(c)))
 
         sdf_properties_node = ET.SubElement(application_graph_node, "sdfProperties")
 
+        for a in self.actors_without_inputs_outputs():
+            actor_properties_node = ET.SubElement(sdf_properties_node, "actorProperties")
+            actor_properties_node.set("actor", a)
+            processor_node = ET.SubElement(actor_properties_node, "processor")
+            processor_node.set("type", "p1")
+            processor_node.set("default", "true")
+            execution_time_node = ET.SubElement(processor_node, "executionTime")
+            execution_time_node.set("time", str(self.execution_time_of_actor(a)))
 
+        for c in self.channels():
+            channel_properties_node = ET.SubElement(sdf_properties_node, "channelProperties")
+            channel_properties_node.set("channel", c)
 
-        if len(self._inputs)>0:
-            output.write('\tinputs ')
-            output.write(', '.join(self._inputs))
-            output.write('\n')
-
-        if len(self._outputs)>0:
-            output.write('\toutputs ')
-            output.write(', '.join(self._outputs))
-            output.write('\n')
-
-        actors_with_spec = set()
-        for ch in self._channels:
-            pr = self._chan_producer[ch]
-            co = self._chan_consumer[ch]
-            output.write(f'\t{pr}{_actor_specs(pr, actors_with_spec)} ')
-            output.write(f' ----{_channel_specs(ch)}----> ')
-            output.write(f'{co}{_actor_specs(co, actors_with_spec)}\n')
-        output.write("}\n")
-
-        if len(self._input_signals) > 0:
-            output.write('\ninput signals\n\n')
-            for inp, inp_sig in self._input_signals.items():
-                input_signal_ratio_list = "["+", ".join([f"{i}" for i in inp_sig])+"]"
-                output.write(f'{inp} = {input_signal_ratio_list}\n')
-
-        result = output.getvalue()
-        output.close()
-        return result
+        sdf3_str = ET.tostring(sdf3_node, encoding='unicode', method='xml')
+        # Format the XML string
+        dom = xml.dom.minidom.parseString(sdf3_str)
+        formatted_sdf3_str = dom.toprettyxml(indent="  ")
+        return formatted_sdf3_str
 
     def as_dsl(self, name: str)->str:
         '''Convert the model to a string representation in the domain specific language using
