@@ -4,6 +4,9 @@ import copy
 from functools import reduce
 from io import StringIO
 import sys
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+
 from typing import Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
 from dataflow.libsdfgrammar import parse_sdf_dsl
@@ -135,6 +138,26 @@ class DataflowGraph:
                 return self._channel_specs[ch][CONS_RATE_SPEC_KEY]
         return 1
 
+    def outgoing_channels_of_actor(self, a: str)->Set[str]:
+        '''Return the set of outgoing channels of actor a.'''
+        if a in self._out_channels:
+            return self._out_channels[a]
+        return set()
+
+    def incoming_channels_of_actor(self, a: str)->Set[str]:
+        '''Return the set of incoming channels of actor a.'''
+        if a in self._in_channels:
+            return self._in_channels[a]
+        return set()
+
+    def consumer_of_channel(self, ch: str)->str:
+        '''Get the consumer of the channel ch.'''
+        return self._chan_consumer[ch]
+
+    def producer_of_channel(self, ch: str)->str:
+        '''Get the producer of the channel ch.'''
+        return self._chan_producer[ch]
+
     def production_rate(self, ch: str)->int:
         '''Get the production rate of the channel. Defaults to 1 if it is not specified.'''
         if ch in self._channel_specs:
@@ -241,14 +264,6 @@ class DataflowGraph:
     def add_input_signal(self, n: str, s: TTimeStampList):
         '''Add input signal with name n and sequences s.'''
         self._input_signals[n] = s
-
-    def producer_of_channel(self, ch: str):
-        '''Get the producer to channel ch.'''
-        return self._chan_producer[ch]
-
-    def consumer_of_channel(self, ch):
-        '''Get the consumer from channel ch.'''
-        return self._chan_consumer[ch]
 
     def _new_channel_name(self)->str:
         '''Generate a free channel name'''
@@ -961,6 +976,96 @@ class DataflowGraph:
 
         return matrix_g.actors_without_inputs_outputs(), (matrix_g.inputs())[:-num],\
              real_input_traces, matrix_g.outputs(), output_traces, firing_starts, firing_durations
+
+    def as_sdfx(self, name: str)->str:
+        '''Convert the model to a string representation in SDF3's xml format using
+        the provided name.'''
+
+        def out_port_name(c: str)->str:
+            return f"to_{c}"
+
+        def in_port_name(c: str)->str:
+            return f"from_{c}"
+
+        def ports_of_actor(a: str)->List[Dict[str,str]]:
+            '''Return the list of ports of actor a.'''
+            res: List[Dict[str,str]] = []
+            for c in self.outgoing_channels_of_actor(a):
+                res.append({'name': out_port_name(c), 'type': 'out', 'rate': str(self.production_rate(c))})
+            for c in self.incoming_channels_of_actor(a):
+                res.append({'name': in_port_name(c), 'type': 'in', 'rate': str(self.consumption_rate(c))})
+            return res
+
+        # create string writer for the output
+        # Create the root element
+        sdf3_node = ET.Element("sdf3")
+        sdf3_node.set("type", "sdf")
+        sdf3_node.set("version", "1.0")
+        sdf3_node.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        sdf3_node.set("xsi:noNamespaceSchemaLocation", "http://www.es.ele.tue.nl/sdf3/xsd/sdf3-sdf.xsd")
+
+        application_graph_node = ET.SubElement(sdf3_node, "applicationGraph")
+        application_graph_node.set("name", name)
+
+        sdf_node = ET.SubElement(application_graph_node, "sdf")
+        sdf_node.set("name", name)
+        sdf_node.set("type", name)
+
+        proper_actors = self.actors_without_inputs_outputs()
+        for a in proper_actors:
+            actor_node = ET.SubElement(sdf_node, "actor")
+            actor_node.set("name", a)
+            actor_node.set("type", a)
+            for p in ports_of_actor(a):
+                port_node = ET.SubElement(actor_node, "port")
+                port_node.set("name", p["name"])
+                port_node.set("type", p["type"])
+                port_node.set("rate", p["rate"])
+
+        for i in self.inputs():
+            input_node = ET.SubElement(sdf_node, "input")
+            input_node.set("name", i)
+
+        for o in self.outputs():
+            output_node = ET.SubElement(sdf_node, "output")
+            output_node.set("name", o)
+
+        for c in self.channels():
+            channel_node = ET.SubElement(sdf_node, "channel")
+            channel_node.set("name", c)
+            if (self.producer_of_channel(c) in proper_actors):
+                channel_node.set("srcActor", self.producer_of_channel(c))
+                channel_node.set("srcPort", out_port_name(c))
+            else:
+                channel_node.set("srcInput", self.producer_of_channel(c))
+            if (self.consumer_of_channel(c) in proper_actors):
+                channel_node.set("dstActor", self.consumer_of_channel(c))
+                channel_node.set("dstPort", in_port_name(c))
+            else:
+                channel_node.set("dstOutput", self.consumer_of_channel(c))
+            if self.number_of_initial_tokens_of_channel(c) > 0:
+                channel_node.set("initialTokens", str(self.number_of_initial_tokens_of_channel(c)))
+
+        sdf_properties_node = ET.SubElement(application_graph_node, "sdfProperties")
+
+        for a in self.actors_without_inputs_outputs():
+            actor_properties_node = ET.SubElement(sdf_properties_node, "actorProperties")
+            actor_properties_node.set("actor", a)
+            processor_node = ET.SubElement(actor_properties_node, "processor")
+            processor_node.set("type", "p1")
+            processor_node.set("default", "true")
+            execution_time_node = ET.SubElement(processor_node, "executionTime")
+            execution_time_node.set("time", str(self.execution_time_of_actor(a)))
+
+        for c in self.channels():
+            channel_properties_node = ET.SubElement(sdf_properties_node, "channelProperties")
+            channel_properties_node.set("channel", c)
+
+        sdf3_str = ET.tostring(sdf3_node, encoding='unicode', method='xml')
+        # Format the XML string
+        dom = xml.dom.minidom.parseString(sdf3_str)
+        formatted_sdf3_str = dom.toprettyxml(indent="  ")
+        return formatted_sdf3_str
 
     def as_dsl(self, name: str)->str:
         '''Convert the model to a string representation in the domain specific language using

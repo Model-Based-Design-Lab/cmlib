@@ -32,6 +32,7 @@ from dataflow.utils.operations import (OP_MPM_CONVOLUTION,
                                        OP_MPM_VECTOR_TRACE_TRANSFORM,
                                        OP_MPM_VECTOR_TRACE_XML,
                                        OP_SDF_CONVERT_TO_SINGLE_RATE,
+                                        OP_SDF_CONVERT_TO_SDFX,
                                        OP_SDF_DEADLOCK, OP_SDF_GANTT_CHART,
                                        OP_SDF_GANTT_CHART_ZERO_BASED,
                                        OP_SDF_GENERALIZED_LATENCY,
@@ -199,6 +200,10 @@ def process_dataflow_operation(args, dsl):
     if args.operation == OP_SDF_CONVERT_TO_SINGLE_RATE:
         dataflow_graph_sr = dataflow_graph.convert_to_single_rate()
         print(dataflow_graph_sr.as_dsl(name+'_singlerate'))
+
+    # converttosdf3 xml
+    if args.operation == OP_SDF_CONVERT_TO_SDFX:
+        print(dataflow_graph.as_sdfx(name+'_sdfx'))
 
     # latency
     if args.operation == OP_SDF_LATENCY:

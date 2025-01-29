@@ -15,13 +15,14 @@ OP_SDF_STATE_SPACE_MATRICES_MODEL = 'statespacematricesmodel'
 OP_SDF_GANTT_CHART = 'ganttchart'
 OP_SDF_GANTT_CHART_ZERO_BASED = 'ganttchart-zero-based'
 OP_SDF_CONVERT_TO_SINGLE_RATE = 'converttosinglerate'
+OP_SDF_CONVERT_TO_SDFX = "converttosdfx"
 
 DataflowOperations = [
     OP_SDF_INPUT_LABELS, OP_SDF_STATE_LABELS, OP_SDF_REP_VECTOR, OP_SDF_DEADLOCK,
     OP_SDF_THROUGHPUT, OP_SDF_THROUGHPUT_OUTPUT, OP_SDF_LATENCY, OP_SDF_GENERALIZED_LATENCY,
     OP_SDF_STATE_SPACE_REPRESENTATION, OP_SDF_STATE_MATRIX, OP_SDF_STATE_SPACE_MATRICES_MODEL,
     OP_SDF_STATE_MATRIX_MODEL, OP_SDF_GANTT_CHART, OP_SDF_GANTT_CHART_ZERO_BASED,
-    OP_SDF_CONVERT_TO_SINGLE_RATE
+    OP_SDF_CONVERT_TO_SINGLE_RATE, OP_SDF_CONVERT_TO_SDFX
     ]
 
 # operations on max-plus models
@@ -66,6 +67,7 @@ OperationDescriptions = [
     'computes repetition vector',
     'checks graph for deadlock',
     'computes throughput' ,
+    'computes throughput of a given output' ,
     'compute latency, requires period and optional initial state',
     'compute generalized latency, requires period',
     'compute state space representation of the graph',
@@ -78,6 +80,7 @@ OperationDescriptions = [
         '(https://github.com/Model-Based-Design-Lab/cmtrace) assuming actor firings cannot ' \
         'start before time 0',
     'convert to a single rate graph',
+    'convert to an SDFX graph in the SDF3 XML format',
     'compute the largest eigenvalue of a matrix',
     'list event sequences defined in the model',
     'list vector sequences defined in the model',
