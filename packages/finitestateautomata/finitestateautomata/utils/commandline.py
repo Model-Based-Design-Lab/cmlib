@@ -258,12 +258,12 @@ def process(args, dsl):
     # convertRegEx (requires regular expression)
     if args.operation == OP_REGEX_CONVERT_FSA:
         res = require_reg_ex(r).as_fsa()
-        print(res.asDSL(name))  # type: ignore
+        print(res.as_dsl(name))  # type: ignore
 
     # convertOmegaRegEx (requires omega-regular expression)
     if args.operation == OP_REGEX_CONVERT_OMEGA_REGEX:
         res = require_reg_ex(r).as_nba()
-        print(res.asDSL(name))  # type: ignore
+        print(res.as_dsl(name))  # type: ignore
 
     # convertLTL (requires ltl formula)
     if args.operation == OP_LTL_CONVERT_LTL:
@@ -277,7 +277,7 @@ def process(args, dsl):
 
     # # test parser
     # if args.operation == 'testLTLParser':
-    #     print(F.asDSL('name'))
+    #     print(F.as_dsl('name'))
 
 if __name__ == "__main__":
     main()
