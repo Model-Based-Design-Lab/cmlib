@@ -999,10 +999,10 @@ class DataflowGraph:
         # create string writer for the output
         # Create the root element
         sdf3_node = ET.Element("sdf3")
-        sdf3_node.set("type", "sdf")
-        sdf3_node.set("version", "1.0")
-        sdf3_node.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
         sdf3_node.set("xsi:noNamespaceSchemaLocation", "http://www.es.ele.tue.nl/sdf3/xsd/sdf3-sdf.xsd")
+        sdf3_node.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+        sdf3_node.set("version", "1.0")
+        sdf3_node.set("type", "sdf")
 
         application_graph_node = ET.SubElement(sdf3_node, "applicationGraph")
         application_graph_node.set("name", name)
@@ -1025,10 +1025,22 @@ class DataflowGraph:
         for i in self.inputs():
             input_node = ET.SubElement(sdf_node, "input")
             input_node.set("name", i)
+            input_node.set("type", i)
+            for p in ports_of_actor(i):
+                port_node = ET.SubElement(input_node, "port")
+                port_node.set("name", p["name"])
+                port_node.set("type", p["type"])
+                port_node.set("rate", p["rate"])
 
         for o in self.outputs():
             output_node = ET.SubElement(sdf_node, "output")
             output_node.set("name", o)
+            output_node.set("type", o)
+            for p in ports_of_actor(o):
+                port_node = ET.SubElement(output_node, "port")
+                port_node.set("name", p["name"])
+                port_node.set("type", p["type"])
+                port_node.set("rate", p["rate"])
 
         for c in self.channels():
             channel_node = ET.SubElement(sdf_node, "channel")
@@ -1038,11 +1050,13 @@ class DataflowGraph:
                 channel_node.set("srcPort", out_port_name(c))
             else:
                 channel_node.set("srcInput", self.producer_of_channel(c))
+                channel_node.set("srcPort", out_port_name(c))
             if (self.consumer_of_channel(c) in proper_actors):
                 channel_node.set("dstActor", self.consumer_of_channel(c))
                 channel_node.set("dstPort", in_port_name(c))
             else:
                 channel_node.set("dstOutput", self.consumer_of_channel(c))
+                channel_node.set("dstPort", in_port_name(c))
             if self.number_of_initial_tokens_of_channel(c) > 0:
                 channel_node.set("initialTokens", str(self.number_of_initial_tokens_of_channel(c)))
 
@@ -1055,7 +1069,7 @@ class DataflowGraph:
             processor_node.set("type", "p1")
             processor_node.set("default", "true")
             execution_time_node = ET.SubElement(processor_node, "executionTime")
-            execution_time_node.set("time", str(self.execution_time_of_actor(a)))
+            execution_time_node.set("time", str(float(self.execution_time_of_actor(a))))
 
         for c in self.channels():
             channel_properties_node = ET.SubElement(sdf_properties_node, "channelProperties")
