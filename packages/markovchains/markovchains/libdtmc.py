@@ -3,18 +3,13 @@
 from fractions import Fraction
 from io import StringIO
 from typing import AbstractSet, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
-
-# pygraph library from:
-# https://pypi.org/project/python-graph/
-# https://github.com/Shoobx/python-graph
+import networkx as nx
+from fractions import Fraction
 
 import functools
 import math
 import random
 import os
-import pygraph.classes.digraph  as pyg
-import pygraph.algorithms.accessibility as pyga
-import pygraph.algorithms.searching as pygs
 from markovchains.libdtmcgrammar import parse_dtmc_dsl
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sort_names, TimeoutTimer
@@ -334,22 +329,24 @@ class MarkovChain:
             pi = linalg.vector_matrix_product(pi, p_matrix)
         return result
 
+    def _compute_communication_graph(self) -> nx.DiGraph:
+        """Return the communication graph corresponding to the Markov Chain."""
+        gr = nx.DiGraph()
+        gr.add_nodes_from(self._states)
 
-    def _compute_communication_graph(self)->pyg.digraph:
-        '''Return the communication graph corresponding to the Markov Chain.'''
-        gr = pyg.digraph()
-        gr.add_nodes(self._states)
         for s, trans in self._transitions.items():
             for t, p in trans.items():
-                if not p == Fraction(0):
-                    gr.add_edge((s, t))
+                if p != Fraction(0):
+                    gr.add_edge(s, t)
+
         return gr
 
-    def _compute_reverse_communication_graph(self)->pyg.digraph:
+
+    def _compute_reverse_communication_graph(self)->nx.DiGraph:
         '''Return the communication graph corresponding to the reversed
         transitions of the Markov Chain.'''
-        gr = pyg.digraph()
-        gr.add_nodes(self._states)
+        gr = nx.DiGraph()
+        gr.add_nodes_from(self._states)
         for s, trans in self._transitions.items():
             for t, p in trans.items():
                 if not p==Fraction(0):
@@ -360,7 +357,7 @@ class MarkovChain:
         '''Determine the communicating classes of the dtmc. Returns Set of sets
         of states of the dtmc.'''
         gr = self._compute_communication_graph()
-        return {frozenset(s) for s in pyga.mutual_accessibility(gr).values()}
+        return {frozenset(s) for s in nx.strongly_connected_components(gr)}
 
     def classify_transient_recurrent_classes(self)->\
         Tuple[Set[AbstractSet[str]],Set[AbstractSet[str]]]:

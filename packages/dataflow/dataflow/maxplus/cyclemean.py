@@ -1,12 +1,7 @@
 '''Graph related algorithms.'''
 
-# pygraph library from:
-# https://pypi.org/project/python-graph/
-# https://github.com/Shoobx/python-graph
-
 from fractions import Fraction
 from typing import Any, Dict, List, Set, Tuple, Union
-import pygraph.classes.digraph  as pyg
 
 class CycleMeanException(Exception):
     '''Exceptions in this library.'''

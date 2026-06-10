@@ -7,12 +7,10 @@ Make sure that you have python 3.8.x installed or newer, including pip.
 ## Install
 
 Any of the packages can be installed as follows.
-**Make sure to install the python-graph package from the github location, as described below, not from the standard Python repository.**
 
 In a console (shell, command prompt or powershell), in this folder, type:
 
 ``` shell
-python -m pip install "git+https://github.com/Shoobx/python-graph"
 cd markovchains
 python -m pip install .
 cd ../finitestateautomata

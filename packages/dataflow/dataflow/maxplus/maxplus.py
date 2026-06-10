@@ -6,8 +6,6 @@ from functools import reduce
 from typing import (AbstractSet, Any, Dict, List, Literal, Optional, Tuple,
                     Union)
 
-import pygraph.algorithms.accessibility as pyga
-import pygraph.classes.digraph as pyg
 from dataflow.maxplus.algebra import (MP_MINUSINFINITY, MP_MINUSINFINITY_STR,
                                       MPAlgebraException, mp_comp_larger,
                                       mp_op_max, mp_op_minus, mp_op_plus)

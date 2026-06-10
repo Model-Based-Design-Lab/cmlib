@@ -9,7 +9,6 @@ from dataflow.maxplus.utils.printing import mp_pretty_vector_to_string, \
       mp_vector_to_fraction_string, common_denominator_matrix, is_complex, mp_vector_to_string
 from dataflow.libmpmgrammar import parse_mpm_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
-import pygraph.classes.digraph  as pyg
 
 class MPMException(mp.MPException):
     """Exceptions in this library."""
