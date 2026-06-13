@@ -5,7 +5,7 @@ from fractions import Fraction
 from functools import reduce
 from typing import (AbstractSet, Any, Dict, List, Literal, Optional, Tuple,
                     Union)
-
+import networkx as nx
 from dataflow.maxplus.algebra import (MP_MINUSINFINITY, MP_MINUSINFINITY_STR,
                                       MPAlgebraException, mp_comp_larger,
                                       mp_op_max, mp_op_minus, mp_op_plus)
@@ -132,33 +132,34 @@ def mp_number_of_columns(matrix: TMPMatrix) -> int:
     return len(matrix[0])
 
 def mp_matrix_to_precedence_graph(matrix: TMPMatrix, labels: Optional[List[str]] = None)-> \
-    pyg.digraph:
+    nx.DiGraph:
     '''Convert a square matrix M to precedence graph. Optionally specify labels for the vertices.'''
 
     n = len(matrix)
-    gr = pyg.digraph()
+    gr = nx.DiGraph()
     _require_matrix_square(matrix)
 
     make_node = (lambda i: labels[i]) if not labels is None else (lambda i: f'n{i}')
-    gr.add_nodes(labels if not labels is None else [ f'n{k}' for k in range(n)])
+    gr.add_nodes_from(labels if not labels is None else [ f'n{k}' for k in range(n)])
 
     def make_edge(i, j):
         return (make_node(i), make_node(j))
 
-    for i in range(n):
-        for j in range(n):
-            if matrix[i][j] is not None:
-                gr.add_edge(make_edge(j, i), matrix[i][j])  # type: ignore (edge weights are numbers, not int) pylint: disable=arguments-out-of-order
+    for r in range(n):
+        for c in range(n):
+            if matrix[r][c] is not None:
+                e = make_edge(c, r)
+                gr.add_edge(e[0], e[1], weight=matrix[r][c])  # type: ignore (edge weights are numbers, not int) pylint: disable=arguments-out-of-order
     return gr
 
 
-def _subgraph(gr: pyg.digraph, nodes: AbstractSet[Any] ) -> pyg.digraph:
+def _subgraph(gr: nx.DiGraph, nodes: AbstractSet[Any] ) -> nx.DiGraph:
     '''Create subgraph from the set of node'''
-    res = pyg.digraph()
-    res.add_nodes(nodes)
+    res = nx.DiGraph()
+    res.add_nodes_from(nodes)
     edges = [e for e in gr.edges() if (e[0] in nodes and e[1] in nodes)]
     for e in edges:
-        res.add_edge(e, gr.edge_weight(e))
+        res.add_edge(e[0], e[1], weight=gr.get_edge_data(e[0], e[1])['weight'])
     return res
 
 def mp_eigen_value(matrix: TMPMatrix) -> Union[None,Fraction]:
@@ -168,11 +169,11 @@ def mp_eigen_value(matrix: TMPMatrix) -> Union[None,Fraction]:
     gr = mp_matrix_to_precedence_graph(matrix)
 
     # get the strongly connected components
-    sccs = pyga.mutual_accessibility(gr)
+    sccs = list(nx.strongly_connected_components(gr))
     cycle_means: List[Fraction] = []
-    subgraphs: List[pyg.digraph] = []
+    subgraphs: List[nx.DiGraph] = []
     mu = Fraction(0.0)
-    for sn in ({frozenset(v) for v in sccs.values()}):
+    for sn in ({frozenset(v) for v in sccs}):
         grs = _subgraph(gr, sn)
         if len(grs.edges()) > 0:
             mu: Fraction
@@ -222,7 +223,7 @@ def mp_generalized_throughput(matrix: TMPMatrix) -> List[TThroughputValue]:
     return [lambda_to_throughput(l) for l in v_lambdas]
 
 
-def _normalized_longest_paths(gr: pyg.digraph, rootnode: Any, cycle_means_map: \
+def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
                 Dict[Any,TTimeStamp]) -> \
                 Tuple[Dict[Any,TTimeStamp],Dict[Any,TTimeStamp]]:
 
@@ -295,7 +296,7 @@ def _normalized_longest_paths(gr: pyg.digraph, rootnode: Any, cycle_means_map: \
         change = False
         for e in gr.edges():
             if length[e[0]] is not None:
-                new_length = length[e[0]] + gr.edge_weight(e) - tr_cycle_means_map[e[0]]
+                new_length = length[e[0]] + gr.get_edge_data(e[0], e[1])['weight'] - tr_cycle_means_map[e[0]]
                 if length[e[1]] is None:
                     length[e[1]] = new_length
                     change = True
@@ -348,11 +349,11 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
     gr = mp_matrix_to_precedence_graph(matrix)
 
     # compute the strongly connected components of the precedence graph
-    sccs = pyga.mutual_accessibility(gr)
+    sccs = list(nx.strongly_connected_components(gr))
 
     # keep lists of cycleMeans and subgraphs of the SCCs
     cycle_means: List[TTimeStamp] = []
-    subgraphs: List[pyg.digraph] = []
+    subgraphs: List[nx.DiGraph] = []
 
     # count the SCCs with k
     k: int = 0
@@ -367,7 +368,7 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
     cycle_means_map: Dict[Any,TTimeStamp] = {}
 
     # for each of the sets of nodes of the SCCs
-    for sn in ({frozenset(v) for v in sccs.values()}):
+    for sn in ({frozenset(v) for v in sccs}):
         scc_map_inv[k] = next(iter(sn))
 
         # extract subgraph of the SCC
@@ -432,7 +433,7 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
     # return the results
     return (eigen_vectors, gen_eigen_vectors)
 
-def mp_precedence_graph(matrix: TMPMatrix, labels: List[str])->pyg.digraph:
+def mp_precedence_graph(matrix: TMPMatrix, labels: List[str])->nx.DiGraph:
     '''Determine the precedence graph of the matrix M using the labels for vertices.'''
     return mp_matrix_to_precedence_graph(matrix, labels)
 

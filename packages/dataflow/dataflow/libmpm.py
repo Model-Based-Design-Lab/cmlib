@@ -9,6 +9,7 @@ from dataflow.maxplus.utils.printing import mp_pretty_vector_to_string, \
       mp_vector_to_fraction_string, common_denominator_matrix, is_complex, mp_vector_to_string
 from dataflow.libmpmgrammar import parse_mpm_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
+import networkx as nx
 
 class MPMException(mp.MPException):
     """Exceptions in this library."""
@@ -259,7 +260,7 @@ class MaxPlusMatrixModel:
         return self.labels() if len(self.labels()) == self.number_of_rows() else \
             [ f'x{k}' for k in range(self.number_of_rows())]
 
-    def precedence_graph(self) -> pyg.digraph:
+    def precedence_graph(self) -> nx.DiGraph:
         '''Determine the precedence graph of the matrix.'''
         return mp.mp_precedence_graph(self._rows, self._precedence_graph_labels())
 

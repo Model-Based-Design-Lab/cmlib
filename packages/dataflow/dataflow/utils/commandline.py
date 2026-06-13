@@ -407,7 +407,7 @@ def process_max_plus_operation(args, dsl):
         print(", ".join(g.nodes()))
         print("The edges of the precedence graph are:")
         for e in g.edges():
-            print(f"{e[0]} --- {g.edge_weight(e)} ---> {e[1]}")
+            print(f"{e[0]} --- {g.get_edge_data(*e)['weight']} ---> {e[1]}")
 
     # precedence graph graphviz
     if args.operation == OP_MPM_PRECEDENCEGRAPH_GRAPHVIZ:

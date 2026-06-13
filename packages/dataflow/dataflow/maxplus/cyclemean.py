@@ -2,6 +2,7 @@
 
 from fractions import Fraction
 from typing import Any, Dict, List, Set, Tuple, Union
+import networkx as nx
 
 class CycleMeanException(Exception):
     '''Exceptions in this library.'''
@@ -70,7 +71,7 @@ class Tree:
         self._parents[n] = new_parent
         self._children[new_parent].add(n)
 
-def maximum_cycle_mean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fraction,Tree,Any]]:
+def maximum_cycle_mean(gr: nx.DiGraph)->Union[Tuple[None,None,None],Tuple[Fraction,Tree,Any]]:
     '''
     given a strongly connected graph with at least one cycle
     find the maximum cycle mean and a longest path spanning tree.
@@ -82,15 +83,15 @@ def maximum_cycle_mean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fract
         # print('newLambda from {} to {}'.format(nn, leaf))
         if leaf == nn:
             # print('self-edge on {} weight: {}'.format(nn, gr.edge_weight((nn, nn))))
-            return gr.edge_weight((nn, nn))
+            return gr.get_edge_data(nn, nn)['weight']
 
-        cycle_length: Fraction = gr.edge_weight((leaf, nn))
+        cycle_length: Fraction = gr.get_edge_data(leaf, nn)['weight']
         cycle_steps: int = 1
         nd = leaf
         pn = s_tree.parent_of(nd)
         while nd != nn:
             # print('adding edge {} with weight: {}'.format((pn, nd), gr.edge_weight((pn, nd))))
-            cycle_length += gr.edge_weight((pn, nd))
+            cycle_length += gr.get_edge_data(pn, nd)['weight']
             cycle_steps += 1
             nd = pn
             pn = s_tree.parent_of(nd)
@@ -105,16 +106,16 @@ def maximum_cycle_mean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fract
 
     # start with lambda = undefined (lower bound) and increase whenever a cycle mean
     # larger than lambda is found
-    lower_bound_cycle_mean: Fraction = Fraction(gr.edge_weight(gr_edges[0]))
+    lower_bound_cycle_mean: Fraction = Fraction(gr.get_edge_data(*gr_edges[0])['weight'])
     for e in gr_edges:
-        if gr.edge_weight(e) < lower_bound_cycle_mean:
-            lower_bound_cycle_mean = gr.edge_weight(e)
+        if gr.get_edge_data(*e)['weight'] < lower_bound_cycle_mean:
+            lower_bound_cycle_mean = gr.get_edge_data(*e)['weight']
     c_lambda = lower_bound_cycle_mean - Fraction(1)
 
     # create a longest path weighted spanning tree without positive cycles.
 
     # - initialize tree with one node
-    n_root = gr.nodes()[0]
+    n_root = next(iter(gr.nodes))
 
     # find a node on the critical cycle
     critical_node: Any = None
@@ -139,7 +140,7 @@ def maximum_cycle_mean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fract
             for nn in gr.neighbors(leaf):
                 # compute their path length
                 path_length: Fraction = sp_tree.path_length_of(leaf) + \
-                    Fraction(gr.edge_weight((leaf, nn))) - c_lambda
+                    Fraction(gr.get_edge_data(leaf, nn)['weight']) - c_lambda
                 # if it is already in the tree
                 if sp_tree.contains_node(nn):
                     tree_path_length = sp_tree.path_length_of(nn)
@@ -155,11 +156,11 @@ def maximum_cycle_mean(gr: pyg.digraph)->Union[Tuple[None,None,None],Tuple[Fract
                         else:
                             # it is not a predecessor, but on a side branch, make it a
                             # descendant of the current node and adapt all path lengths
-                            sp_tree.modify_parent(nn, leaf, gr.edge_weight((leaf, nn)) - c_lambda)
+                            sp_tree.modify_parent(nn, leaf, gr.get_edge_data(leaf, nn)['weight'] - c_lambda)
                             leaves.append(nn)
                 else:
                     # nn is new to the tree
-                    sp_tree.add_node(nn, leaf, gr.edge_weight((leaf, nn)) - c_lambda)
+                    sp_tree.add_node(nn, leaf, gr.get_edge_data(leaf, nn)['weight'] - c_lambda)
                     leaves.append(nn)
 
     # - if we have completed the tree return the last lambda, last cycle and the
