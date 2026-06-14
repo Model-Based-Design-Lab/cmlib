@@ -116,6 +116,7 @@ class ModelPytest:
             func()
             assert False
         except Exception as e: # pylint: disable=broad-exception-caught
+            print("Exception type:", type(e))
             print("Expected result: " + expected_result)
             print("Actual result: " + str(e))
             assert str(e) == expected_result

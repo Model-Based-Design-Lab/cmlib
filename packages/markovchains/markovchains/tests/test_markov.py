@@ -177,7 +177,7 @@ class MarkovPytest(ModelPytest):
         self.incorrect_test(lambda: self.model.execute_steps(-2), \
             'Number of steps must be non-negative.')
         self.incorrect_test(lambda: self.model.hitting_probabilities('NOT_A_STATE'), \
-            "'NOT_A_STATE'")
+            "The node NOT_A_STATE is not in the digraph.")
         self.incorrect_test(lambda: self.model.long_run_expected_average_reward(\
             StopConditions(-1.00,0,0,1000,0,-1)), "p must be in the range 0.0 < p < 1.0")
         self.incorrect_test(lambda: self.model.cezaro_limit_distribution(\
