@@ -21,7 +21,7 @@ test:
         - Ubuntu2004-64bit
     script:
         - cd packages/modeltest
-        - python3.1 -m pip install .
+        - python3 -m pip install .
         - cd ../markovchains
         - python3 -m pytest . -v -l
         - cd ../dataflow
