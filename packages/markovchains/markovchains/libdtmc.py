@@ -493,6 +493,8 @@ class MarkovChain:
         '''
 
         def _states_reachable_from(s: str)->List[str]:
+            if not s in gr.nodes():
+                raise DTMCException(f"The node {s} is not in the digraph.")
             pre = list(nx.dfs_preorder_nodes(gr, source=s))
             return pre
 
