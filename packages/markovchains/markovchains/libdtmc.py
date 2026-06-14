@@ -350,7 +350,7 @@ class MarkovChain:
         for s, trans in self._transitions.items():
             for t, p in trans.items():
                 if not p==Fraction(0):
-                    gr.add_edge((t, s))
+                    gr.add_edge(t, s)
         return gr
 
     def communicating_classes(self)->Set[AbstractSet[str]]:
@@ -493,7 +493,7 @@ class MarkovChain:
         '''
 
         def _states_reachable_from(s: str)->List[str]:
-            _, pre, _ = pygs.depth_first_search(gr, root=s)
+            pre = list(nx.dfs_preorder_nodes(gr, source=s))
             return pre
 
         # determine the set of states from which targetState is reachable
@@ -616,7 +616,7 @@ class MarkovChain:
         '''
 
         def _states_reachable_from(s: str)->List[str]:
-            _, pre, _ = pygs.depth_first_search(gr, root=s)
+            pre = list(nx.dfs_preorder_nodes(gr, source=s))
             return pre
 
         # determine the set of states from which the set targetStates are reachable
