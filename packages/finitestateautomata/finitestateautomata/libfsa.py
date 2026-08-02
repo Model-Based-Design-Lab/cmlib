@@ -1,4 +1,4 @@
-"""Library of finite state automata analysis."""
+"""Library of finite state automata analysis.""" # pylint: disable=too-many-lines
 
 import copy
 from functools import reduce

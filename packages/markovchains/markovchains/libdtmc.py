@@ -1,10 +1,8 @@
-"""Library for Discrete-Time Markov Chain analysis."""
+"""Library for Discrete-Time Markov Chain analysis.""" # pylint: disable=too-many-lines
 
 from fractions import Fraction
 from io import StringIO
 from typing import AbstractSet, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
-import networkx as nx
-from fractions import Fraction
 
 import functools
 import math
@@ -14,6 +12,8 @@ from markovchains.libdtmcgrammar import parse_dtmc_dsl
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sort_names, TimeoutTimer
 from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
+
+import networkx as nx
 
 # type for generic actions to be executed during a random simulation
 TSimulationAction = Callable[[int,str],bool]

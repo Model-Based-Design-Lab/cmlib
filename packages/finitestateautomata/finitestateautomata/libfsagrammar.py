@@ -6,7 +6,8 @@ from textx import TextXSyntaxError, metamodel_from_str
 
 # This is TextX version of the XText grammar in the clang repository
 # Xtext file:
-# src\info.computationalmodeling.lang.parent\info.computationalmodeling.lang\src\main\java\info\computationalmodeling\lang\FiniteStateAutomata.xtext
+# src\info.computationalmodeling.lang.parent\info.computationalmodeling.
+# lang\src\main\java\info\computationalmodeling\lang\FiniteStateAutomata.xtext
 # repository:
 # https://git.ics.ele.tue.nl/computational-modeling/cmlang.git
 

@@ -318,8 +318,8 @@ class RegExTermConcatenation(RegExTerm):
     def __init__(self, expressions: List[RegExTerm]):
         self._expressions = expressions
 
-    def sub_expressions(self)->List[RegExTerm]:
-        return self._expressions
+    def sub_expressions(self)->Set[RegExTerm]:
+        return set(self._expressions)
 
     def is_finite_reg_ex(self)->bool:
         for k in range(len(self._expressions)-1):
@@ -474,8 +474,8 @@ class RegExTermAlternatives(RegExTerm):
     def __init__(self, expressions: List[RegExTerm]):
         self._expressions = expressions
 
-    def sub_expressions(self)->List[RegExTerm]:
-        return self._expressions
+    def sub_expressions(self)->Set[RegExTerm]:
+        return set(self._expressions)
 
     def is_finite_reg_ex(self)->bool:
         for e in self._expressions:
