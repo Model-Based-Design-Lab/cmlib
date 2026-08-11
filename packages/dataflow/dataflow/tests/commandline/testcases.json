@@ -1,9 +1,13 @@
 [
   {
+    "args": ["-h"],
+    "expected_exit_code": 0,
+    "expected_output_file": "output_help.txt"
+  },{
     "args": ["-op", "throughput"],
     "model": "sdf_ConveyorBelt.sdf",
     "expected_exit_code": 0,
-    "expected_output": "Throughput:\n1\n"
+    "expected_output": "Throughput: 1"
   },
   {
     "args": ["-op", "ganttchart", "-ni", "3", "-is", "[5]"],
