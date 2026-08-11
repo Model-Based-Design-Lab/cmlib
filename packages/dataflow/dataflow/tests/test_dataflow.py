@@ -12,7 +12,7 @@ from dataflow.libsdf import DataflowGraph
 from dataflow.utils.commandline import _convolution, _maximum
 from dataflow.utils.utils import get_square_matrix, parse_initial_state
 from modeltest.modeltest import ModelPytest
-from packages.dataflow.dataflow.maxplus.maxplus import TThroughputValue
+from dataflow.maxplus.maxplus import TThroughputValue
 
 TEST_FILE_FOLDER = os.path.dirname(__file__)
 MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
