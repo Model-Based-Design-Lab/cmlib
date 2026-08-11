@@ -4,10 +4,50 @@
     "expected_exit_code": 0,
     "expected_output_file": "output_help.txt"
   },{
+    "args": ["-op", "inputlabelssdf"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "i"
+  },{
+    "args": ["-op", "statelabelssdf"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Pass_Input"
+  },{
+    "args": ["-op", "repetitionvector"],
+    "model": "sdf_eggs.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Repetition Vector: i: 20 Clean: 5 Box: 2 o: 20"
+  },{
+    "args": ["-op", "deadlock"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "The graph does not deadlock."
+  },{
     "args": ["-op", "throughput"],
     "model": "sdf_ConveyorBelt.sdf",
     "expected_exit_code": 0,
     "expected_output": "Throughput: 1"
+  },{
+    "args": ["-op", "throughputoutput", "-ou", "o"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Throughput of output: o: 1"
+  },{
+    "args": ["-op", "latency", "-p", "7"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o [[ 5 ]]"
+  },{
+    "args": ["-op", "generalizedlatency", "-p", "7"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o State vector: Pass_Input IO latency matrix: [[ 5 ]] Initial state latency matrix: [[ 5 ]]"
+  },{
+    "args": ["-op", "statespacematrices"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o State vector: Pass_Input State matrix A: [[ 1 ]] Input matrix B: [[ 1 ]] Output matrix C: [[ 5 ]] Feed forward matrix D: [[ 5 ]]"
   },
   {
     "args": ["-op", "ganttchart", "-ni", "3", "-is", "[5]"],
