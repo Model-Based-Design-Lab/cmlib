@@ -7,7 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-from typing import Tuple, Any, Set, Union, Dict, List, Optional
+from typing import Mapping, Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
 from dataflow.libsdfgrammar import parse_sdf_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
@@ -939,7 +939,7 @@ class DataflowGraph:
         self,
         ni: int,
         x0: Optional[TMPVector] = None,
-        input_override: Optional[Dict[str, Union[TTimeStampList, str]]] = None,
+        input_override: Optional[Mapping[str, Union[TTimeStampList, str]]] = None,
     ) -> Tuple[
         List[TTimeStampList], List[TTimeStampList], List[TTimeStampList], List[Fraction]
     ]:
@@ -1012,13 +1012,13 @@ class DataflowGraph:
         output_traces = [v[input_vector_size + state_vector_size :] for v in vt]
 
         # reorder the vectors so that the state elements come first, followed by inputs
-        ssvt = [
+        ss_vt = [
             v[input_vector_size : state_vector_size + input_vector_size]
             + v[0:input_vector_size]
             for v in vt
         ]
         # compute the firing starting times using the trace matrix H
-        firing_starts = [mp_multiply_matrix_vector(matrix_h, s) for s in ssvt]
+        firing_starts = [mp_multiply_matrix_vector(matrix_h, s) for s in ss_vt]
         # collect the firing durations
         firing_durations = [
             self.execution_time_of_actor(a)

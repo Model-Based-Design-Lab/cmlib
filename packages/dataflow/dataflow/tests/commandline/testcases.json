@@ -1,0 +1,15 @@
+[
+  {
+    "args": ["-op", "throughput"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Throughput:\n1\n"
+  },
+  {
+    "args": ["-op", "ganttchart", "-ni", "3", "-is", "[5]"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_ganttchart.txt"
+  }
+
+]

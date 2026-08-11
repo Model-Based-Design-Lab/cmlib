@@ -3,7 +3,7 @@
 import re
 from fractions import Fraction
 import sys
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Mapping, Optional, Tuple, Union, List
 from dataflow.maxplus.maxplus import mp_parse_vector, mp_zero_vector
 from dataflow.maxplus.algebra import MP_MINUSINFINITY_STR, MP_MINUSINFINITY
 from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
@@ -135,18 +135,18 @@ def sequence_literal_reg_ex():
     '''
     return r"\[.*?\]"
 
-def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], \
-        vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None], \
-        Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
+def parse_input_traces(eventsequences: Mapping[str,Union[TTimeStampList,EventSequenceModel]], \
+        vectorsequences: Mapping[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None], \
+        Tuple[Mapping[str,TTimeStampList],List[TTimeStampList]]]:
     '''
     return dictionary of named traces and list of unnamed traces
     '''
 
     # check if trace are specified
-    if not args.inputtrace:
+    if not args.input_trace:
         return None, None
 
-    it = args.inputtrace
+    it = args.input_trace
 
     # check if they are syntactically correct
     if not re.match(input_traces_reg_ex() , it):
@@ -275,16 +275,16 @@ def require_parameter_mp_value(args)->TTimeStamp:
 
 def parse_initial_state(args: Any, state_size: int) -> TMPVector:
     """Parse initial state."""
-    if args.initialstate is None:
+    if args.initial_state is None:
         return mp_zero_vector(state_size)
-    x0 = mp_parse_vector(args.initialstate)
+    x0 = mp_parse_vector(args.initial_state)
     if len(x0) != state_size:
         raise DataflowException('Provided initial state is not of the expected size.') # pylint: disable=raise-missing-from
     return x0
 
 def require_number_of_iterations(args: Any) -> int:
     """Ensure that number of iterations is specified and parse it."""
-    if not args.numberofiterations:
+    if not args.number_of_iterations:
         raise DataflowException("Operation requires number of iterations to be given.") # pylint: disable=raise-missing-from
     val = parse_number_of_iterations(args)
     if val is None:
@@ -294,12 +294,12 @@ def require_number_of_iterations(args: Any) -> int:
 
 def parse_number_of_iterations(args: Any) -> Optional[int]:
     """Parse number of iterations."""
-    if not args.numberofiterations:
+    if not args.number_of_iterations:
         return None
     try:
-        return int(args.numberofiterations)
+        return int(args.number_of_iterations)
     except Exception:
-        raise DataflowException("Failed to parse numberofiterations argument; it must be " \
+        raise DataflowException("Failed to parse number_of_iterations argument; it must be " \
                                 "a non-negative integer number.") # pylint: disable=raise-missing-from
 
 def parse_matrices(args: Any)->List[str]:
@@ -354,7 +354,7 @@ def parse_sequences(args: Any) -> List[str]:
         return []
     return args.sequences.split(',')
 
-def validate_event_sequences(eventsequences: Dict[str,object], sequences: List[str]):
+def validate_event_sequences(eventsequences: Dict[str, EventSequenceModel], sequences: List[str]):
     ''' check that the sequences are defined in the eventsequences dict.'''
     for s in sequences:
         if s not in eventsequences:

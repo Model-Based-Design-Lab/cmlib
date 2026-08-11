@@ -65,7 +65,7 @@ def main():
                         help="the regular expression to use")
     parser.add_argument('-ltl', '--ltlformula', dest='ltlFormula',
                         help="the LTL formula to use")
-    parser.add_argument('-w', '--word', dest='inputtrace',
+    parser.add_argument('-w', '--word', dest='input_trace',
                         help="an input word, a comma-separated list of symbols")
 
     args = parser.parse_args()
@@ -148,7 +148,7 @@ def process(args, dsl):
 
     # accepts (requires input word)
     if args.operation == OP_FSA_ACCEPTS:
-        res, path = require_automaton(a).accepts_with_path(args.inputtrace)
+        res, path = require_automaton(a).accepts_with_path(args.input_trace)
         print(res)
         if res and path is not None:
             print_states(path)

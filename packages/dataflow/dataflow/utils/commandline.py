@@ -6,7 +6,7 @@ import sys
 from fractions import Fraction
 from typing import Any, Dict
 
-from dataflow.libmpm import MaxPlusMatrixModel, VectorSequenceModel
+from dataflow.libmpm import EventSequenceModel, MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.libsdf import DataflowGraph
 from dataflow.maxplus.maxplus import mp_transpose_matrix
 from dataflow.maxplus.utils.printing import (mp_element_to_string, mp_pretty_value,
@@ -55,41 +55,43 @@ from dataflow.utils.utils import (
     require_period, require_sequence_of_matrices_and_possibly_vector_sequence,
     validate_event_sequences)
 
+
 def main():
     """Main entry point."""
 
     # optional help flag explaining usage of each individual operation
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    parser.add_argument('-oh', '--operationhelp', dest='opHelp', nargs="?", const=" ")
-    options, remainder = parser.parse_known_args() # Only use options of parser above
+    parser.add_argument('-oh', '--operationhelp',
+                        dest='opHelp', nargs="?", const=" ")
+    options, remainder = parser.parse_known_args()  # Only use options of parser above
 
-
-    if options.opHelp: # Check if -oh has been called
+    if options.opHelp:  # Check if -oh has been called
         if options.opHelp not in Operations:
             if options.opHelp.strip() != '':
-                print("Operation '{}' does not exist. List of operations:\n\t- {}".format( \
+                print("Operation '{}' does not exist. List of operations:\n\t- {}".format(
                     options.opHelp, "\n\t- ".join(Operations)))
             else:
                 print("List of operations:\n\t- {}".format("\n\t- ".join(Operations)))
         else:
-            print(f"{options.opHelp}: {OperationDescriptions[Operations.index(options.opHelp)]}")
+            print(
+                f"{options.opHelp}: {OperationDescriptions[Operations.index(options.opHelp)]}")
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description='Perform operations on dataflow graphs.\n'
                                      'https://computationalmodeling.info')
-    parser.add_argument('dataflow_graph_or_mpmatrix', \
+    parser.add_argument('dataflow_graph_or_mpmatrix',
                         help="the dataflow graph or max-plus matrix to analyze")
     parser.add_argument('-op', '--operation', dest='operation',
-                        help="the operation or analysis to perform, one of : {}.\n" \
-                        "Use 'dataflow -oh OPERATION' for information about the " \
+                        help="the operation or analysis to perform, one of : {}.\n"
+                        "Use 'dataflow -oh OPERATION' for information about the "
                         "specific operation.".format("; \n".join(Operations)))
     parser.add_argument('-p', '--period', dest='period',
                         help="the period of the system (for latency)")
-    parser.add_argument('-is', '--initialstate', dest='initialstate',
+    parser.add_argument('-is', '--initialstate', dest='initial_state',
                         help="the initial state of the system")
-    parser.add_argument('-it', '--inputtrace', dest='inputtrace',
-                        help="the input trace to the system, a comma-separated " \
-                            "list of: (ID=)?([...]|ID)")
+    parser.add_argument('-it', '--inputtrace', dest='input_trace',
+                        help="the input trace to the system, a comma-separated "
+                        "list of: (ID=)?([...]|ID)")
     parser.add_argument('-ma', '--matrices', dest='matrices',
                         help="the matrices to operate on as a comma separated list")
     parser.add_argument('-sq', '--sequences', dest='sequences',
@@ -98,16 +100,17 @@ def main():
                         help="parameter for the operation")
     parser.add_argument('-ou', '--output', dest='output',
                         help="selected output for the operation")
-    parser.add_argument('-ni', '--numberofiterations', dest='numberofiterations',
+    parser.add_argument('-ni', '--numberofiterations', dest='number_of_iterations',
                         help="number of iterations to analyze")
-    parser.add_argument('-og', '--outputgraph', dest='outputGraph',
+    parser.add_argument('-og', '--outputgraph', dest='output_graph',
                         help="the outputfile to write output graph to")
 
     args = parser.parse_args(remainder)
 
     if args.operation not in Operations:
         sys.stderr.write(f"Unknown operation: {args.operation}\n")
-        sys.stderr.write(f"Operation should be one of: {', '.join(Operations)}.\n")
+        sys.stderr.write(
+            f"Operation should be one of: {', '.join(Operations)}.\n")
         sys.exit(1)
 
     dsl = None
@@ -116,12 +119,13 @@ def main():
             with open(args.dataflow_graph_or_mpmatrix, 'r', encoding='utf-8') as sdf_mpm_file:
                 dsl = sdf_mpm_file.read()
         except FileNotFoundError:
-            sys.stderr.write(f"File does not exist: {args.dataflow_graph_or_mpmatrix}.\n")
+            sys.stderr.write(
+                f"File does not exist: {args.dataflow_graph_or_mpmatrix}.\n")
             sys.exit(1)
 
     try:
         process(args, dsl)
-    except Exception as e: # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught
         sys.stderr.write(f"{e}\n")
         # in final version comment out following line
         # raise e
@@ -155,14 +159,13 @@ def process_dataflow_operation(args, dsl):
     # execute the selected operation
     # python has no switch statement :(
 
-    # inputlabels
+    # input labels
     if args.operation == OP_SDF_INPUT_LABELS:
         print(",".join(dataflow_graph.inputs()))
 
-    # statelabels
+    # state labels
     if args.operation == OP_SDF_STATE_LABELS:
         print(",".join(dataflow_graph.state_element_labels()))
-
 
     # throughput
     if args.operation == OP_SDF_THROUGHPUT:
@@ -176,15 +179,14 @@ def process_dataflow_operation(args, dsl):
         print(f'Throughput of output: {args.output}:')
         print(dataflow_graph.throughput_output(args.output))
 
-
-    # repetitionvector
+    # repetition vector
     if args.operation == OP_SDF_REP_VECTOR:
         print('Repetition Vector:')
         rates = dataflow_graph.repetition_vector()
         if isinstance(rates, list):
             print('The graph is inconsistent.')
-            print('There is an inconsistent cycle between the following ' \
-                   f'actors: {", ".join(rates)}')
+            print('There is an inconsistent cycle between the following '
+                  f'actors: {", ".join(rates)}')
         else:
             for a in dataflow_graph.actors():
                 print(f'{a}: {rates[a]}')
@@ -196,19 +198,20 @@ def process_dataflow_operation(args, dsl):
         else:
             print('The graph does not deadlock.')
 
-    # converttosinglerate
+    # convert to single rate
     if args.operation == OP_SDF_CONVERT_TO_SINGLE_RATE:
         dataflow_graph_sr = dataflow_graph.convert_to_single_rate()
         print(dataflow_graph_sr.as_dsl(name+'_singlerate'))
 
-    # converttosdf3 xml
+    # convert to sdf3 xml
     if args.operation == OP_SDF_CONVERT_TO_SDFX:
         print(dataflow_graph.as_sdfx(name+'_sdfx'))
 
     # latency
     if args.operation == OP_SDF_LATENCY:
         mu = require_period(args)
-        x0 = parse_initial_state(args, dataflow_graph.number_of_initial_tokens())
+        x0 = parse_initial_state(
+            args, dataflow_graph.number_of_initial_tokens())
         print('Inputs:')
         print(dataflow_graph.list_of_inputs_str())
         print('Outputs:')
@@ -270,7 +273,6 @@ def process_dataflow_operation(args, dsl):
         print('Feed forward matrix D:')
         pretty_print_mp_matrix(st_sp_matrices[3], ovs, ivs)
 
-
     if args.operation == OP_SDF_STATE_MATRIX_MODEL:
         _, st_sp_matrices = dataflow_graph.state_space_matrices()
         mpm = MaxPlusMatrixModel()
@@ -288,11 +290,14 @@ def process_dataflow_operation(args, dsl):
         matrices['A'] = MaxPlusMatrixModel(st_sp_matrices[0])
         matrices['A'].set_labels(dataflow_graph.state_element_labels())
         matrices['B'] = MaxPlusMatrixModel(st_sp_matrices[1])
-        matrices['B'].set_labels(dataflow_graph.state_element_labels() + dataflow_graph.inputs())
+        matrices['B'].set_labels(
+            dataflow_graph.state_element_labels() + dataflow_graph.inputs())
         matrices['C'] = MaxPlusMatrixModel(st_sp_matrices[2])
-        matrices['C'].set_labels(dataflow_graph.outputs() + dataflow_graph.state_element_labels())
+        matrices['C'].set_labels(
+            dataflow_graph.outputs() + dataflow_graph.state_element_labels())
         matrices['D'] = MaxPlusMatrixModel(st_sp_matrices[3])
-        matrices['D'].set_labels(dataflow_graph.outputs() + dataflow_graph.inputs())
+        matrices['D'].set_labels(
+            dataflow_graph.outputs() + dataflow_graph.inputs())
         print(mpm.as_dsl(name+"_MPM", matrices))
 
     if args.operation == OP_SDF_GANTT_CHART:
@@ -305,10 +310,13 @@ def process_dataflow_operation(args, dsl):
         if isinstance(rv, list):
             raise DataflowException("The graph is inconsistent.")
         float_firing_durations = [float(d) for d in firing_durations]
-        print_xml_gantt_chart(dataflow_graph.actors_without_inputs_outputs(), rv, \
-                           fraction_to_float_optional_l_list(firing_starts), float_firing_durations, \
-                           dataflow_graph.inputs(), fraction_to_float_optional_l_list(input_traces), \
-                           dataflow_graph.outputs(), fraction_to_float_optional_l_list(output_traces))
+        print_xml_gantt_chart(dataflow_graph.actors_without_inputs_outputs(), rv,
+                              fraction_to_float_optional_l_list(
+                                  firing_starts), float_firing_durations,
+                              dataflow_graph.inputs(),
+                              fraction_to_float_optional_l_list(input_traces),
+                              dataflow_graph.outputs(),
+                              fraction_to_float_optional_l_list(output_traces))
 
     if args.operation == OP_SDF_GANTT_CHART_ZERO_BASED:
         # make a Gantt chart assuming that actors cannot fire before time 0
@@ -333,7 +341,8 @@ def process_dataflow_operation(args, dsl):
             # provide the new inputs with input event sequences of sufficient zeros
             # add signal of number of iterations times the repetition vector of the
             # actor consuming from the input
-            dataflow_graph.add_input_signal(inp_name(a), list([Fraction(0.0)] * ni * reps[a]))
+            dataflow_graph.add_input_signal(
+                inp_name(a), list([Fraction(0.0)] * ni * reps[a]))
 
         input_traces, output_traces, firing_starts, firing_durations = \
             _determine_trace(dataflow_graph, args, ni)
@@ -347,17 +356,19 @@ def process_dataflow_operation(args, dsl):
 
         # write gantt chart trace
         float_firing_durations = [float(d) for d in firing_durations]
-        print_xml_gantt_chart(dataflow_graph.actors_without_inputs_outputs(), reps, \
-                           fraction_to_float_optional_l_list(firing_starts), fraction_to_float_list \
-                           (firing_durations), real_inputs, fraction_to_float_optional_l_list \
-                           (real_input_traces), dataflow_graph.outputs(), \
-                           fraction_to_float_optional_l_list(output_traces))
+        print_xml_gantt_chart(dataflow_graph.actors_without_inputs_outputs(), reps,
+                              fraction_to_float_optional_l_list(
+                                  firing_starts), fraction_to_float_list
+                              (firing_durations), real_inputs, fraction_to_float_optional_l_list
+                              (real_input_traces), dataflow_graph.outputs(),
+                              fraction_to_float_optional_l_list(output_traces))
 
 
 def process_max_plus_operation(args, dsl):
     """Process args for maxplus operation."""
 
-    name, matrices, vector_sequences, event_sequences  = MaxPlusMatrixModel.from_dsl(dsl)
+    name, matrices, vector_sequences, event_sequences = MaxPlusMatrixModel.from_dsl(
+        dsl)
     for m in matrices.values():
         m.validate()
     for v in vector_sequences.values():
@@ -388,15 +399,16 @@ def process_max_plus_operation(args, dsl):
         mat = get_square_matrix(matrices, args)
         (ev, gev) = matrices[mat].eigenvectors()
         print(f"The eigenvectors of matrix {mat} are:")
-        if len(ev)==0:
+        if len(ev) == 0:
             print('None')
         else:
             for v in ev:
-                print(f'{mp_pretty_vector_to_string(v[0])}, with eigenvalue: {mp_pretty_value(v[1])}')
+                print(
+                    f'{mp_pretty_vector_to_string(v[0])}, with eigenvalue: {mp_pretty_value(v[1])}')
         if len(gev) > 0:
             print('\nGeneralized Eigenvectors:')
             for v in gev:
-                print(f'{mp_pretty_vector_to_string(v[0])}, with generalized eigenvalue: ' \
+                print(f'{mp_pretty_vector_to_string(v[0])}, with generalized eigenvalue: '
                       f'{mp_pretty_vector_to_string(v[1])}')
 
     # precedence graph
@@ -427,8 +439,10 @@ def process_max_plus_operation(args, dsl):
 
     # multiply
     if args.operation == OP_MPM_MULTIPLY:
-        names = require_sequence_of_matrices_and_possibly_vector_sequence(matrices, vector_sequences, args)
-        matrices = [(matrices[m] if m in matrices else vector_sequences[m]) for m in names]
+        names = require_sequence_of_matrices_and_possibly_vector_sequence(
+            matrices, vector_sequences, args)
+        matrices = [(matrices[m] if m in matrices else vector_sequences[m])
+                    for m in names]
         result = MaxPlusMatrixModel.multiply_sequence(matrices)
         print(f"The product of {', '.join(names)} is:")
         if isinstance(result, VectorSequenceModel):
@@ -439,8 +453,8 @@ def process_max_plus_operation(args, dsl):
     # multiplytransform
     if args.operation == OP_MPM_MULTIPLY_TRANSFORM:
         names = require_sequence_of_matrices_and_possibly_vector_sequence(matrices, # type: ignore \
-                                                                   vector_sequences, args)
-        matrices = [(matrices[m] if m in matrices else vector_sequences[m]) # type: ignore \
+                                                                          vector_sequences, args)
+        matrices = [(matrices[m] if m in matrices else vector_sequences[m])  # type: ignore \
                     for m in names]
         new_name = f"prod_{'_'.join(names)}"
         result = MaxPlusMatrixModel.multiply_sequence(matrices)
@@ -453,7 +467,6 @@ def process_max_plus_operation(args, dsl):
         input_labels = _determine_input_labels(matrices)
         print(",".join(input_labels))
 
-
     # vectortrace
     # - on a model with a single, square matrix, compute a sequence of state vectors for the given
     # number of iterations, including the initial state
@@ -461,14 +474,16 @@ def process_max_plus_operation(args, dsl):
     #  * the command-line inputtrace spec
     #  * event sequences or vector sequences defined in the model
     if args.operation == OP_MPM_VECTOR_TRACE:
-        labels, vt = _make_vector_trace(matrices, vector_sequences, event_sequences, args)
+        labels, vt = _make_vector_trace(
+            matrices, vector_sequences, event_sequences, args)
         print(f"Vector elements: [{', '.join(labels)}]")
         print('Trace:')
         print(', '.join([mp_pretty_vector_to_string(v) for v in vt]))
 
-    # vectortracetransform
+    # vector trace transform
     if args.operation == OP_MPM_VECTOR_TRACE_TRANSFORM:
-        labels, vt = _make_vector_trace(matrices, vector_sequences, event_sequences, args)
+        labels, vt = _make_vector_trace(
+            matrices, vector_sequences, event_sequences, args)
         res = {}
         vsm = VectorSequenceModel()
         for v in vt:
@@ -477,13 +492,13 @@ def process_max_plus_operation(args, dsl):
         res[name] = vsm
         print(MaxPlusMatrixModel().as_dsl(name+'_trace', res))
 
-    # vectortracexml
+    # vector trace xml
     if args.operation == OP_MPM_VECTOR_TRACE_XML:
 
         ni = parse_number_of_iterations(args)
         sequences = parse_sequences(args)
 
-        if len(sequences) ==0:
+        if len(sequences) == 0:
             # nothing was specified on the command line, use all vector sequences and
             # event sequences as default
             for s in vector_sequences:
@@ -499,7 +514,8 @@ def process_max_plus_operation(args, dsl):
         labels = []
         for s in sequences:
             if not (s in vector_sequences or s in event_sequences):
-                raise DataflowException(f"Unknown vector or event sequence {s}.")
+                raise DataflowException(
+                    f"Unknown vector or event sequence {s}.")
             if s in vector_sequences:
                 vs = vector_sequences[s]
                 for n in range(vs.vector_length()):
@@ -534,27 +550,27 @@ def process_max_plus_operation(args, dsl):
         print(f'The convolution of {", ".join(sequences)} is:')
         print(res)
 
-    # convolutiontransform
+    # convolution transform
     if args.operation == OP_MPM_CONVOLUTION_TRANSFORM:
         sequences, res_s = _convolution(event_sequences, args)
         res = {}
         res[f"{'_'.join(sequences)}_conv"] = res_s
         print(MaxPlusMatrixModel().as_dsl(name+'_conv', res))
 
-    # maxsequences
+    # max sequences
     if args.operation == OP_MPM_MAXIMUM:
         sequences, res = _maximum(event_sequences, args)
         print(f'The maximum of {", ".join(sequences)} is:')
         print(res)
 
-    # maxsequencestransform
+    # max sequence transform
     if args.operation == OP_MPM_MAXIMUM_TRANSFORM:
         sequences, res_s = _maximum(event_sequences, args)
         res = {}
         res[f"{'_'.join(sequences)}_max"] = res_s
         print(MaxPlusMatrixModel().as_dsl(name+'_max', res))
 
-    #'delaysequence'
+    # delay sequence
     if args.operation == OP_MPM_DELAY_SEQUENCE:
         delay = require_parameter_integer(args)
         seq = require_one_event_sequence(event_sequences, args)
@@ -562,14 +578,14 @@ def process_max_plus_operation(args, dsl):
         print(f"The {delay}-delayed sequence of {seq} is:")
         print(res)
 
-    #'scalesequence'
+    # scale sequence
     if args.operation == OP_MPM_SCALE_SEQUENCE:
         scale = require_parameter_mp_value(args)
         seq = require_one_event_sequence(event_sequences, args)
         res = event_sequences[seq].scale(scale)
-        print(f"The scaled sequence of {seq} by scaling factor {mp_element_to_string(scale)} is:")
+        print(
+            f"The scaled sequence of {seq} by scaling factor {mp_element_to_string(scale)} is:")
         print(res)
-
 
 
 def _determine_input_labels(matrices):
@@ -583,7 +599,7 @@ def _determine_input_labels(matrices):
 def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
     if len(matrices) == 1:
         ni = require_number_of_iterations(args)
-        matrix =matrices.values()[0]
+        matrix = matrices.values()[0]
         if not matrix.is_square():
             raise DataflowException("Matrix must be square.")
         x0 = parse_initial_state(args, matrix.numberOfRows())
@@ -595,12 +611,13 @@ def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
         state_labels = []
     else:
         ni = require_number_of_iterations(args)
-        input_labels, state_labels, output_labels = determine_state_space_labels(matrices)
+        input_labels, state_labels, output_labels = determine_state_space_labels(
+            matrices)
         state_size = len(state_labels)
         x0 = parse_initial_state(args, state_size)
         nt, ut = parse_input_traces(event_sequences, vector_sequences, args)
-        inputs = MaxPlusMatrixModel.extract_sequences(nt, ut, event_sequences, \
-                                                     vector_sequences, input_labels)
+        inputs = MaxPlusMatrixModel.extract_sequences(nt, ut, event_sequences,
+                                                      vector_sequences, input_labels)
         vt = MaxPlusMatrixModel.vector_trace(matrices, x0, ni, inputs, True)
 
     labels = []
@@ -610,10 +627,12 @@ def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
 
     return labels, vt
 
-def _convolution(event_sequences, args):
+
+def _convolution(event_sequences: Dict[str, EventSequenceModel], args):
     sequences = parse_sequences(args)
     if len(sequences) < 2:
-        raise DataflowException("Please specify at least two sequences to convolve.")
+        raise DataflowException(
+            "Please specify at least two sequences to convolve.")
     validate_event_sequences(event_sequences, sequences)
 
     res = event_sequences[sequences[0]]
@@ -621,10 +640,12 @@ def _convolution(event_sequences, args):
         res = res.convolve_with(event_sequences[s])
     return sequences, res
 
-def _maximum(event_sequences, args):
+
+def _maximum(event_sequences: Dict[str, EventSequenceModel], args):
     sequences = parse_sequences(args)
     if len(sequences) < 2:
-        raise DataflowException("Please specify at least two sequences to maximize.")
+        raise DataflowException(
+            "Please specify at least two sequences to maximize.")
     validate_event_sequences(event_sequences, sequences)
 
     res = event_sequences[sequences[0]]
@@ -632,18 +653,21 @@ def _maximum(event_sequences, args):
         res = res.max_with(event_sequences[s])
     return sequences, res
 
-def _determine_trace(dataflow_graph: DataflowGraph, args: Dict[str,Any], ni: int):
+
+def _determine_trace(dataflow_graph: DataflowGraph, args: Dict[str, Any], ni: int):
     state_size = dataflow_graph.number_of_initial_tokens()
     x0 = parse_initial_state(args, state_size)
 
     # get input sequences.
     inp_sig = dataflow_graph.input_signals()
-    nt, _ = parse_input_traces(inp_sig, {}, args)  # type: ignore type system issue
+    # type: ignore type system issue
+    nt, _ = parse_input_traces(inp_sig, {}, args)
 
     if state_size != len(x0):
         raise DataflowException('Initial state vector is of incorrect size.')
 
-    return dataflow_graph.determine_trace(ni, x0, nt)  # type: ignore type system issue
+    # type: ignore type system issue
+    return dataflow_graph.determine_trace(ni, x0, nt)
 
 
 if __name__ == "__main__":

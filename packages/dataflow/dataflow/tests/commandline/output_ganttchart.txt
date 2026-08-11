@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<trace>
+    <firings>
+        <firing id="0" start="5.0" end="5.0" actor="Input" iteration="0" scenario="s"/>
+        <firing id="1" start="5.0" end="10.0" actor="Output" iteration="0" scenario="s"/>
+        <firing id="2" start="5.0" end="6.0" actor="Pass" iteration="0" scenario="s"/>
+        <firing id="3" start="6.0" end="6.0" actor="Input" iteration="1" scenario="s"/>
+        <firing id="4" start="6.0" end="11.0" actor="Output" iteration="1" scenario="s"/>
+        <firing id="5" start="6.0" end="7.0" actor="Pass" iteration="1" scenario="s"/>
+        <firing id="6" start="7.0" end="7.0" actor="Input" iteration="2" scenario="s"/>
+        <firing id="7" start="7.0" end="12.0" actor="Output" iteration="2" scenario="s"/>
+        <firing id="8" start="7.0" end="8.0" actor="Pass" iteration="2" scenario="s"/>
+    </firings>
+    <inputs>
+        <input name="i" timestamp="0.0" iteration="0"/>
+        <input name="i" timestamp="0.4" iteration="1"/>
+        <input name="i" timestamp="0.8" iteration="2"/>
+    </inputs>
+    <outputs>
+        <output name="o" timestamp="10.0" iteration="0"/>
+        <output name="o" timestamp="11.0" iteration="1"/>
+        <output name="o" timestamp="12.0" iteration="2"/>
+    </outputs>
+</trace>
