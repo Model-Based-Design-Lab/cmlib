@@ -348,7 +348,7 @@ class MaxPlusMatrixModel:
 
     @staticmethod
     def vector_trace(
-        matrices: Dict[str, "MaxPlusMatrixModel"],
+        matrices: Mapping[str, "MaxPlusMatrixModel"],
         x0: mp.TMPVector,
         ni: int,
         inputs: List[mp.TTimeStampList],
@@ -374,7 +374,7 @@ class MaxPlusMatrixModel:
 
         """
 
-        def _validate(mat: Dict[str, "MaxPlusMatrixModel"]) -> None:
+        def _validate(mat: Mapping[str, "MaxPlusMatrixModel"]) -> None:
             if not ("A" in mat and "B" in mat and "C" in mat and "D" in mat):
                 raise MPMValidateException("Expected matrices A, B, C and D")
             matrix_s = mat["A"]
@@ -523,9 +523,9 @@ class MaxPlusMatrixModel:
         dsl_string: str,
     ) -> Tuple[
         str,
-        Dict[str, "MaxPlusMatrixModel"],
-        Dict[str, VectorSequenceModel],
-        Dict[str, EventSequenceModel],
+        Mapping[str, "MaxPlusMatrixModel"],
+        Mapping[str, VectorSequenceModel],
+        Mapping[str, EventSequenceModel],
     ]:
         """
         Parse dslString and extract model name, matrices, vector sequences and event sequences.
@@ -557,7 +557,7 @@ class MaxPlusMatrixModel:
         self,
         name: str,
         all_instances: Optional[
-            Dict[
+            Mapping[
                 str,
                 Union["MaxPlusMatrixModel", VectorSequenceModel, EventSequenceModel],
             ]

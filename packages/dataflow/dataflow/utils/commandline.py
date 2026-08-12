@@ -4,7 +4,7 @@
 import argparse
 import sys
 from fractions import Fraction
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 from dataflow.libmpm import EventSequenceModel, MaxPlusMatrixModel, VectorSequenceModel
 from dataflow.libsdf import DataflowGraph
@@ -277,7 +277,7 @@ def process_dataflow_operation(args, dsl):
         _, st_sp_matrices = dataflow_graph.state_space_matrices()
         mpm = MaxPlusMatrixModel()
         mpm.set_matrix(st_sp_matrices[0])
-        matrices = {}
+        matrices: Dict[str, MaxPlusMatrixModel] = {}
         matrices['A'] = MaxPlusMatrixModel(st_sp_matrices[0])
         matrices['A'].set_labels(dataflow_graph.state_element_labels())
         print(mpm.as_dsl(name+"_MPM", matrices))
@@ -286,7 +286,7 @@ def process_dataflow_operation(args, dsl):
         _, st_sp_matrices = dataflow_graph.state_space_matrices()
         mpm = MaxPlusMatrixModel()
         mpm.set_matrix(st_sp_matrices[0])
-        matrices = {}
+        matrices: Dict[str, MaxPlusMatrixModel] = {}
         matrices['A'] = MaxPlusMatrixModel(st_sp_matrices[0])
         matrices['A'].set_labels(dataflow_graph.state_element_labels())
         matrices['B'] = MaxPlusMatrixModel(st_sp_matrices[1])
@@ -367,6 +367,7 @@ def process_dataflow_operation(args, dsl):
 def process_max_plus_operation(args, dsl):
     """Process args for maxplus operation."""
 
+    matrices: Mapping[str, MaxPlusMatrixModel]
     name, matrices, vector_sequences, event_sequences = MaxPlusMatrixModel.from_dsl(
         dsl)
     for m in matrices.values():
@@ -441,9 +442,9 @@ def process_max_plus_operation(args, dsl):
     if args.operation == OP_MPM_MULTIPLY:
         names = require_sequence_of_matrices_and_possibly_vector_sequence(
             matrices, vector_sequences, args)
-        matrices = [(matrices[m] if m in matrices else vector_sequences[m])
+        matrices_and_sequence = [(matrices[m] if m in matrices else vector_sequences[m])
                     for m in names]
-        result = MaxPlusMatrixModel.multiply_sequence(matrices)
+        result = MaxPlusMatrixModel.multiply_sequence(matrices_and_sequence)
         print(f"The product of {', '.join(names)} is:")
         if isinstance(result, VectorSequenceModel):
             print_mp_vector_list(result.vectors())
@@ -454,10 +455,10 @@ def process_max_plus_operation(args, dsl):
     if args.operation == OP_MPM_MULTIPLY_TRANSFORM:
         names = require_sequence_of_matrices_and_possibly_vector_sequence(matrices, # type: ignore \
                                                                           vector_sequences, args)
-        matrices = [(matrices[m] if m in matrices else vector_sequences[m])  # type: ignore \
+        matrices_and_sequence = [(matrices[m] if m in matrices else vector_sequences[m])  # type: ignore \
                     for m in names]
         new_name = f"prod_{'_'.join(names)}"
-        result = MaxPlusMatrixModel.multiply_sequence(matrices)
+        result = MaxPlusMatrixModel.multiply_sequence(matrices_and_sequence)
         new_model = {}
         new_model[new_name] = result
         print(MaxPlusMatrixModel().as_dsl(name+'_mul', new_model))
@@ -596,14 +597,14 @@ def _determine_input_labels(matrices):
         return input_labels
 
 
-def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
+def _make_vector_trace(matrices:Mapping[str, MaxPlusMatrixModel], vector_sequences, event_sequences, args):
     if len(matrices) == 1:
         ni = require_number_of_iterations(args)
-        matrix = matrices.values()[0]
+        matrix = next(iter(matrices.values()))
         if not matrix.is_square():
             raise DataflowException("Matrix must be square.")
-        x0 = parse_initial_state(args, matrix.numberOfRows())
-        vt = matrix.vectorTraceClosed(x0, ni)
+        x0 = parse_initial_state(args, matrix.number_of_rows())
+        vt = matrix.vector_trace_closed(x0, ni)
         inputs = []
         state_size = matrix.number_of_rows()
         input_labels = []
@@ -628,7 +629,7 @@ def _make_vector_trace(matrices, vector_sequences, event_sequences, args):
     return labels, vt
 
 
-def _convolution(event_sequences: Dict[str, EventSequenceModel], args):
+def _convolution(event_sequences: Mapping[str, EventSequenceModel], args):
     sequences = parse_sequences(args)
     if len(sequences) < 2:
         raise DataflowException(
@@ -641,7 +642,7 @@ def _convolution(event_sequences: Dict[str, EventSequenceModel], args):
     return sequences, res
 
 
-def _maximum(event_sequences: Dict[str, EventSequenceModel], args):
+def _maximum(event_sequences: Mapping[str, EventSequenceModel], args):
     sequences = parse_sequences(args)
     if len(sequences) < 2:
         raise DataflowException(

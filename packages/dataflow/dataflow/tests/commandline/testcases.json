@@ -6,6 +6,7 @@
     "eliminate_whitespace": true,
     "custom_regular_expressions": [
       {
+        "reason": "Different python versions behave differently for argparse help output.",
         "pattern": "optional arguments:",
         "replacement": "options:"
       }
@@ -135,5 +136,20 @@
     "model": "mpm_MatrixExample3.mpm",
     "expected_exit_code": 0,
     "expected_output_file": "output_starclosure.txt"
+  }, {
+    "args": ["-op", "multiply", "-ma", "A,B"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The product of A, B is: [[ 1/2 -inf ] [ 10/21 2/3 ] [ 0  1/6 ] [ 13/42 1/2 ]]"
+  }, {
+    "args": ["-op", "multiplytransform", "-ma", "A,B"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model C20_WCD_MPM_mul : matrices prod_A_B  = [ [  1/2  -inf ] [ 10/21    2/3 ] [   0  1/6 ] [ 13/42    1/2 ] ]"
+  }, {
+    "args": ["-op", "vectortrace", "-ni", "4"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "Vector elements: [] Trace: [ 0  0 ], [ 1  1 ], [ 2  2 ], [ 3  3 ]"
   }
 ]

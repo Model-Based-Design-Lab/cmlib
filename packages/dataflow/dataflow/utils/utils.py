@@ -308,7 +308,7 @@ def parse_matrices(args: Any)->List[str]:
         return []
     return args.matrices.split(',')
 
-def require_matrices(arg_matrices: List[str], def_matrices: Dict[str, MaxPlusMatrixModel])\
+def require_matrices(arg_matrices: List[str], def_matrices: Mapping[str, MaxPlusMatrixModel])\
     ->List[str]:
     ''' check that the matrices in the list argMatrices are all defined in defMatrices,
     and that at least one matrix is specified, otherwise raise an exception. Returns argMatrices.'''
@@ -328,7 +328,7 @@ def parse_one_matrix(args: Any)->Optional[str]:
         raise DataflowException("Specify one matrix only.")
     return matrices[0]
 
-def require_square_matrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
+def require_square_matrices(matrices: Mapping[str, MaxPlusMatrixModel])->List[str]:
     '''Return a list of names of the square matrices in the matrices dictionary.
     If there are no square matrices, an exception is raised.'''
     sq_matrix_models = [m for m,M in matrices.items() if M.is_square()]
@@ -336,7 +336,7 @@ def require_square_matrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
         raise DataflowException("Provide a model with a square matrix.")
     return sq_matrix_models
 
-def get_square_matrix(matrices: Dict[str, MaxPlusMatrixModel], args: Any) -> str:
+def get_square_matrix(matrices: Mapping[str, MaxPlusMatrixModel], args: Any) -> str:
     '''Get a square matrix from the arguments. If no square matrix was specified,
     take the first one from the model.'''
     sq_matrix_models = require_square_matrices(matrices)
@@ -354,7 +354,7 @@ def parse_sequences(args: Any) -> List[str]:
         return []
     return args.sequences.split(',')
 
-def validate_event_sequences(eventsequences: Dict[str, EventSequenceModel], sequences: List[str]):
+def validate_event_sequences(eventsequences: Mapping[str, EventSequenceModel], sequences: List[str]):
     ''' check that the sequences are defined in the eventsequences dict.'''
     for s in sequences:
         if s not in eventsequences:
@@ -373,7 +373,7 @@ def parse_one_sequence(args: Any) -> Optional[str]:
     return sequences[0]
 
 
-def require_one_event_sequence(eventsequences: Dict[str,Any], args)->str:
+def require_one_event_sequence(eventsequences: Mapping[str,Any], args)->str:
     '''Return the name of a specified sequence. Requires that exactly on
     sequence is specified from eventsequences, otherwise an exception is raised.'''
     s = parse_one_sequence(args)
@@ -383,8 +383,8 @@ def require_one_event_sequence(eventsequences: Dict[str,Any], args)->str:
         raise DataflowException(f"Sequence {s} is unknown.")
     return s
 
-def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Dict[str,\
-                MaxPlusMatrixModel], vectorsequences: Dict[str,VectorSequenceModel], args: Any)\
+def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Mapping[str,\
+                MaxPlusMatrixModel], vectorsequences: Mapping[str,VectorSequenceModel], args: Any)\
                  -> List[str]:
     '''Get a required sequence of matrices, and possibly last a vector sequence.
     An exception is raised if no sequence is specified, or it is malformed.'''
@@ -400,14 +400,14 @@ def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Dict[str,
 
     return names
 
-def require_matrix_defined(matrices: Dict[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
+def require_matrix_defined(matrices: Mapping[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
     '''Check that m is defined in matrices and return the corresponding matrix model.
     If m is not defined, raises an exception'''
     if not m in matrices:
         raise DataflowException(f"Matrix {m} is not defined.")
     return matrices[m]
 
-def determine_state_space_labels(matrices: Dict[str,MaxPlusMatrixModel])->\
+def determine_state_space_labels(matrices: Mapping[str,MaxPlusMatrixModel])->\
     Tuple[List[str],List[str],List[str]]:
     '''Determine the labels of the state-space elements from the matrix definitions.
     Returns a tuple with input labels, state labels, and output labels.'''
