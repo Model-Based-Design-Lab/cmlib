@@ -2,7 +2,14 @@
   {
     "args": ["-h"],
     "expected_exit_code": 0,
-    "expected_output_file": "output_help.txt"
+    "expected_output_file": "output_help.txt",
+    "eliminate_whitespace": true,
+    "custom_regular_expressions": [
+      {
+        "pattern": "optional arguments:",
+        "replacement": "options:"
+      }
+    ]
   },{
     "args": ["-op", "inputlabelssdf"],
     "model": "sdf_ConveyorBelt.sdf",

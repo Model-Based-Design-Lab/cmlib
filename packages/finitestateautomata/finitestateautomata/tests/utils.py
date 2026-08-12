@@ -10,3 +10,10 @@ def normalize(s, eliminate_whitespace=False):
     if eliminate_whitespace:
         return re.sub(r'\s+', '', s.strip())
     return re.sub(r'\s+', ' ', s.strip())
+
+
+def apply_regular_expressions(s, regex_list):
+    """Apply a list of regular expressions to a string."""
+    for regex in regex_list:
+        s = re.sub(regex["pattern"], regex["replacement"], s)
+    return s
