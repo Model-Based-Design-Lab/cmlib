@@ -43,17 +43,65 @@
     "model": "sdf_ConveyorBelt.sdf",
     "expected_exit_code": 0,
     "expected_output": "Inputs: i Outputs: o State vector: Pass_Input IO latency matrix: [[ 5 ]] Initial state latency matrix: [[ 5 ]]"
-  },{
+  }, {
     "args": ["-op", "statespacematrices"],
     "model": "sdf_ConveyorBelt.sdf",
     "expected_exit_code": 0,
     "expected_output": "Inputs: i Outputs: o State vector: Pass_Input State matrix A: [[ 1 ]] Input matrix B: [[ 1 ]] Output matrix C: [[ 5 ]] Feed forward matrix D: [[ 5 ]]"
-  },
-  {
+  }, {
+    "args": ["-op", "statematrix"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "State vector: Pass_Input State matrix A: [[ 1 ]]"
+  }, {
+    "args": ["-op", "statespacematricesmodel"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_statespacematricesmodel.txt"
+  }, {
+    "args": ["-op", "statematrixmodel"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model ConveyorBelt_MPM : matrices A (Pass_Input) = [ [ 1 ] ]"
+  }, {
     "args": ["-op", "ganttchart", "-ni", "3", "-is", "[5]"],
     "model": "sdf_ConveyorBelt.sdf",
     "expected_exit_code": 0,
     "expected_output_file": "output_ganttchart.txt"
+  }, {
+    "args": ["-op", "ganttchart-zero-based", "-ni", "5"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_ganttchart_zero_based.txt"
+  }, {
+    "args": ["-op", "converttosinglerate"],
+    "model": "sdf_eggs.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_converttosinglerate.txt"
+  }, {
+    "args": ["-op", "converttosdfx"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_converttosdfx.txt"
+  }, {
+    "args": ["-op", "eigenvalue"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The largest eigenvalue of matrix A is: 1/3"
+  }, {
+    "args": ["-op", "eventsequences"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "h,x"
+  }, {
+    "args": ["-op", "vectorsequences"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "v"
+  }, {
+    "args": ["-op", "inputlabelsmpm"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "i,ce"
   }
-
 ]
