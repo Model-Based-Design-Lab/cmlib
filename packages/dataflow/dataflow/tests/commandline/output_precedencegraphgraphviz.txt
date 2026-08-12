@@ -1,0 +1,17 @@
+
+                digraph PrecedenceGraph {
+                    graph [bgcolor=transparent,overlap=false]
+                    node [fontsize=20 fontname="Calibri" width=0.6 penwidth=2 style=filled shape=circle]
+                    edge[fontsize=16 fontname="Calibri"]
+                        "Sh_Sh"
+"DM_DM"
+"CE_DM_0"
+"CE_DM_1""Sh_Sh" -> "Sh_Sh" [minlen=3 len=3 xlabel="1/4"]
+"Sh_Sh" -> "DM_DM" [minlen=3 len=3 xlabel="1/7"]
+"Sh_Sh" -> "CE_DM_1" [minlen=3 len=3 xlabel="0"]
+"DM_DM" -> "DM_DM" [minlen=3 len=3 xlabel="1/3"]
+"DM_DM" -> "CE_DM_1" [minlen=3 len=3 xlabel="1/6"]
+"CE_DM_0" -> "DM_DM" [minlen=3 len=3 xlabel="1/3"]
+"CE_DM_0" -> "CE_DM_1" [minlen=3 len=3 xlabel="1/6"]
+"CE_DM_1" -> "CE_DM_0" [minlen=3 len=3 xlabel="0"]
+                }

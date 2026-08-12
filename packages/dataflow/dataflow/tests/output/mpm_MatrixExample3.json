@@ -1,0 +1,9 @@
+{
+    "Eigenvalues": "0",
+    "starClosure": "[True, [[0, -5, None, None, None]\n[-3, 0, None, None, None]\n[2, -3, 0, None, None]\n[3, -2, 1, 0, -5]\n[8, 3, 6, 1, 0]]]",
+    "star_closure": "[[0, -5, None, None, None]\n[-3, 0, None, None, None]\n[2, -3, 0, None, None]\n[3, -2, 1, 0, -5]\n[8, 3, 6, 1, 0]]",
+    "multiply": "[[None, -5, None, None, None], [-3, None, None, None, None], [2, None, 0, None, None], [None, None, None, None, -5], [8, None, 6, 1, None]]",
+    "Eigenvectors": [
+        "[[[[None, None, -6, -5, 0], 0], [[None, None, None, -3, 0], -2]], [[[-12, -11, -6, -5, 0], [-4, -4, 0, 0, 0]]]]"
+    ]
+}

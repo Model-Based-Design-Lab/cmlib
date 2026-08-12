@@ -1,0 +1,29 @@
+usage: markovchains [-h] [-op OPERATION] [-ns NUMBEROFSTEPS] [-s TARGETSTATE] [-ss TARGETSTATESET] [-r STATEREWARDSET] [-sa STATESTARTINGSET] [-c CONDITIONS] [-sd SEED] markovchain
+
+Perform operations on discrete-time Markov chains. " "https://computationalmodeling.info
+
+positional arguments:
+  markovchain           the Markov chain to analyze
+
+options:
+  -h, --help            show this help message and exit
+  -op OPERATION, --operation OPERATION
+                        the operation or analysis to perform, one of : liststates; listrecurrentstates; listtransientstates; communicatingstates; classifytransientrecurrent;
+                        hittingprobability; hittingprobabilityset; rewardtillhit; rewardtillhitset; periodicity; mctype; transient; transientRewards; transientMatrix; limitingMatrix;
+                        limitingDistribution; longRunReward; executiongraph; markovtrace; longrunexpectedaveragereward; cezarolimitdistribution; estimationexpectedreward;
+                        estimationdistribution; estimationhittingstate; estimationhittingreward; estimationhittingstateset; estimationhittingrewardset. Use 'markovchains -oh OPERATION'
+                        for information about the specific operation.
+  -ns NUMBEROFSTEPS, --numberofsteps NUMBEROFSTEPS
+                        the number of steps to execute
+  -s TARGETSTATE, --state TARGETSTATE
+                        the state for the operation
+  -ss TARGETSTATESET, --stateset TARGETSTATESET
+                        the set of state for the operation as a non-empty comma-separated list
+  -r STATEREWARDSET, --rewardset STATEREWARDSET
+                        the set of state reward for the operation as a non-empty comma-separated list
+  -sa STATESTARTINGSET, --startingset STATESTARTINGSET
+                        the set of starting states for the simulation hitting operations as a non-empty comma-separated list
+  -c CONDITIONS, --conditions CONDITIONS
+                        The stop conditions for simulating the markovchain [confidence,abError,reError,numberOfSteps,numberOfPaths,timeInSeconds]
+  -sd SEED, --seed SEED
+                        Simulation seed for pseudo random variables

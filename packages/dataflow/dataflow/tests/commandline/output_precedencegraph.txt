@@ -1,0 +1,11 @@
+The nodes of the precedence graph are:
+Sh_Sh, DM_DM, CE_DM_0, CE_DM_1
+The edges of the precedence graph are:
+Sh_Sh --- 1/4 ---> Sh_Sh
+Sh_Sh --- 1/7 ---> DM_DM
+Sh_Sh --- 0 ---> CE_DM_1
+DM_DM --- 1/3 ---> DM_DM
+DM_DM --- 1/6 ---> CE_DM_1
+CE_DM_0 --- 1/3 ---> DM_DM
+CE_DM_0 --- 1/6 ---> CE_DM_1
+CE_DM_1 --- 0 ---> CE_DM_0

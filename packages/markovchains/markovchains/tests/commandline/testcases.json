@@ -1,0 +1,8 @@
+[
+  {
+    "args": ["-h"],
+    "expected_exit_code": 0,
+    "expected_output_file": "output_help.txt",
+    "eliminate_whitespace": true
+  }
+]

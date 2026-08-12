@@ -103,5 +103,30 @@
     "model": "mpm_channel_decoder.mpm",
     "expected_exit_code": 0,
     "expected_output": "i,ce"
+  }, {
+    "args": ["-op", "matrices"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "A,B,C,D"
+  }, {
+    "args": ["-op", "eigenvectors"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The eigenvectors of matrix A are: [ -inf     0  -1/2  -1/6 ], with eigenvalue: 1/3 Generalized Eigenvectors: [     0  -3/28  -7/12   -1/4 ], with generalized eigenvalue: [ 1/4  1/3  1/3  1/3 ]"
+  }, {
+    "args": ["-op", "precedencegraph"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_precedencegraph.txt"
+  }, {
+    "args": ["-op", "precedencegraphgraphviz"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_precedencegraphgraphviz.txt"
+  }, {
+    "args": ["-op", "starclosure"],
+    "model": "mpm_MatrixExample3.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_starclosure.txt"
   }
 ]

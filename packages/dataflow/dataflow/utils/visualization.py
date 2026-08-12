@@ -8,7 +8,8 @@ def weighted_graph_to_graph_viz(gr):
             ("\n".join([compile_edge(gr, e) for e in gr.edges()]))
 
     def compile_edge(gr, e):
-        return f"\"{e[0]}\" -> \"{e[1]}\" [minlen=3 len=3 xlabel=\"{gr.edge_weight(e)}\"]"
+        # return f"\"{e[0]}\" -> \"{e[1]}\" [minlen=3 len=3 xlabel=\"{gr.edge_weight(e)}\"]"
+        return f"\"{e[0]}\" -> \"{e[1]}\" [minlen=3 len=3 xlabel=\"{gr.get_edge_data(e[0], e[1])['weight']}\"]"
 
     def compile_state(s):
         return f"\"{s}\""
