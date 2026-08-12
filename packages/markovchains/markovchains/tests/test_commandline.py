@@ -51,6 +51,8 @@ def test_commandline(case, monkeypatch, capsys):
         output_normalized = normalize(captured.out.strip(), eliminate_whitespace=eliminate_whitespace)
         expected_normalized = normalize(expected_output.strip(), eliminate_whitespace=eliminate_whitespace)
         result = output_normalized == expected_normalized
+        print("normalized output:", output_normalized)
+        print("normalized expected:", expected_normalized)
         assert result, (f"Expected output from file {case['expected_output_file']}, "
                          f"but got:\n {captured.out.strip()}")
     else:
