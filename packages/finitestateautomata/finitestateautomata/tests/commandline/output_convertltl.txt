@@ -1,0 +1,8 @@
+finite state automaton phi_ltl {
+        ((S1,A0),F0) initial; final -- a, b, c, d --> ((S2,A1),F0)
+        ((S1,A0),F0) -- c, d --> ((S1,A0),F0)
+        ((S2,A0),F0) final -- a, b, c, d --> ((S2,A1),F0)
+        ((S2,A0),F0) -- c, d --> ((S1,A0),F0)
+        ((S2,A1),F0) -- a, b, c, d --> ((S2,A1),F0)
+        ((S2,A1),F0) -- c, d --> ((S1,A0),F0)
+}

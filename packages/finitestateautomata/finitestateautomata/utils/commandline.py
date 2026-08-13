@@ -271,7 +271,11 @@ def process(args, dsl):
 
     # convertOmegaRegEx (requires omega-regular expression)
     if args.operation == OP_REGEX_CONVERT_OMEGA_REGEX:
-        res = require_reg_ex(r).as_nba()
+        regex: RegEx = require_reg_ex(r)
+        if not regex.is_omega_reg_ex():
+            print(f"Regular expression {name} is not an omega-regular expression.")
+            sys.exit(1)
+        res = regex.as_nba()
         print(res.as_dsl(name))  # type: ignore
 
     # convertLTL (requires ltl formula)

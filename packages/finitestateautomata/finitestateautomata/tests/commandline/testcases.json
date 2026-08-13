@@ -110,5 +110,20 @@
     "expected_exit_code": 0,
     "model": "fsa_Numerical.fsa",
     "expected_output": "regular expression A_RegEx = '0'.'0'*+(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1').(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1')*.('0'.'0'*+\\e)+\\e"
+  }, {
+    "args": ["-op", "convertRegEx"],
+    "expected_exit_code": 0,
+    "model": "regex_Numerical.regex",
+    "expected_output_file": "output_convertregex.txt"
+  }, {
+    "args": ["-op", "convertOmegaRegEx"],
+    "expected_exit_code": 0,
+    "model": "ExampleOmegaRegEx.regex",
+    "expected_output_file": "output_convertomegaregex.txt"
+  }, {
+    "args": ["-op", "convertLTL"],
+    "expected_exit_code": 0,
+    "model": "ltl_Example.ltl",
+    "expected_output_file": "output_convertltl.txt"
   }
 ]
