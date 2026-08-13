@@ -32,6 +32,9 @@ def test_commandline(case, monkeypatch, capsys):
     if "model" in case:
         model_file_path: Path = TEST_DIR / "models" / case["model"]
         args.append(str(model_file_path))
+    if "secondary-model" in case:
+        secondary_model_file_path: Path = TEST_DIR / "models" / case["secondary-model"]
+        args.extend(["-sa", str(secondary_model_file_path)])
     monkeypatch.setattr("sys.argv", args)
 
     with pytest.raises(SystemExit) as exc_info:

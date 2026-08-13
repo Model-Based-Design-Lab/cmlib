@@ -1,0 +1,17 @@
+finite state automaton CoffeeMachine_minB {
+        {A} initial; final -- h --> {D}
+        {A} -- s --> {B}
+        {B} -- a --> {C}
+        {B} -- b, t --> {A}
+        {B} -- h --> {E}
+        {C} -- b --> {B}
+        {C} -- h --> {F}
+        {C} -- t --> {A}
+        {D} -- s --> {E}
+        {D} -- t --> {A}
+        {E} -- a --> {F}
+        {E} -- b --> {D}
+        {E} -- t --> {A}
+        {F} -- b --> {E}
+        {F} -- t --> {A}
+}

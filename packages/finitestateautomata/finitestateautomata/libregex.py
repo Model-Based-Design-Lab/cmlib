@@ -321,6 +321,9 @@ class RegExTermConcatenation(RegExTerm):
     def sub_expressions(self)->Set[RegExTerm]:
         return set(self._expressions)
 
+    def sub_expression_list(self)->List[RegExTerm]:
+        return self._expressions
+
     def is_finite_reg_ex(self)->bool:
         for k in range(len(self._expressions)-1):
             if not self._expressions[k].is_finite_reg_ex():
@@ -350,19 +353,27 @@ class RegExTermConcatenation(RegExTerm):
         return RegExTermConcatenation(non_trivial_expr)
 
     def __eq__same_class__(self, other)->bool:
-        if not len(self._expressions) == len(other.sub_expressions()):
+        if not len(self._expressions) == len(other.sub_expression_list()):
             return False
-        for i, e in enumerate(self._expressions):
-            if not e.__eq__(other.expressions[i]):
+
+        ss = self._expressions
+        so = other.sub_expression_list()
+        for i, e in enumerate(ss):
+            if not e.__eq__(so[i]):
                 return False
         return True
 
     def __lt__same_class__(self, other)->bool:
-        if not len(self._expressions) == len(other.sub_expressions()):
-            return len(self._expressions) < len(other.sub_expressions())
-        for i, e in enumerate(self._expressions):
-            if e.__lt__(other.expressions[i]):
+        if not len(self._expressions) == len(other.sub_expression_list()):
+            return len(self._expressions) < len(other.sub_expression_list())
+
+        ss = self._expressions
+        so = other.sub_expression_list()
+        for i, e in enumerate(ss):
+            if e.__lt__(so[i]):
                 return True
+            if so[i].__lt__(e):
+                return False
         return False
 
     def __hash__(self) -> int:
@@ -490,7 +501,7 @@ class RegExTermAlternatives(RegExTerm):
         return True
 
     def simplify(self)->RegExTerm:
-        simplified_expressions = [e.simplify() for e in self._expressions]
+        simplified_expressions = [e.simplify() for e in sorted(self._expressions)]
         non_trivial_expr = list(filter(lambda e: not e.is_empty_set(), simplified_expressions))
         if len(non_trivial_expr) == 0:
             return RegExTermEmptySet()
@@ -513,7 +524,7 @@ class RegExTermAlternatives(RegExTerm):
         return 0
 
     def __str__(self)->str:
-        return "+".join([self._parenthesize(e) for e in self._expressions])
+        return "+".join([self._parenthesize(e) for e in sorted(self._expressions)])
 
     def exp_as_fsa(self)->Automaton:
         # get automata for subexpressions
@@ -590,6 +601,8 @@ class RegExTermAlternatives(RegExTerm):
         for i, e in enumerate(ss):
             if e.__lt__(so[i]):
                 return True
+            if so[i].__lt__(e):
+                return False
         return False
 
     def __hash__(self) -> int:

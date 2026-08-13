@@ -1,0 +1,14 @@
+finite state automaton Model_Model_prod {
+        (S0,S_0) initial -- a --> (S1,S_1) final
+        (S0,S_1) final -- a --> (S1,S_0) initial
+        (S0,S_1) -- a --> (S1,S_1)
+        (S0,S_1) -- b --> (S0,S_0)
+        (S0,S_2) final -- a --> (S1,S_2) final
+        (S0,S_2) -- b --> (S0,S_2)
+        (S1,S_0) -- a --> (S0,S_1)
+        (S1,S_1) -- a --> (S0,S_0)
+        (S1,S_1) -- a --> (S0,S_1)
+        (S1,S_1) -- b --> (S1,S_0)
+        (S1,S_2) -- a --> (S0,S_2)
+        (S1,S_2) -- b --> (S1,S_2)
+}

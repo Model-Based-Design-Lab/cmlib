@@ -1,0 +1,33 @@
+finite state automaton CoffeeMachine_Model_prodgnba {
+        (B,S_0) -- a --> (C,S_1) final [B]
+        (B,S_1) final [B] -- a --> (C,S_0)
+        (B,S_1) -- a --> (C,S_1)
+        (B,S_1) -- b --> (A,S_0) initial
+        (B,S_2) final [B] -- a --> (C,S_2) final [B]
+        (B,S_2) -- b --> (A,S_2) final [A, B]
+        (C,S_1) -- b --> (B,S_0)
+        (C,S_2) -- b --> (B,S_2)
+        (E,S_0) -- a --> (F,S_1) final [B]
+        (E,S_1) final [B] -- a --> (F,S_0)
+        (E,S_1) -- a --> (F,S_1)
+        (E,S_1) -- b --> (D,S_0)
+        (E,S_2) final [B] -- a --> (F,S_2) final [B]
+        (E,S_2) -- b --> (D,S_2) final [B]
+        (F,S_1) -- b --> (E,S_0)
+        (F,S_2) -- b --> (E,S_2)
+        states
+        (A,S_1) final [A, B]
+        (D,S_1) final [B]
+        (G,S_0)
+        (G,S_1) final [B]
+        (G,S_2) final [B]
+        (H,S_0)
+        (H,S_1) final [B]
+        (H,S_2) final [B]
+        (I,S_0)
+        (I,S_1) final [B]
+        (I,S_2) final [B]
+        (J,S_0) final [A]
+        (J,S_1) final [A, B]
+        (J,S_2) final [A, B]
+}

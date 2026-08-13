@@ -45,5 +45,70 @@
     "expected_exit_code": 0,
     "model": "fsa_CoffeeMachineDFA.fsa",
     "expected_output_file": "output_complement.txt"
+  }, {
+    "args": ["-op", "product"],
+    "expected_exit_code": 0,
+    "model": "fsa_TwoInitialStates.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_product.txt"
+  }, {
+    "args": ["-op", "strictProduct"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_strictproduct.txt"
+  }, {
+    "args": ["-op", "productBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_productbuchi.txt"
+  }, {
+    "args": ["-op", "strictProductBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_strictproductbuchi.txt"
+  }, {
+    "args": ["-op", "reachableStates"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "{A, B, C, D, E, F, G, H, I, J}"
+  }, {
+    "args": ["-op", "languageEmpty"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "False [] ['A']"
+  }, {
+    "args": ["-op", "languageEmptyBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "False [] ['h', 't'] ['A'] ['D', 'A']"
+  }, {
+    "args": ["-op", "languageIncluded"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output": "False []"
+  }, {
+    "args": ["-op", "minimize"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_minimize.txt"
+  }, {
+    "args": ["-op", "minimizeBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_minimizebuchi.txt"
+  }, {
+    "args": ["-op", "relabel"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_relabel.txt"
+  }, {
+    "args": ["-op", "asRegEx"],
+    "expected_exit_code": 0,
+    "model": "fsa_Numerical.fsa",
+    "expected_output": "regular expression A_RegEx = '0'.'0'*+(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1').(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1')*.('0'.'0'*+\\e)+\\e"
   }
 ]
