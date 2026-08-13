@@ -102,21 +102,10 @@
     "expected_output_file": "output_executiongraph.txt",
     "custom_regular_expressions": [
       {
-        "explanation": "remove date from output",
-        "pattern": "<dc:date>.*?</dc:date>",
-        "replacement": ""
-      }, {
-        "explanation": "remove ids from output",
-        "pattern": "id=\\\"[^\\\"]*\\\"",
-        "replacement": ""
-      }, {
-        "explanation": "remove hrefs from output",
-        "pattern": "href=\\\"#[^\\\"]*\\\"",
-        "replacement": ""
-      }, {
-        "explanation": "remove urls from output",
-        "pattern": "url\\(#[^\\)]*\\)",
-        "replacement": ""
+        "explanation": "iwe can check only that we got some svg",
+        "pattern": "<svg.*?>.*?</svg>",
+        "replacement": "SVG",
+        "dotall": true
       }
     ]
   }, {

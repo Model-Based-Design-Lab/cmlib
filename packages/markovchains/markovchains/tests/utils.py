@@ -15,5 +15,5 @@ def normalize(s, eliminate_whitespace=False):
 def apply_regular_expressions(s, regex_list):
     """Apply a list of regular expressions to a string."""
     for regex in regex_list:
-        s = re.sub(regex["pattern"], regex["replacement"], s)
+        s = re.sub(regex["pattern"], regex["replacement"], s, flags=re.DOTALL if regex.get("dotall", False) else 0)
     return s
