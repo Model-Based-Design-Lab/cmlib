@@ -113,6 +113,13 @@ def require_automaton(a:Optional[Automaton])->Automaton:
         raise FSAException("Automaton is not defined")
     return a
 
+def require_word(w:Optional[str])->str:
+    ''' ensure a word was specified on the command line and return it '''
+    if w is None:
+        raise FSAException("Input word should be specified.")
+    return w
+
+
 def require_reg_ex(r: Optional[RegEx])->RegEx:
     ''' ensure a regular expression was specified on the command line and return it '''
     if r is None:
@@ -148,7 +155,8 @@ def process(args, dsl):
 
     # accepts (requires input word)
     if args.operation == OP_FSA_ACCEPTS:
-        res, path = require_automaton(a).accepts_with_path(args.input_trace)
+        word = require_word(args.input_trace)
+        res, path = require_automaton(a).accepts_with_path(word)
         print(res)
         if res and path is not None:
             print_states(path)
@@ -169,7 +177,8 @@ def process(args, dsl):
 
     # alphabet
     if args.operation == OP_FSA_ALPHABET:
-        print(require_automaton(a).alphabet())
+        quotedSymbols = [f"'{s}'" for s in sorted(require_automaton(a).alphabet())]
+        print(f"{{{', '.join(quotedSymbols)}}}")
 
     # complete
     if args.operation == OP_FSA_COMPLETE:

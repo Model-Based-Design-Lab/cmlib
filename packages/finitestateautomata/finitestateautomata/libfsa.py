@@ -204,7 +204,7 @@ class Automaton:
         """
 
         # get the individual symbols from the input string
-        symbols = [] if word=='' else word.split(',')
+        symbols = [] if word in ('', 'epsilon') else word.split(',')
 
         # loop invariant: maintain set of states reachable by the symbols
         # processed so far and corresponding paths

@@ -1,0 +1,10 @@
+finite state automaton Model_no_eps {
+        A initial; final -- S_a0 --> B final
+        A -- S_a0, S_a1 --> A
+        B -- S_a0 --> B
+        B -- S_a0, S_a1 --> A
+        D final -- S_a0 --> B
+        D -- S_a0, S_a1 --> A
+        states
+        C final
+}

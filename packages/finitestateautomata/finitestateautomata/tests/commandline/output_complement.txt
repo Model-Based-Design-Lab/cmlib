@@ -1,0 +1,33 @@
+finite state automaton CoffeeMachine_complement {
+        S final -- a, b, d, h, m, p, s, t --> S
+        {A} initial -- a, b, d, m, p, t --> S
+        {A} -- h --> {D} final
+        {A} -- s --> {B} final
+        {B} -- a --> {C} final
+        {B} -- b, t --> {A}
+        {B} -- d, m, p, s --> S
+        {B} -- h --> {E} final
+        {C} -- a, d, m, p, s --> S
+        {C} -- b --> {B}
+        {C} -- h --> {F} final
+        {C} -- t --> {A}
+        {D} -- a, b, d, h, m, p --> S
+        {D} -- s --> {E}
+        {D} -- t --> {A}
+        {E} -- a --> {F}
+        {E} -- b --> {D}
+        {E} -- d, h, p, s --> S
+        {E} -- m --> {G} final
+        {E} -- t --> {A}
+        {F} -- a, d, h, m, p, s --> S
+        {F} -- b --> {E}
+        {F} -- t --> {A}
+        {G} -- a, b, h, m, s, t --> S
+        {G} -- d --> {H} final
+        {G} -- p --> {I} final
+        {H} -- a, b, d, h, m, s, t --> S
+        {H} -- p --> {J}
+        {I} -- a, b, h, m, p, s, t --> S
+        {I} -- d --> {J}
+        {J} -- a, b, d, h, m, p, s, t --> S
+}

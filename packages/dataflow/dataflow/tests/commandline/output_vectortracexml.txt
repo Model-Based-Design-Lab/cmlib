@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<vectortrace>
+    <vectors>
+        <vector id="0">
+            <token name="i1" timestamp="0.0"/>
+            <token name="i2" timestamp="0.0"/>
+            <token name="h" timestamp="0.0"/>
+            <token name="x" timestamp="-inf"/>
+        </vector>
+        <vector id="1">
+            <token name="i1" timestamp="2.0"/>
+            <token name="i2" timestamp="3.0"/>
+            <token name="h" timestamp="2.0"/>
+            <token name="x" timestamp="10.0"/>
+        </vector>
+        <vector id="2">
+            <token name="i1" timestamp="5.0"/>
+            <token name="i2" timestamp="4.0"/>
+            <token name="h" timestamp="4.0"/>
+            <token name="x" timestamp="-inf"/>
+        </vector>
+</vectors>
+</vectortrace>

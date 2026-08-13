@@ -151,5 +151,45 @@
     "model": "mpm_EventSequences.mpm",
     "expected_exit_code": 0,
     "expected_output": "Vector elements: [] Trace: [ 0  0 ], [ 1  1 ], [ 2  2 ], [ 3  3 ]"
+  }, {
+    "args": ["-op", "vectortracetransform", "-ni", "3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_trace : vector sequences MPModel  = [ [ 0  0 ] [ 1  1 ] [ 2  2 ] ]"
+  }, {
+    "args": ["-op", "vectortracexml", "-ni", "3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_vectortracexml.txt"
+  }, {
+    "args": ["-op", "convolution", "-sq", "x,x"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The convolution of x, x is: [ -inf  -inf    20  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "convolutiontransform", "-sq", "x,x"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_conv : event sequences x_x_conv = [ -inf  -inf    20  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "maxsequences", "-sq", "x,h"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The maximum of x, h is: [    0    10     4     8    12  -inf ]"
+  }, {
+    "args": ["-op", "maxsequencestransform", "-sq", "x,h"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_max : event sequences x_h_max = [    0    10     4     8    12  -inf ]"
+  }, {
+    "args": ["-op", "delaysequence", "-sq", "x", "-pa", "4"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The 4-delayed sequence of x is: [ -inf  -inf  -inf  -inf  -inf    10  -inf  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "scalesequence", "-sq", "x", "-pa", "3.3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The scaled sequence of x by scaling factor 3.30000 is: [   -inf  133/10    -inf    -inf    -inf    -inf ]"
   }
 ]

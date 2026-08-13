@@ -10,5 +10,40 @@
         "replacement": "options:"
       }
     ]
+  }, {
+    "args": ["-op", "accepts", "-w", "epsilon"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "True ['A']"
+  }, {
+    "args": ["-op", "isDeterministic"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "True"
+  }, {
+    "args": ["-op", "asDFA"],
+    "expected_exit_code": 0,
+    "model": "fsa_TwoInitialStates.fsa",
+    "expected_output": "finite state automaton Model_DFA { {S0,S1} initial; final -- a, b --> {S0,S1} }"
+  }, {
+    "args": ["-op", "eliminateEpsilon"],
+    "expected_exit_code": 0,
+    "model": "fsa_epsilonModel.fsa",
+    "expected_output_file": "output_eliminateEpsilon.txt"
+  }, {
+    "args": ["-op", "alphabet"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "{'a', 'b', 'd', 'h', 'm', 'p', 's', 't'}"
+  }, {
+    "args": ["-op", "complete"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_complete.txt"
+  }, {
+    "args": ["-op", "complement"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_complement.txt"
   }
 ]
