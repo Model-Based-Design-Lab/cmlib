@@ -65,10 +65,14 @@ def main():
                         help="the regular expression to use")
     parser.add_argument('-ltl', '--ltlformula', dest='ltlFormula',
                         help="the LTL formula to use")
-    parser.add_argument('-w', '--word', dest='inputtrace',
+    parser.add_argument('-w', '--word', dest='input_trace',
                         help="an input word, a comma-separated list of symbols")
 
     args = parser.parse_args()
+
+    if args.operation is None:
+        sys.stderr.write("No operation specified.\n")
+        sys.exit(1)
 
     if args.operation not in Operations:
         sys.stderr.write(f"Unknown operation: {args.operation}\n")
@@ -113,6 +117,13 @@ def require_automaton(a:Optional[Automaton])->Automaton:
         raise FSAException("Automaton is not defined")
     return a
 
+def require_word(w:Optional[str])->str:
+    ''' ensure a word was specified on the command line and return it '''
+    if w is None:
+        raise FSAException("Input word should be specified.")
+    return w
+
+
 def require_reg_ex(r: Optional[RegEx])->RegEx:
     ''' ensure a regular expression was specified on the command line and return it '''
     if r is None:
@@ -148,7 +159,8 @@ def process(args, dsl):
 
     # accepts (requires input word)
     if args.operation == OP_FSA_ACCEPTS:
-        res, path = require_automaton(a).accepts_with_path(args.inputtrace)
+        word = require_word(args.input_trace)
+        res, path = require_automaton(a).accepts_with_path(word)
         print(res)
         if res and path is not None:
             print_states(path)
@@ -169,7 +181,8 @@ def process(args, dsl):
 
     # alphabet
     if args.operation == OP_FSA_ALPHABET:
-        print(require_automaton(a).alphabet())
+        quotedSymbols = [f"'{s}'" for s in sorted(require_automaton(a).alphabet())]
+        print(f"{{{', '.join(quotedSymbols)}}}")
 
     # complete
     if args.operation == OP_FSA_COMPLETE:
@@ -262,7 +275,11 @@ def process(args, dsl):
 
     # convertOmegaRegEx (requires omega-regular expression)
     if args.operation == OP_REGEX_CONVERT_OMEGA_REGEX:
-        res = require_reg_ex(r).as_nba()
+        regex: RegEx = require_reg_ex(r)
+        if not regex.is_omega_reg_ex():
+            print(f"Regular expression {name} is not an omega-regular expression.")
+            sys.exit(1)
+        res = regex.as_nba()
         print(res.as_dsl(name))  # type: ignore
 
     # convertLTL (requires ltl formula)

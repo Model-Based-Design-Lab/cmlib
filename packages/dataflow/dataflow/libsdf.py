@@ -7,7 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-from typing import Tuple, Any, Set, Union, Dict, List, Optional
+from typing import Mapping, Tuple, Any, Set, Union, Dict, List, Optional
 from fractions import Fraction
 from dataflow.libsdfgrammar import parse_sdf_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
@@ -939,7 +939,7 @@ class DataflowGraph:
         self,
         ni: int,
         x0: Optional[TMPVector] = None,
-        input_override: Optional[Dict[str, Union[TTimeStampList, str]]] = None,
+        input_override: Optional[Mapping[str, Union[TTimeStampList, str]]] = None,
     ) -> Tuple[
         List[TTimeStampList], List[TTimeStampList], List[TTimeStampList], List[Fraction]
     ]:
@@ -1012,13 +1012,13 @@ class DataflowGraph:
         output_traces = [v[input_vector_size + state_vector_size :] for v in vt]
 
         # reorder the vectors so that the state elements come first, followed by inputs
-        ssvt = [
+        ss_vt = [
             v[input_vector_size : state_vector_size + input_vector_size]
             + v[0:input_vector_size]
             for v in vt
         ]
         # compute the firing starting times using the trace matrix H
-        firing_starts = [mp_multiply_matrix_vector(matrix_h, s) for s in ssvt]
+        firing_starts = [mp_multiply_matrix_vector(matrix_h, s) for s in ss_vt]
         # collect the firing durations
         firing_durations = [
             self.execution_time_of_actor(a)
@@ -1093,7 +1093,7 @@ class DataflowGraph:
         def ports_of_actor(a: str) -> List[Dict[str, str]]:
             """Return the list of ports of actor a."""
             res: List[Dict[str, str]] = []
-            for c in self.outgoing_channels_of_actor(a):
+            for c in sorted(self.outgoing_channels_of_actor(a)):
                 res.append(
                     {
                         "name": out_port_name(c),
@@ -1101,7 +1101,7 @@ class DataflowGraph:
                         "rate": str(self.production_rate(c)),
                     }
                 )
-            for c in self.incoming_channels_of_actor(a):
+            for c in sorted(self.incoming_channels_of_actor(a)):
                 res.append(
                     {
                         "name": in_port_name(c),
@@ -1130,7 +1130,7 @@ class DataflowGraph:
         sdf_node.set("type", name)
 
         proper_actors = self.actors_without_inputs_outputs()
-        for a in proper_actors:
+        for a in sorted(proper_actors):
             actor_node = ET.SubElement(sdf_node, "actor")
             actor_node.set("name", a)
             actor_node.set("type", a)
@@ -1140,7 +1140,7 @@ class DataflowGraph:
                 port_node.set("type", p["type"])
                 port_node.set("rate", p["rate"])
 
-        for i in self.inputs():
+        for i in sorted(self.inputs()):
             input_node = ET.SubElement(sdf_node, "input")
             input_node.set("name", i)
             input_node.set("type", i)
@@ -1150,7 +1150,7 @@ class DataflowGraph:
                 port_node.set("type", p["type"])
                 port_node.set("rate", p["rate"])
 
-        for o in self.outputs():
+        for o in sorted(self.outputs()):
             output_node = ET.SubElement(sdf_node, "output")
             output_node.set("name", o)
             output_node.set("type", o)
@@ -1160,7 +1160,7 @@ class DataflowGraph:
                 port_node.set("type", p["type"])
                 port_node.set("rate", p["rate"])
 
-        for c in self.channels():
+        for c in sorted(self.channels()):
             channel_node = ET.SubElement(sdf_node, "channel")
             channel_node.set("name", c)
             if self.producer_of_channel(c) in proper_actors:
@@ -1182,7 +1182,7 @@ class DataflowGraph:
 
         sdf_properties_node = ET.SubElement(application_graph_node, "sdfProperties")
 
-        for a in self.actors_without_inputs_outputs():
+        for a in sorted(self.actors_without_inputs_outputs()):
             actor_properties_node = ET.SubElement(
                 sdf_properties_node, "actorProperties"
             )
@@ -1193,7 +1193,7 @@ class DataflowGraph:
             execution_time_node = ET.SubElement(processor_node, "executionTime")
             execution_time_node.set("time", str(float(self.execution_time_of_actor(a))))
 
-        for c in self.channels():
+        for c in sorted(self.channels()):
             channel_properties_node = ET.SubElement(
                 sdf_properties_node, "channelProperties"
             )

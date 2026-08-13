@@ -1,0 +1,5 @@
+Estimated cumulative reward until hitting S4 are:
+From state S1: Cannot be decided, too few samples.
+From state S2: Cannot be decided, too few samples.
+From state S3: 520.00000    int: [429.51885, 610.48115]    abEr: 90.48115    reEr: 0.21066    #paths: 43    stop: Relative Error
+From state S4: 300.00000    int: [300.00000, 300.00000]    abEr: 0.00000     reEr: 0.00000    #paths: 30    stop: Relative Error

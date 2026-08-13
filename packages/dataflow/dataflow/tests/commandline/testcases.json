@@ -1,0 +1,195 @@
+[
+  {
+    "args": ["-h"],
+    "expected_exit_code": 0,
+    "expected_output_file": "output_help.txt",
+    "eliminate_whitespace": true,
+    "custom_regular_expressions": [
+      {
+        "reason": "Different python versions behave differently for argparse help output.",
+        "pattern": "optional arguments:",
+        "replacement": "options:"
+      }
+    ]
+  },{
+    "args": ["-op", "inputlabelssdf"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "i"
+  },{
+    "args": ["-op", "statelabelssdf"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Pass_Input"
+  },{
+    "args": ["-op", "repetitionvector"],
+    "model": "sdf_eggs.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Repetition Vector: i: 20 Clean: 5 Box: 2 o: 20"
+  },{
+    "args": ["-op", "deadlock"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "The graph does not deadlock."
+  },{
+    "args": ["-op", "throughput"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Throughput: 1"
+  },{
+    "args": ["-op", "throughputoutput", "-ou", "o"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Throughput of output: o: 1"
+  },{
+    "args": ["-op", "latency", "-p", "7"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o [[ 5 ]]"
+  },{
+    "args": ["-op", "generalizedlatency", "-p", "7"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o State vector: Pass_Input IO latency matrix: [[ 5 ]] Initial state latency matrix: [[ 5 ]]"
+  }, {
+    "args": ["-op", "statespacematrices"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "Inputs: i Outputs: o State vector: Pass_Input State matrix A: [[ 1 ]] Input matrix B: [[ 1 ]] Output matrix C: [[ 5 ]] Feed forward matrix D: [[ 5 ]]"
+  }, {
+    "args": ["-op", "statematrix"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "State vector: Pass_Input State matrix A: [[ 1 ]]"
+  }, {
+    "args": ["-op", "statespacematricesmodel"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_statespacematricesmodel.txt"
+  }, {
+    "args": ["-op", "statematrixmodel"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model ConveyorBelt_MPM : matrices A (Pass_Input) = [ [ 1 ] ]"
+  }, {
+    "args": ["-op", "ganttchart", "-ni", "3", "-is", "[5]"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_ganttchart.txt"
+  }, {
+    "args": ["-op", "ganttchart-zero-based", "-ni", "5"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_ganttchart_zero_based.txt"
+  }, {
+    "args": ["-op", "converttosinglerate"],
+    "model": "sdf_eggs.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_converttosinglerate.txt"
+  }, {
+    "args": ["-op", "converttosdfx"],
+    "model": "sdf_ConveyorBelt.sdf",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_converttosdfx.txt"
+  }, {
+    "args": ["-op", "eigenvalue"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The largest eigenvalue of matrix A is: 1/3"
+  }, {
+    "args": ["-op", "eventsequences"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "h,x"
+  }, {
+    "args": ["-op", "vectorsequences"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "v"
+  }, {
+    "args": ["-op", "inputlabelsmpm"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "i,ce"
+  }, {
+    "args": ["-op", "matrices"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "A,B,C,D"
+  }, {
+    "args": ["-op", "eigenvectors"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The eigenvectors of matrix A are: [ -inf     0  -1/2  -1/6 ], with eigenvalue: 1/3 Generalized Eigenvectors: [     0  -3/28  -7/12   -1/4 ], with generalized eigenvalue: [ 1/4  1/3  1/3  1/3 ]"
+  }, {
+    "args": ["-op", "precedencegraph"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_precedencegraph.txt"
+  }, {
+    "args": ["-op", "precedencegraphgraphviz"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_precedencegraphgraphviz.txt"
+  }, {
+    "args": ["-op", "starclosure"],
+    "model": "mpm_MatrixExample3.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_starclosure.txt"
+  }, {
+    "args": ["-op", "multiply", "-ma", "A,B"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The product of A, B is: [[ 1/2 -inf ] [ 10/21 2/3 ] [ 0  1/6 ] [ 13/42 1/2 ]]"
+  }, {
+    "args": ["-op", "multiplytransform", "-ma", "A,B"],
+    "model": "mpm_channel_decoder.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model C20_WCD_MPM_mul : matrices prod_A_B  = [ [  1/2  -inf ] [ 10/21    2/3 ] [   0  1/6 ] [ 13/42    1/2 ] ]"
+  }, {
+    "args": ["-op", "vectortrace", "-ni", "4"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "Vector elements: [] Trace: [ 0  0 ], [ 1  1 ], [ 2  2 ], [ 3  3 ]"
+  }, {
+    "args": ["-op", "vectortracetransform", "-ni", "3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_trace : vector sequences MPModel  = [ [ 0  0 ] [ 1  1 ] [ 2  2 ] ]"
+  }, {
+    "args": ["-op", "vectortracexml", "-ni", "3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_vectortracexml.txt"
+  }, {
+    "args": ["-op", "convolution", "-sq", "x,x"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The convolution of x, x is: [ -inf  -inf    20  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "convolutiontransform", "-sq", "x,x"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_conv : event sequences x_x_conv = [ -inf  -inf    20  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "maxsequences", "-sq", "x,h"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The maximum of x, h is: [    0    10     4     8    12  -inf ]"
+  }, {
+    "args": ["-op", "maxsequencestransform", "-sq", "x,h"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "max-plus model MPModel_max : event sequences x_h_max = [    0    10     4     8    12  -inf ]"
+  }, {
+    "args": ["-op", "delaysequence", "-sq", "x", "-pa", "4"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The 4-delayed sequence of x is: [ -inf  -inf  -inf  -inf  -inf    10  -inf  -inf  -inf  -inf ]"
+  }, {
+    "args": ["-op", "scalesequence", "-sq", "x", "-pa", "3.3"],
+    "model": "mpm_EventSequences.mpm",
+    "expected_exit_code": 0,
+    "expected_output": "The scaled sequence of x by scaling factor 3.30000 is: [   -inf  133/10    -inf    -inf    -inf    -inf ]"
+  }
+]

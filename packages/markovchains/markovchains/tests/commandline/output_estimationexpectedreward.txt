@@ -1,0 +1,6 @@
+Simulation termination reason: Relative Error
+        Expected reward: 1.01096
+        Confidence interval: [0.91929, 1.10264]
+        Absolute error bound: 0.09168
+        Relative error bound: 0.09973
+        Number of realizations:  456

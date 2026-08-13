@@ -204,7 +204,7 @@ class Automaton:
         """
 
         # get the individual symbols from the input string
-        symbols = [] if word=='' else word.split(',')
+        symbols = [] if word in ('', 'epsilon') else word.split(',')
 
         # loop invariant: maintain set of states reachable by the symbols
         # processed so far and corresponding paths
@@ -989,7 +989,7 @@ class Automaton:
         remaining_states = self._states.difference(states_output)
         if len(remaining_states):
             output.write("\tstates\n")
-            for s in remaining_states:
+            for s in sorted(remaining_states):
                 output.write("\t")
                 _add_state_with_attributes(s, states_output, output)
                 output.write("\n")
@@ -1251,7 +1251,7 @@ class Automaton:
         if len(generalized_sets)>0:
             if state in self._final_states:
                 generalized_sets.add('default')
-            output.write(f" [{', '.join(generalized_sets)}]")
+            output.write(f" [{', '.join(sorted(generalized_sets))}]")
 
     def outgoing_symbols(self, state: str)->AbstractSet[str]:
         '''Return the set of outgoing symbols from state.'''

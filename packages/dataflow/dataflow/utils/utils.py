@@ -3,7 +3,7 @@
 import re
 from fractions import Fraction
 import sys
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Mapping, Optional, Tuple, Union, List
 from dataflow.maxplus.maxplus import mp_parse_vector, mp_zero_vector
 from dataflow.maxplus.algebra import MP_MINUSINFINITY_STR, MP_MINUSINFINITY
 from dataflow.maxplus.types import TMPVector, TTimeStamp, TTimeStampList, TTimeStampFloatList
@@ -135,18 +135,18 @@ def sequence_literal_reg_ex():
     '''
     return r"\[.*?\]"
 
-def parse_input_traces(eventsequences: Dict[str,Union[TTimeStampList,EventSequenceModel]], \
-        vectorsequences: Dict[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None], \
-        Tuple[Dict[str,TTimeStampList],List[TTimeStampList]]]:
+def parse_input_traces(eventsequences: Mapping[str,Union[TTimeStampList,EventSequenceModel]], \
+        vectorsequences: Mapping[str,VectorSequenceModel], args: Any) -> Union[Tuple[None,None], \
+        Tuple[Mapping[str,TTimeStampList],List[TTimeStampList]]]:
     '''
     return dictionary of named traces and list of unnamed traces
     '''
 
     # check if trace are specified
-    if not args.inputtrace:
+    if not args.input_trace:
         return None, None
 
-    it = args.inputtrace
+    it = args.input_trace
 
     # check if they are syntactically correct
     if not re.match(input_traces_reg_ex() , it):
@@ -275,16 +275,16 @@ def require_parameter_mp_value(args)->TTimeStamp:
 
 def parse_initial_state(args: Any, state_size: int) -> TMPVector:
     """Parse initial state."""
-    if args.initialstate is None:
+    if args.initial_state is None:
         return mp_zero_vector(state_size)
-    x0 = mp_parse_vector(args.initialstate)
+    x0 = mp_parse_vector(args.initial_state)
     if len(x0) != state_size:
         raise DataflowException('Provided initial state is not of the expected size.') # pylint: disable=raise-missing-from
     return x0
 
 def require_number_of_iterations(args: Any) -> int:
     """Ensure that number of iterations is specified and parse it."""
-    if not args.numberofiterations:
+    if not args.number_of_iterations:
         raise DataflowException("Operation requires number of iterations to be given.") # pylint: disable=raise-missing-from
     val = parse_number_of_iterations(args)
     if val is None:
@@ -294,12 +294,12 @@ def require_number_of_iterations(args: Any) -> int:
 
 def parse_number_of_iterations(args: Any) -> Optional[int]:
     """Parse number of iterations."""
-    if not args.numberofiterations:
+    if not args.number_of_iterations:
         return None
     try:
-        return int(args.numberofiterations)
+        return int(args.number_of_iterations)
     except Exception:
-        raise DataflowException("Failed to parse numberofiterations argument; it must be " \
+        raise DataflowException("Failed to parse number_of_iterations argument; it must be " \
                                 "a non-negative integer number.") # pylint: disable=raise-missing-from
 
 def parse_matrices(args: Any)->List[str]:
@@ -308,7 +308,7 @@ def parse_matrices(args: Any)->List[str]:
         return []
     return args.matrices.split(',')
 
-def require_matrices(arg_matrices: List[str], def_matrices: Dict[str, MaxPlusMatrixModel])\
+def require_matrices(arg_matrices: List[str], def_matrices: Mapping[str, MaxPlusMatrixModel])\
     ->List[str]:
     ''' check that the matrices in the list argMatrices are all defined in defMatrices,
     and that at least one matrix is specified, otherwise raise an exception. Returns argMatrices.'''
@@ -328,7 +328,7 @@ def parse_one_matrix(args: Any)->Optional[str]:
         raise DataflowException("Specify one matrix only.")
     return matrices[0]
 
-def require_square_matrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
+def require_square_matrices(matrices: Mapping[str, MaxPlusMatrixModel])->List[str]:
     '''Return a list of names of the square matrices in the matrices dictionary.
     If there are no square matrices, an exception is raised.'''
     sq_matrix_models = [m for m,M in matrices.items() if M.is_square()]
@@ -336,7 +336,7 @@ def require_square_matrices(matrices: Dict[str, MaxPlusMatrixModel])->List[str]:
         raise DataflowException("Provide a model with a square matrix.")
     return sq_matrix_models
 
-def get_square_matrix(matrices: Dict[str, MaxPlusMatrixModel], args: Any) -> str:
+def get_square_matrix(matrices: Mapping[str, MaxPlusMatrixModel], args: Any) -> str:
     '''Get a square matrix from the arguments. If no square matrix was specified,
     take the first one from the model.'''
     sq_matrix_models = require_square_matrices(matrices)
@@ -354,7 +354,7 @@ def parse_sequences(args: Any) -> List[str]:
         return []
     return args.sequences.split(',')
 
-def validate_event_sequences(eventsequences: Dict[str,object], sequences: List[str]):
+def validate_event_sequences(eventsequences: Mapping[str, EventSequenceModel], sequences: List[str]):
     ''' check that the sequences are defined in the eventsequences dict.'''
     for s in sequences:
         if s not in eventsequences:
@@ -373,7 +373,7 @@ def parse_one_sequence(args: Any) -> Optional[str]:
     return sequences[0]
 
 
-def require_one_event_sequence(eventsequences: Dict[str,Any], args)->str:
+def require_one_event_sequence(eventsequences: Mapping[str,Any], args)->str:
     '''Return the name of a specified sequence. Requires that exactly on
     sequence is specified from eventsequences, otherwise an exception is raised.'''
     s = parse_one_sequence(args)
@@ -383,8 +383,8 @@ def require_one_event_sequence(eventsequences: Dict[str,Any], args)->str:
         raise DataflowException(f"Sequence {s} is unknown.")
     return s
 
-def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Dict[str,\
-                MaxPlusMatrixModel], vectorsequences: Dict[str,VectorSequenceModel], args: Any)\
+def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Mapping[str,\
+                MaxPlusMatrixModel], vectorsequences: Mapping[str,VectorSequenceModel], args: Any)\
                  -> List[str]:
     '''Get a required sequence of matrices, and possibly last a vector sequence.
     An exception is raised if no sequence is specified, or it is malformed.'''
@@ -400,14 +400,14 @@ def require_sequence_of_matrices_and_possibly_vector_sequence(matrices:Dict[str,
 
     return names
 
-def require_matrix_defined(matrices: Dict[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
+def require_matrix_defined(matrices: Mapping[str,MaxPlusMatrixModel], m: str)->MaxPlusMatrixModel:
     '''Check that m is defined in matrices and return the corresponding matrix model.
     If m is not defined, raises an exception'''
     if not m in matrices:
         raise DataflowException(f"Matrix {m} is not defined.")
     return matrices[m]
 
-def determine_state_space_labels(matrices: Dict[str,MaxPlusMatrixModel])->\
+def determine_state_space_labels(matrices: Mapping[str,MaxPlusMatrixModel])->\
     Tuple[List[str],List[str],List[str]]:
     '''Determine the labels of the state-space elements from the matrix definitions.
     Returns a tuple with input labels, state labels, and output labels.'''

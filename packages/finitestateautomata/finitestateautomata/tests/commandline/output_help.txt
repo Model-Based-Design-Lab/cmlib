@@ -1,0 +1,24 @@
+usage: finitestateautomata [-h] [-sa SECONDARYAUTOMATON] [-op OPERATION] [-oa OUTPUTAUTOMATON] [-re REGULAREXPRESSION] [-ltl LTLFORMULA] [-w INPUT_TRACE] automaton_or_regularexpression
+
+Perform operations on finite state automata. https://computationalmodeling.info
+
+positional arguments:
+  automaton_or_regularexpression
+                        the automaton or regular expression to analyze
+
+options:
+  -h, --help            show this help message and exit
+  -sa SECONDARYAUTOMATON, --secondaryautomaton SECONDARYAUTOMATON
+                        a secondary automaton for the operation
+  -op OPERATION, --operation OPERATION
+                        the operation or analysis to perform, one of: accepts; isDeterministic; asDFA; eliminateEpsilon; alphabet; complete; complement; product; strictProduct;
+                        productBuchi; strictProductBuchi; reachableStates; languageEmpty; languageEmptyBuchi; languageIncluded; minimize; minimizeBuchi; relabel; asRegEx; convertRegEx;
+                        convertOmegaRegEx; convertLTL. Use 'finitestateautomata -oh OPERATION' for information about the specific operation.
+  -oa OUTPUTAUTOMATON, --outputautomaton OUTPUTAUTOMATON
+                        the outputfile to write output automata to
+  -re REGULAREXPRESSION, --regularexpression REGULAREXPRESSION
+                        the regular expression to use
+  -ltl LTLFORMULA, --ltlformula LTLFORMULA
+                        the LTL formula to use
+  -w INPUT_TRACE, --word INPUT_TRACE
+                        an input word, a comma-separated list of symbols

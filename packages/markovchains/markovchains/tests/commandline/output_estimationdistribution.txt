@@ -1,0 +1,7 @@
+Simulation termination reason: Relative Error
+The estimated distribution after 10 steps of [A_s0, B1, C] is as follows:
+        Distribution: [0.00122, 0.50613, 0.49266]
+        Confidence intervals: [[0.00094, 0.00149], [0.50212, 0.51014], [0.48865, 0.49667]]
+        Absolute error bound: 0.00401
+        Relative error bound: 0.29858
+        Number of realizations:  20568

@@ -3,7 +3,7 @@
 from fractions import Fraction
 from functools import reduce
 from io import StringIO
-from typing import List, Literal, Optional, Tuple, Union, Dict
+from typing import List, Literal, Mapping, Optional, Tuple, Union, Dict
 import dataflow.maxplus.maxplus as mp
 from dataflow.maxplus.utils.printing import (
     mp_pretty_vector_to_string,
@@ -348,7 +348,7 @@ class MaxPlusMatrixModel:
 
     @staticmethod
     def vector_trace(
-        matrices: Dict[str, "MaxPlusMatrixModel"],
+        matrices: Mapping[str, "MaxPlusMatrixModel"],
         x0: mp.TMPVector,
         ni: int,
         inputs: List[mp.TTimeStampList],
@@ -374,7 +374,7 @@ class MaxPlusMatrixModel:
 
         """
 
-        def _validate(mat: Dict[str, "MaxPlusMatrixModel"]) -> None:
+        def _validate(mat: Mapping[str, "MaxPlusMatrixModel"]) -> None:
             if not ("A" in mat and "B" in mat and "C" in mat and "D" in mat):
                 raise MPMValidateException("Expected matrices A, B, C and D")
             matrix_s = mat["A"]
@@ -469,10 +469,10 @@ class MaxPlusMatrixModel:
 
     @staticmethod
     def extract_sequences(
-        n_seq: Optional[Dict[str, mp.TTimeStampList]],
+        n_seq: Optional[Mapping[str, mp.TTimeStampList]],
         u_seq: Optional[List[mp.TTimeStampList]],
-        event_sequences: Dict[str, EventSequenceModel],
-        vector_sequences: Dict[str, VectorSequenceModel],
+        event_sequences: Mapping[str, EventSequenceModel],
+        vector_sequences: Mapping[str, VectorSequenceModel],
         input_labels: List[str],
     ) -> List[mp.TTimeStampList]:
         """
@@ -487,7 +487,7 @@ class MaxPlusMatrixModel:
         if n_seq is None:
             all_named = {}
         else:
-            all_named = n_seq.copy()
+            all_named = dict(n_seq)
 
         # add event sequences
         for e in event_sequences:
@@ -523,9 +523,9 @@ class MaxPlusMatrixModel:
         dsl_string: str,
     ) -> Tuple[
         str,
-        Dict[str, "MaxPlusMatrixModel"],
-        Dict[str, VectorSequenceModel],
-        Dict[str, EventSequenceModel],
+        Mapping[str, "MaxPlusMatrixModel"],
+        Mapping[str, VectorSequenceModel],
+        Mapping[str, EventSequenceModel],
     ]:
         """
         Parse dslString and extract model name, matrices, vector sequences and event sequences.
@@ -557,7 +557,7 @@ class MaxPlusMatrixModel:
         self,
         name: str,
         all_instances: Optional[
-            Dict[
+            Mapping[
                 str,
                 Union["MaxPlusMatrixModel", VectorSequenceModel, EventSequenceModel],
             ]

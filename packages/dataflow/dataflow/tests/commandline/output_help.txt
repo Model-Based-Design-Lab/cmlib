@@ -1,0 +1,40 @@
+usage: dataflow [-h] [-op OPERATION] [-p PERIOD] [-is INITIAL_STATE] [-it INPUT_TRACE] [-ma MATRICES] [-sq SEQUENCES]
+                [-pa PARAMETER] [-ou OUTPUT] [-ni NUMBER_OF_ITERATIONS] [-og OUTPUT_GRAPH]
+                dataflow_graph_or_mpmatrix
+
+Perform operations on dataflow graphs. https://computationalmodeling.info
+
+positional arguments:
+  dataflow_graph_or_mpmatrix
+                        the dataflow graph or max-plus matrix to analyze
+
+options:
+  -h, --help            show this help message and exit
+  -op OPERATION, --operation OPERATION
+                        the operation or analysis to perform, one of : inputlabelssdf; statelabelssdf;
+                        repetitionvector; deadlock; throughput; throughputoutput; latency; generalizedlatency;
+                        statespacematrices; statematrix; statespacematricesmodel; statematrixmodel; ganttchart;
+                        ganttchart-zero-based; converttosinglerate; converttosdfx; eigenvalue; eventsequences;
+                        vectorsequences; inputlabelsmpm; matrices; eigenvectors; precedencegraph;
+                        precedencegraphgraphviz; starclosure; multiply; multiplytransform; vectortrace;
+                        vectortracetransform; vectortracexml; convolution; convolutiontransform; maxsequences;
+                        maxsequencestransform; delaysequence; scalesequence. Use 'dataflow -oh OPERATION' for
+                        information about the specific operation.
+  -p PERIOD, --period PERIOD
+                        the period of the system (for latency)
+  -is INITIAL_STATE, --initialstate INITIAL_STATE
+                        the initial state of the system
+  -it INPUT_TRACE, --inputtrace INPUT_TRACE
+                        the input trace to the system, a comma-separated list of: (ID=)?([...]|ID)
+  -ma MATRICES, --matrices MATRICES
+                        the matrices to operate on as a comma separated list
+  -sq SEQUENCES, --sequences SEQUENCES
+                        the sequences to operate on
+  -pa PARAMETER, --parameter PARAMETER
+                        parameter for the operation
+  -ou OUTPUT, --output OUTPUT
+                        selected output for the operation
+  -ni NUMBER_OF_ITERATIONS, --numberofiterations NUMBER_OF_ITERATIONS
+                        number of iterations to analyze
+  -og OUTPUT_GRAPH, --outputgraph OUTPUT_GRAPH
+                        the outputfile to write output graph to

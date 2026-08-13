@@ -1,0 +1,13 @@
+Transient reward analysis:
+
+Step 0:
+Expected Reward: 1
+
+Step 1:
+Expected Reward: 3/2
+
+Step 2:
+Expected Reward: 5/4
+
+Step 3:
+Expected Reward: 9/8

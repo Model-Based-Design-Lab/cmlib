@@ -27,5 +27,5 @@
         "_final_states": "[S5]",
         "_generalized_acceptance_sets": {}
     },
-    "convert_to_DSL": "regular expression TestName = ('0'+'1'.'0'*.'1')*"
+    "convert_to_DSL": "regular expression TestName = ('1'.'0'*.'1'+'0')*"
 }

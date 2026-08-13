@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<sdf3 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.es.ele.tue.nl/sdf3/xsd/sdf3-sdf.xsd" version="1.0" type="sdf">
+  <applicationGraph name="ConveyorBelt_sdfx">
+    <sdf name="ConveyorBelt_sdfx" type="ConveyorBelt_sdfx">
+      <actor name="Input" type="Input">
+        <port name="to_ch2" type="out" rate="1"/>
+        <port name="to_ch4" type="out" rate="1"/>
+        <port name="from_ch1" type="in" rate="1"/>
+        <port name="from_ch5" type="in" rate="1"/>
+      </actor>
+      <actor name="Output" type="Output">
+        <port name="to_ch3" type="out" rate="1"/>
+        <port name="from_ch2" type="in" rate="1"/>
+      </actor>
+      <actor name="Pass" type="Pass">
+        <port name="to_ch5" type="out" rate="1"/>
+        <port name="from_ch4" type="in" rate="1"/>
+      </actor>
+      <input name="i" type="i">
+        <port name="to_ch1" type="out" rate="1"/>
+      </input>
+      <output name="o" type="o">
+        <port name="from_ch3" type="in" rate="1"/>
+      </output>
+      <channel name="ch1" srcInput="i" srcPort="to_ch1" dstActor="Input" dstPort="from_ch1"/>
+      <channel name="ch2" srcActor="Input" srcPort="to_ch2" dstActor="Output" dstPort="from_ch2"/>
+      <channel name="ch3" srcActor="Output" srcPort="to_ch3" dstOutput="o" dstPort="from_ch3"/>
+      <channel name="ch4" srcActor="Input" srcPort="to_ch4" dstActor="Pass" dstPort="from_ch4"/>
+      <channel name="ch5" srcActor="Pass" srcPort="to_ch5" dstActor="Input" dstPort="from_ch5" initialTokens="1"/>
+    </sdf>
+    <sdfProperties>
+      <actorProperties actor="Input">
+        <processor type="p1" default="true">
+          <executionTime time="0.0"/>
+        </processor>
+      </actorProperties>
+      <actorProperties actor="Output">
+        <processor type="p1" default="true">
+          <executionTime time="5.0"/>
+        </processor>
+      </actorProperties>
+      <actorProperties actor="Pass">
+        <processor type="p1" default="true">
+          <executionTime time="1.0"/>
+        </processor>
+      </actorProperties>
+      <channelProperties channel="ch1"/>
+      <channelProperties channel="ch2"/>
+      <channelProperties channel="ch3"/>
+      <channelProperties channel="ch4"/>
+      <channelProperties channel="ch5"/>
+    </sdfProperties>
+  </applicationGraph>
+</sdf3>

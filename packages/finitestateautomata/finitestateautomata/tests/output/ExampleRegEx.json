@@ -26,5 +26,5 @@
         "_final_states": "[S1, S11, S4, S41]",
         "_generalized_acceptance_sets": {}
     },
-    "convert_to_DSL": "regular expression TestName = (d*+f*)*+\\o+\\e+a+b"
+    "convert_to_DSL": "regular expression TestName = a+b+\\o+\\e+(d*+f*)*"
 }

@@ -1,0 +1,129 @@
+[
+  {
+    "args": ["-h"],
+    "expected_exit_code": 0,
+    "expected_output_file": "output_help.txt",
+    "eliminate_whitespace": true,
+    "custom_regular_expressions": [
+      {
+        "pattern": "optional arguments:",
+        "replacement": "options:"
+      }
+    ]
+  }, {
+    "args": ["-op", "accepts", "-w", "epsilon"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "True ['A']"
+  }, {
+    "args": ["-op", "isDeterministic"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "True"
+  }, {
+    "args": ["-op", "asDFA"],
+    "expected_exit_code": 0,
+    "model": "fsa_TwoInitialStates.fsa",
+    "expected_output": "finite state automaton Model_DFA { {S0,S1} initial; final -- a, b --> {S0,S1} }"
+  }, {
+    "args": ["-op", "eliminateEpsilon"],
+    "expected_exit_code": 0,
+    "model": "fsa_epsilonModel.fsa",
+    "expected_output_file": "output_eliminateEpsilon.txt"
+  }, {
+    "args": ["-op", "alphabet"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "{'a', 'b', 'd', 'h', 'm', 'p', 's', 't'}"
+  }, {
+    "args": ["-op", "complete"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_complete.txt"
+  }, {
+    "args": ["-op", "complement"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_complement.txt"
+  }, {
+    "args": ["-op", "product"],
+    "expected_exit_code": 0,
+    "model": "fsa_TwoInitialStates.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_product.txt"
+  }, {
+    "args": ["-op", "strictProduct"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_strictproduct.txt"
+  }, {
+    "args": ["-op", "productBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_productbuchi.txt"
+  }, {
+    "args": ["-op", "strictProductBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output_file": "output_strictproductbuchi.txt"
+  }, {
+    "args": ["-op", "reachableStates"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "{A, B, C, D, E, F, G, H, I, J}"
+  }, {
+    "args": ["-op", "languageEmpty"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "False [] ['A']"
+  }, {
+    "args": ["-op", "languageEmptyBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output": "False [] ['h', 't'] ['A'] ['D', 'A']"
+  }, {
+    "args": ["-op", "languageIncluded"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "secondary-model": "fsa_ExampleFSA.fsa",
+    "expected_output": "False []"
+  }, {
+    "args": ["-op", "minimize"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_minimize.txt"
+  }, {
+    "args": ["-op", "minimizeBuchi"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_minimizebuchi.txt"
+  }, {
+    "args": ["-op", "relabel"],
+    "expected_exit_code": 0,
+    "model": "fsa_CoffeeMachineDFA.fsa",
+    "expected_output_file": "output_relabel.txt"
+  }, {
+    "args": ["-op", "asRegEx"],
+    "expected_exit_code": 0,
+    "model": "fsa_Numerical.fsa",
+    "expected_output": "regular expression A_RegEx = '0'.'0'*+(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1').(('0'.'0'*.'1'+'1').'1'+('0'.'0'*.'1'+'1').'0'.'0'*.'1')*.('0'.'0'*+\\e)+\\e"
+  }, {
+    "args": ["-op", "convertRegEx"],
+    "expected_exit_code": 0,
+    "model": "regex_Numerical.regex",
+    "expected_output_file": "output_convertregex.txt"
+  }, {
+    "args": ["-op", "convertOmegaRegEx"],
+    "expected_exit_code": 0,
+    "model": "ExampleOmegaRegEx.regex",
+    "expected_output_file": "output_convertomegaregex.txt"
+  }, {
+    "args": ["-op", "convertLTL"],
+    "expected_exit_code": 0,
+    "model": "ltl_Example.ltl",
+    "expected_output_file": "output_convertltl.txt"
+  }
+]

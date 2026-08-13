@@ -1,0 +1,15 @@
+max-plus model ConveyorBelt_MPM :
+
+matrices
+A (Pass_Input) = [
+        [ 1 ]
+]
+B (Pass_Input i) = [
+        [ 1 ]
+]
+C (o Pass_Input) = [
+        [ 5 ]
+]
+D (o i) = [
+        [ 5 ]
+]

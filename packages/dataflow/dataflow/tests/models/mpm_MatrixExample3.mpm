@@ -1,0 +1,13 @@
+max-plus model A:
+
+matrices
+
+M =
+[
+[   -inf -5.0000   -inf   -inf   -inf ]
+[ -3.0000   -inf   -inf   -inf   -inf ]
+[ 2.0000   -inf 0.0000   -inf   -inf ]
+[   -inf   -inf   -inf   -inf -5.0000 ]
+[ 8.0000   -inf 6.0000 1.0000   -inf ]
+]
+

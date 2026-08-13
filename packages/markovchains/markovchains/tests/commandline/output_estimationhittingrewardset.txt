@@ -1,0 +1,4 @@
+Estimated cumulative reward until hitting {S5, S7} are:
+From state S1: 8.03895    int: [7.79188, 8.28601]    abEr: 0.24706    reEr: 0.03171    #paths: 1000    stop: Number of Paths
+From state S2: 7.22560    int: [6.99124, 7.45997]    abEr: 0.23437    reEr: 0.03352    #paths: 1000    stop: Number of Paths
+From state S4: 1.00000    int: [1.00000, 1.00000]    abEr: 0.00000    reEr: 0.00000    #paths: 1000    stop: Number of Paths

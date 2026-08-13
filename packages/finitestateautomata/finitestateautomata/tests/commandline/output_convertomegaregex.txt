@@ -1,0 +1,16 @@
+finite state automaton Test {
+        S -- c --> S1
+        S1 ----> S3 initial
+        S11 ----> S3
+        S111 final ----> S21
+        S111 ----> S4
+        S12 final ----> S21
+        S12 ----> S4
+        S2 -- d --> S11
+        S21 -- b --> S111
+        S3 ----> S
+        S3 ----> S2
+        S3 ----> S21
+        S3 ----> S4
+        S4 -- a --> S12
+}
