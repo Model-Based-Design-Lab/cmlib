@@ -1,0 +1,13 @@
+Transient analysis:
+
+State vector:
+[S1, S2, S3, S4]
+
+Step 0:
+Distribution: [   0  1/2  1/2    0 ]
+Step 1:
+Distribution: [ 1/4  1/4  1/4  1/4 ]
+Step 2:
+Distribution: [ 3/8  1/8  1/8  3/8 ]
+Step 3:
+Distribution: [ 7/16  1/16  1/16  7/16 ]

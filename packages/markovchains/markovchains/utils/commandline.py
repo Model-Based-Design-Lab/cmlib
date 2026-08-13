@@ -83,6 +83,10 @@ def main():
 
     args = parser.parse_args(remainder)
 
+    if args.operation is None:
+        sys.stderr.write("No operation specified.\n")
+        sys.exit(1)
+
     if args.operation not in MarkovChainOperations:
         sys.stderr.write(f"Unknown operation: {args.operation}\n")
         sys.exit(1)
@@ -212,7 +216,11 @@ def process(args, dsl):
     # determine classes of communicating states
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
-        for s in mc.communicating_classes():
+
+        # sort for deterministic output, first by size of the set, then by the sorted names of the states
+        sorted_sets = sorted(mc.communicating_classes(), key=lambda fs: (len(fs), sorted(fs)))
+
+        for s in sorted_sets:
             print_sorted_set(s)
 
     # classify transient and recurrent states

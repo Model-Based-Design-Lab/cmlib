@@ -1,0 +1,7 @@
+Simulation termination reason: Maximum path length
+The long run expected average reward is:
+        Estimated mean: 1.06250
+        Confidence interval: [0.85523, 1.26977]
+        Absolute error bound: 0.20727
+        Relative error bound: 0.24235
+        Number of cycles: 51

@@ -1,0 +1,5 @@
+Estimated hitting probabilities for {S1, S2} are:
+f(S1, {S1, S2}) = 1.00000    int: [1.00000, 1.00000]    abEr: 0.00000    reEr: 0.00000    #paths: 30    stop: Relative Error
+f(S2, {S1, S2}) = 1.00000    int: [1.00000, 1.00000]    abEr: 0.00000    reEr: 0.00000    #paths: 30    stop: Relative Error
+f(S3, {S1, S2}) = 0.44118    int: [0.34322, 0.53913]    abEr: 0.09796    reEr: 0.28540    #paths: 34    stop: Relative Error
+f(S4, {S1, S2}) = 0.00000    int: [0.00000, 0.00000]    abEr: 0.00000    reEr: --         #paths: 50    stop: Number of Paths

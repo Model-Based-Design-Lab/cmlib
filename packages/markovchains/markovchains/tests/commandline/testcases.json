@@ -10,5 +10,159 @@
         "replacement": "options:"
       }
     ]
+  }, {
+    "args": ["-op", "liststates"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "A_s0, B1, C"
+  }, {
+    "args": ["-op", "listrecurrentstates"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "B1, C"
+  }, {
+    "args": ["-op", "listtransientstates"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "A_s0"
+  }, {
+    "args": ["-op", "communicatingstates"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "Classes of communicating states: {A_s0} {B1, C}"
+  }, {
+    "args": ["-op", "classifytransientrecurrent"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "Transient states: {A_s0} Recurrent states: {B1, C}"
+  }, {
+    "args": ["-op", "hittingprobability", "-s", "S4"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The hitting probabilities for S4 are: f(S1, S4) = 0 f(S2, S4) = 1/3 f(S3, S4) = 2/3 f(S4, S4) = 1"
+  }, {
+    "args": ["-op", "hittingprobabilityset", "-ss", "S3,S4"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The hitting probabilities for {S1, S2, S3, S4} are: f(S1, {S3, S4}) = 0 f(S2, {S3, S4}) = 1/2 f(S3, {S3, S4}) = 1 f(S4, {S3, S4}) = 1"
+  }, {
+    "args": ["-op", "rewardtillhit", "-s", "S4"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The expected rewards until hitting S4 are: From state S2: 400 From state S3: 300 From state S4: 300"
+  }, {
+    "args": ["-op", "rewardtillhitset", "-ss", "S3,S4"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The expected rewards until hitting {S3, S4} are: From state S2: 100 From state S3: 0 From state S4: 0"
+  }, {
+    "args": ["-op", "periodicity"],
+    "model": "dtmc_example2.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The set of aperiodic recurrent states is: {} The set of periodic recurrent states with periodicity 2 is. {A, B, C, D}"
+  }, {
+    "args": ["-op", "mctype"],
+    "model": "dtmc_example2.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The type of the MC is: non-ergodic unichain"
+  }, {
+    "args": ["-op", "transient", "-ns", "3"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_transient.txt"
+  }, {
+    "args": ["-op", "transientRewards", "-ns", "3"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_transientrewards.txt"
+  }, {
+    "args": ["-op", "transientMatrix", "-ns", "3"],
+    "model": "dtmc_example2.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_transientmatrix.txt"
+  }, {
+    "args": ["-op", "limitingMatrix"],
+    "model": "dtmc_example2.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_limitingmatrix.txt"
+  }, {
+    "args": ["-op", "limitingDistribution"],
+    "model": "dtmc_example3.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "State vector: [S1, S2, S3, S4, S5, S6, S7, S8] Limiting Distribution: [     0      0      0   3/20   3/20  14/45   7/45   7/30 ]"
+  }, {
+    "args": ["-op", "longRunReward"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "The long-run expected reward is: 150"
+  }, {
+    "args": ["-op", "executiongraph", "-ns", "5"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_executiongraph.txt",
+    "custom_regular_expressions": [
+      {
+        "explanation": "remove date from output",
+        "pattern": "<dc:date>.*?</dc:date>",
+        "replacement": ""
+      }, {
+        "explanation": "remove ids from output",
+        "pattern": "id=\\\"[^\\\"]*\\\"",
+        "replacement": ""
+      }, {
+        "explanation": "remove hrefs from output",
+        "pattern": "href=\\\"#[^\\\"]*\\\"",
+        "replacement": ""
+      }, {
+        "explanation": "remove urls from output",
+        "pattern": "url\\(#[^\\)]*\\)",
+        "replacement": ""
+      }
+    ]
+  }, {
+    "args": ["-op", "markovtrace", "-ns", "5", "-sd", "42"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output": "['S3', 'S2', 'S1', 'S1', 'S1', 'S1']"
+  }, {
+    "args": ["-op", "longrunexpectedaveragereward", "-c", "[0.95,,0.1,100,,]", "-sd", "42"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_longrunexpectedaveragereward.txt"
+  }, {
+    "args": ["-op", "cezarolimitdistribution", "-c", "[0.95,,0.1,100,,]", "-sd", "42"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_cezarolimitdistribution.txt"
+  }, {
+    "args": ["-op", "estimationexpectedreward", "-c", "[0.95,,0.1,100,,]", "-ns", "10", "-sd", "42"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationexpectedreward.txt"
+  }, {
+    "args": ["-op", "estimationdistribution", "-c", "[0.75,,0.3,100,,]", "-ns", "10", "-sd", "42"],
+    "model": "dtmc_example1.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationdistribution.txt"
+  }, {
+    "args": ["-op", "estimationhittingstate", "-c", "[0.75,,,20,1000,1]", "-s", "S7", "-sa", "S1,S2,S4", "-sd", "42"],
+    "model": "dtmc_example3.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationhittingstate.txt"
+  }, {
+    "args": ["-op", "estimationhittingreward", "-c", "[0.75,,0.3,50,50,]", "-s", "S4", "-sd", "42"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationhittingreward.txt"
+  }, {
+    "args": ["-op", "estimationhittingstateset", "-c", "[0.75,,0.3,50,50,]", "-ss", "S1,S2", "-sd", "42"],
+    "model": "dtmc_gamblersruin.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationhittingstateset.txt"
+  }, {
+    "args": ["-op", "estimationhittingrewardset", "-c", "[0.75,,,20,1000,1]", "-ss", "S5,S7", "-sa", "S1,S2,S4", "-sd", "42"],
+    "model": "dtmc_example3.dtmc",
+    "expected_exit_code": 0,
+    "expected_output_file": "output_estimationhittingrewardset.txt"
   }
 ]

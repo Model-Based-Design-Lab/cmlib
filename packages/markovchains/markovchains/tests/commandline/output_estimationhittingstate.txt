@@ -1,0 +1,4 @@
+Estimated hitting probabilities for S7 are:
+f(S1, S7) = 0.64300    int: [0.62557, 0.66043]    abEr: 0.01743    reEr: 0.02786    #paths: 1000    stop: Number of Paths
+f(S2, S7) = 0.33500    int: [0.31783, 0.35217]    abEr: 0.01717    reEr: 0.05402    #paths: 1000    stop: Number of Paths
+f(S4, S7) = 0.00000    int: [0.00000, 0.00000]    abEr: 0.00000    reEr: --         #paths: 1000    stop: Number of Paths

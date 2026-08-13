@@ -70,6 +70,10 @@ def main():
 
     args = parser.parse_args()
 
+    if args.operation is None:
+        sys.stderr.write("No operation specified.\n")
+        sys.exit(1)
+
     if args.operation not in Operations:
         sys.stderr.write(f"Unknown operation: {args.operation}\n")
         sys.stderr.write(f"Operation should be one of: {OPERATIONS_COMMA_SEPARATED}.\n")

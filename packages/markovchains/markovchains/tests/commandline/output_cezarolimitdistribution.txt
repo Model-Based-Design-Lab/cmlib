@@ -1,0 +1,20 @@
+Simulation termination reason: Maximum path length
+Cezaro limit distribution: [0.00000, 0.53125, 0.46875]
+Number of cycles: 51
+
+[A_s0]: 0.0000
+        Confidence interval: [0.00000, 0.00000]
+        Absolute error bound: 0.00000
+        Relative error bound: --
+
+
+[B1]: 0.5312
+        Confidence interval: [0.42762, 0.63488]
+        Absolute error bound: 0.10363
+        Relative error bound: 0.24235
+
+
+[C]: 0.4688
+        Confidence interval: [0.36512, 0.57238]
+        Absolute error bound: 0.10363
+        Relative error bound: 0.28383
