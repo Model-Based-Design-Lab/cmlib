@@ -1,7 +1,7 @@
 """Testing Markov Chain package"""
 
 import os
-from typing import Dict, Optional, Union
+from typing import Dict
 import pytest
 from modeltest.modeltest import ModelPytest # Import ModelPytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
@@ -15,6 +15,7 @@ OUTPUT_FOLDER = os.path.join(TEST_FILE_FOLDER, "output")
 MODEL_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".dtmc")]
 
 class MarkovPytest(ModelPytest):
+    """ Tests for markovchain package """
 
     model: MarkovChain
     state: str
@@ -52,13 +53,13 @@ class MarkovPytest(ModelPytest):
         # Set recurrent state to be the first in the trace
         self.model.set_recurrent_state(None)
 
-    def statistics_and_stop(self, s: Statistics, stop: Optional[str]):
+    def statistics_and_stop(self, s: Statistics, stop: str|None):
         '''Return statistics and stop.'''
         return s.confidence_interval(), s.ab_error(), s.re_error(), s.mean_estimate(), \
             s.std_dev_estimate(), stop
 
-    def dictionary_statistics_and_stop(self, s: Optional[Dict[str,Statistics]], stop: \
-                                       Union[str,Dict[str,str]]):
+    def dictionary_statistics_and_stop(self, s: Dict[str,Statistics] | None, stop: \
+                                       str | Dict[str,str]):
         '''Return statistics dictionary and stop.'''
         if s is None:
             return None
@@ -68,8 +69,8 @@ class MarkovPytest(ModelPytest):
                       s[t].mean_estimate(), s[t].std_dev_estimate()]
         return res, stop
 
-    def distribution_statistics_and_stop(self, s: Optional[DistributionStatistics], \
-                                         stop: Optional[str]):
+    def distribution_statistics_and_stop(self, s: DistributionStatistics|None, \
+                                         stop: str|None):
         '''Return distribution statistics dictionary and stop.'''
         if s is None:
             return "None"

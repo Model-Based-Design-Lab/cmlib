@@ -1,7 +1,7 @@
 '''DSL grammar parsing support for linear temporal logic.'''
 
 import sys
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any, Dict, Set, Tuple
 from textx import metamodel_from_str, TextXSyntaxError
 
 # This is TextX version of the XText grammar in the clang repository
@@ -107,8 +107,8 @@ Comment:
 
 MetaModelLTL = metamodel_from_str(LTL_GRAMMAR, classes=[])
 
-def parse_ltl_dsl(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,Tuple[Any, \
-                    Optional[Set[str]],Optional[Dict[str,Set[str]]]]]]:
+def parse_ltl_dsl(content: str, factory: Any)->Tuple[None,None] |Tuple[str,Tuple[Any, \
+                    Set[str]|None,Dict[str,Set[str]]|None]]:
     '''Parse LTL formula from DSL string.'''
     try:
         model =  MetaModelLTL.model_from_str(content)
@@ -117,18 +117,18 @@ def parse_ltl_dsl(content: str, factory: Any)->Union[Tuple[None,None],Tuple[str,
         return (None, None)
     return (model.name, _parse_lt_model(model, factory))
 
-def _parse_lt_model(model: Any, factory: Any)->Tuple[Any,Optional[Set[str]], \
-                                                     Optional[Dict[str,Set[str]]]]:
+def _parse_lt_model(model: Any, factory: Any)->Tuple[Any,Set[str]|None, \
+                                                     Dict[str,Set[str]]|None]:
     return (_parse_ltl_formula(model.formula, factory), _parse_alphabet(model.alphabet), \
             _parse_definitions(model.definitions))
 
 
-def _parse_alphabet(alphabet: Any)->Optional[Set[str]]:
+def _parse_alphabet(alphabet: Any)->Set[str]|None:
     if alphabet is None:
         return None
     return set(alphabet.symbols)
 
-def _parse_definitions(definitions)->Optional[Dict[str,Set[str]]]:
+def _parse_definitions(definitions)->Dict[str,Set[str]]|None:
     if len(definitions) == 0:
         return None
     defs = {}

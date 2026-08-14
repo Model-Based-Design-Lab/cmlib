@@ -1,7 +1,7 @@
 '''DSL grammar parsing support for regular expressions.'''
 
 import sys
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 from textx import TextXSyntaxError, metamodel_from_str
 
 # This is TextX version of the XText grammar in the clang repository
@@ -89,7 +89,7 @@ Comment:
 
 MetaModelRegEx = metamodel_from_str(REG_EX_GRAMMAR, classes=[])
 
-def parse_reg_ex_dsl(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
+def parse_reg_ex_dsl(content: str, factory: Any)->Tuple[str|None,Any|None]:
     '''Parse string to regular expression model.'''
     try:
         model =  MetaModelRegEx.model_from_str(content)

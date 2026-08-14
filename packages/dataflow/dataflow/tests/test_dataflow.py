@@ -4,15 +4,15 @@ import copy
 import os
 
 from fractions import Fraction
-from typing import Dict, Optional
+from typing import Dict
 
 import pytest
 from dataflow.libmpm import EventSequenceModel, MaxPlusMatrixModel
 from dataflow.libsdf import DataflowGraph
 from dataflow.utils.commandline import _convolution, _maximum
 from dataflow.utils.utils import get_square_matrix, parse_initial_state
+from dataflow.maxplus.maxplus import ThroughputValue
 from modeltest.modeltest import ModelPytest
-from dataflow.maxplus.maxplus import TThroughputValue
 
 TEST_FILE_FOLDER = os.path.dirname(__file__)
 MODEL_FOLDER = os.path.join(TEST_FILE_FOLDER, "models")
@@ -49,10 +49,10 @@ class SDFPyTest(ModelPytest):
         )
 
         # Safe deadlock status
-        self.mu: Optional[TThroughputValue] = None
+        self.mu: ThroughputValue | None = None
         self.deadlock = self.model.deadlock()
         if not self.deadlock:
-            self.throughput: TThroughputValue = self.model.throughput()
+            self.throughput: ThroughputValue = self.model.throughput()
             if self.throughput != "infinite":
                 # Derive smallest period
                 if not self.deadlock:
@@ -199,8 +199,8 @@ class MPMPyTest(ModelPytest):
     class Namespace:
         """Class to create namespace args consisting of user input arguments"""
 
-        sequences: Optional[Dict[str, EventSequenceModel]] = None
-        number_of_iterations: Optional[int] = None
+        sequences: Dict[str, EventSequenceModel] | None = None
+        number_of_iterations: int | None = None
 
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)

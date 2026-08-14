@@ -2,7 +2,7 @@
 
 import sys
 from fractions import Fraction
-from typing import Any, Tuple, Union
+from typing import Any, Tuple
 
 from textx import TextXSyntaxError, metamodel_from_str
 
@@ -117,7 +117,7 @@ class SDFParsingException(Exception):
     '''Parsing exception.'''
 
 
-def parse_sdf_dsl(content, factory)->Union[Tuple[None,None],Tuple[str,Any]]:
+def parse_sdf_dsl(content, factory)->Tuple[None,None] | Tuple[str,Any]:
     '''
     Parse the provided content. Using the factory operations to build the result.
     Returns a pair with the name of the model and the constructed result.

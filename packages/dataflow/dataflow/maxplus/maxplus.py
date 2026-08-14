@@ -1,92 +1,115 @@
-'''Max-Plus Linear algebra library.'''
+"""Max-Plus Linear algebra library."""
 
 import re
 from fractions import Fraction
 from functools import reduce
-from typing import (AbstractSet, Any, Dict, List, Literal, Optional, Tuple,
-                    Union)
+from typing import AbstractSet, Any, Dict, List, Literal, Tuple
 import networkx as nx
-from dataflow.maxplus.algebra import (MP_MINUSINFINITY, MP_MINUSINFINITY_STR,
-                                      MPAlgebraException, mp_comp_larger,
-                                      mp_op_max, mp_op_minus, mp_op_plus)
+from dataflow.maxplus.algebra import (
+    MP_MINUSINFINITY,
+    MP_MINUSINFINITY_STR,
+    MPAlgebraException,
+    mp_comp_larger,
+    mp_op_max,
+    mp_op_minus,
+    mp_op_plus,
+)
 from dataflow.maxplus.cyclemean import maximum_cycle_mean
 from dataflow.maxplus.starclosure import star_closure
-from dataflow.maxplus.types import (TMPMatrix, TMPVector, TMPVectorList,
-                                    TTimeStamp, TTimeStampList)
+from dataflow.maxplus.types import (
+    MPMatrix,
+    MPVector,
+    MPVectorList,
+    TimeStamp,
+    TimeStampList,
+)
 from dataflow.utils.visualization import weighted_graph_to_graph_viz
 
-TThroughputValue = Union[Fraction,Literal['infinite']]
+ThroughputValue = Fraction | Literal["infinite"]
 
 class MPException(Exception):
-    '''Exceptions in the max-plus package.'''
+    """Exceptions in the max-plus package."""
 
-def mp_matrix_minus_scalar(matrix: TMPMatrix, c: TTimeStamp) -> TMPMatrix:
-    '''Subtract scalar from matrix element-wise.'''
+
+def mp_matrix_minus_scalar(matrix: MPMatrix, c: TimeStamp) -> MPMatrix:
+    """Subtract scalar from matrix element-wise."""
     if c == MP_MINUSINFINITY:
-        raise MPAlgebraException('Cannot subtract minus infinity')
-    return [ [mp_op_minus(e, c) for e in r] for r in matrix]
+        raise MPAlgebraException("Cannot subtract minus infinity")
+    return [[mp_op_minus(e, c) for e in r] for r in matrix]
 
-def mp_transpose_matrix(matrix: TMPMatrix)->TMPMatrix:
-    '''Transpose the matrix A.'''
+
+def mp_transpose_matrix(matrix: MPMatrix) -> MPMatrix:
+    """Transpose the matrix A."""
     return list(map(list, zip(*matrix)))
 
-def mp_zero_vector(n: int) -> TMPVector:
-    '''Return a zero-vector (having value 0 everywhere) of size n'''
+
+def mp_zero_vector(n: int) -> MPVector:
+    """Return a zero-vector (having value 0 everywhere) of size n"""
     return [Fraction(0)] * n
 
-def mp_minus_inf_vector(n: int) -> TMPVector:
-    '''Return a minus-infinity-vector (having value -inf everywhere) of size n'''
+
+def mp_minus_inf_vector(n: int) -> MPVector:
+    """Return a minus-infinity-vector (having value -inf everywhere) of size n"""
     return [MP_MINUSINFINITY] * n
 
-def mp_inner_product(v: TMPVector, w: TMPVector)->TTimeStamp:
-    '''Compute the inner product of vectors v and w.'''
+
+def mp_inner_product(v: MPVector, w: MPVector) -> TimeStamp:
+    """Compute the inner product of vectors v and w."""
     res = MP_MINUSINFINITY
     for k, val in enumerate(v):
         res = mp_op_max(res, mp_op_plus(val, w[k]))
     return res
 
-def mp_multiply_matrices(ma: TMPMatrix, mb: TMPMatrix)->TMPMatrix:
-    '''Multiply matrices A and B. Assumes they are of compatible sizes without checking.'''
+
+def mp_multiply_matrices(ma: MPMatrix, mb: MPMatrix) -> MPMatrix:
+    """Multiply matrices A and B. Assumes they are of compatible sizes without checking."""
     mbt = mp_transpose_matrix(mb)
     return [[mp_inner_product(ra, rb) for rb in mbt] for ra in ma]
 
-def mp_multiply_matrix_vector_sequence(ma: TMPMatrix, x: TMPVectorList) -> TMPVectorList:
-    '''Multiply every vector in x with the matrix A and return the results as a list of vectors.'''
-    return [mp_multiply_matrix_vector(ma,v) for v in x]
 
-def mp_multiply_matrix_vector(ma: TMPMatrix, x: TMPVector) -> TMPVector:
-    '''Multiply vector x with the matrix A and return the result.'''
-    return [ mp_inner_product(ra, x) for ra in ma]
+def mp_multiply_matrix_vector_sequence(ma: MPMatrix, x: MPVectorList) -> MPVectorList:
+    """Multiply every vector in x with the matrix A and return the results as a list of vectors."""
+    return [mp_multiply_matrix_vector(ma, v) for v in x]
 
-def mp_max_vectors(x: TMPVector, y: TMPVector) -> TMPVector:
-    '''Compute the maximum of two vectors. If the vectors are of different sizes,
-    the shorter vector is implicitly extended with -inf.'''
+
+def mp_multiply_matrix_vector(ma: MPMatrix, x: MPVector) -> MPVector:
+    """Multiply vector x with the matrix A and return the result."""
+    return [mp_inner_product(ra, x) for ra in ma]
+
+
+def mp_max_vectors(x: MPVector, y: MPVector) -> MPVector:
+    """Compute the maximum of two vectors. If the vectors are of different sizes,
+    the shorter vector is implicitly extended with -inf."""
     if len(x) > len(y):
         y = y + [MP_MINUSINFINITY] * (len(x) - len(y))
     if len(y) > len(x):
         x = x + [MP_MINUSINFINITY] * (len(y) - len(x))
     return [mp_op_max(x[k], y[k]) for k in range(len(x))]
 
-def mp_add_vectors(x: TMPVector, y: TMPVector) -> TMPVector:
-    '''Compute the sum of two vectors. If the vectors are of different sizes,
-    the shorter vector is implicitly extended with -inf.'''
+
+def mp_add_vectors(x: MPVector, y: MPVector) -> MPVector:
+    """Compute the sum of two vectors. If the vectors are of different sizes,
+    the shorter vector is implicitly extended with -inf."""
     if len(x) > len(y):
         y = y + [MP_MINUSINFINITY] * (len(x) - len(y))
     if len(y) > len(x):
         x = x + [MP_MINUSINFINITY] * (len(y) - len(x))
     return [mp_op_plus(x[k], y[k]) for k in range(len(x))]
 
-def mp_scale_vector(c: TTimeStamp, x: TMPVector) -> TMPVector:
-    '''Scale the vector x by scalar c.'''
+
+def mp_scale_vector(c: TimeStamp, x: MPVector) -> MPVector:
+    """Scale the vector x by scalar c."""
     return [mp_op_plus(c, x[k]) for k in range(len(x))]
 
-def mp_stack_vectors(x: TMPVector, y: TMPVector)->TMPVector:
-    '''Stack two vectors x and y to the vector [x' y']'.'''
+
+def mp_stack_vectors(x: MPVector, y: MPVector) -> MPVector:
+    """Stack two vectors x and y to the vector [x' y']'."""
     return x + y
 
-def mp_max_matrices(ma: TMPMatrix, mb: TMPMatrix) -> TMPMatrix:
-    '''Compute the maximum of two matrices. Assumes without checking that the matrices
-    are of equal size.'''
+
+def mp_max_matrices(ma: MPMatrix, mb: MPMatrix) -> MPMatrix:
+    """Compute the maximum of two matrices. Assumes without checking that the matrices
+    are of equal size."""
     res = []
     rows = len(ma)
     if rows == 0:
@@ -100,47 +123,53 @@ def mp_max_matrices(ma: TMPMatrix, mb: TMPMatrix) -> TMPMatrix:
         res.append(r_res)
     return res
 
-def mp_parse_number(e: str, mi_str: str = MP_MINUSINFINITY_STR) -> TTimeStamp:
-    '''Parse string e as a max-plus value.'''
+
+def mp_parse_number(e: str, mi_str: str = MP_MINUSINFINITY_STR) -> TimeStamp:
+    """Parse string e as a max-plus value."""
     if e.strip() == mi_str:
         return MP_MINUSINFINITY
     return Fraction(e).limit_denominator()
 
-def mp_parse_vector(v:str, mi_str: str = MP_MINUSINFINITY_STR)->TMPVector:
-    '''Parse string v as a max-plus vector.'''
+
+def mp_parse_vector(v: str, mi_str: str = MP_MINUSINFINITY_STR) -> MPVector:
+    """Parse string v as a max-plus vector."""
     lst = re.sub(r"[\[\]]", "", v)
-    return [mp_parse_number(e.strip(), mi_str) for e in lst.split(',')]
+    return [mp_parse_number(e.strip(), mi_str) for e in lst.split(",")]
 
 
-def mp_parse_traces(tt: str, mi_str: str = '-inf')->List[TTimeStampList]:
-    '''Parse string tt as a sequence of event sequences (traces): syntax
-    example: [-inf,-inf,0,-inf];[]. Returns the list of sequences.'''
-    traces = tt.split(';')
-    res: List[TTimeStampList] = []
+def mp_parse_traces(tt: str, mi_str: str = "-inf") -> List[TimeStampList]:
+    """Parse string tt as a sequence of event sequences (traces): syntax
+    example: [-inf,-inf,0,-inf];[]. Returns the list of sequences."""
+    traces = tt.split(";")
+    res: List[TimeStampList] = []
     for t in traces:
         res.append(mp_parse_vector(t, mi_str))
     return res
 
-def mp_number_of_rows(matrix: TMPMatrix) -> int:
-    '''Return the number of rows of M.'''
+
+def mp_number_of_rows(matrix: MPMatrix) -> int:
+    """Return the number of rows of M."""
     return len(matrix)
 
-def mp_number_of_columns(matrix: TMPMatrix) -> int:
-    '''Return the number of columns of M.'''
+
+def mp_number_of_columns(matrix: MPMatrix) -> int:
+    """Return the number of columns of M."""
     if len(matrix) == 0:
         return 0
     return len(matrix[0])
 
-def mp_matrix_to_precedence_graph(matrix: TMPMatrix, labels: Optional[List[str]] = None)-> \
-    nx.DiGraph:
-    '''Convert a square matrix M to precedence graph. Optionally specify labels for the vertices.'''
+
+def mp_matrix_to_precedence_graph(
+    matrix: MPMatrix, labels: List[str] | None = None
+) -> nx.DiGraph:
+    """Convert a square matrix M to precedence graph. Optionally specify labels for the vertices."""
 
     n = len(matrix)
     gr = nx.DiGraph()
     _require_matrix_square(matrix)
 
-    make_node = (lambda i: labels[i]) if not labels is None else (lambda i: f'n{i}')
-    gr.add_nodes_from(labels if not labels is None else [ f'n{k}' for k in range(n)])
+    make_node = (lambda i: labels[i]) if not labels is None else (lambda i: f"n{i}")
+    gr.add_nodes_from(labels if not labels is None else [f"n{k}" for k in range(n)])
 
     def make_edge(i, j):
         return (make_node(i), make_node(j))
@@ -153,17 +182,18 @@ def mp_matrix_to_precedence_graph(matrix: TMPMatrix, labels: Optional[List[str]]
     return gr
 
 
-def _subgraph(gr: nx.DiGraph, nodes: AbstractSet[Any] ) -> nx.DiGraph:
-    '''Create subgraph from the set of node'''
+def _subgraph(gr: nx.DiGraph, nodes: AbstractSet[Any]) -> nx.DiGraph:
+    """Create subgraph from the set of node"""
     res = nx.DiGraph()
     res.add_nodes_from(nodes)
     edges = [e for e in gr.edges() if (e[0] in nodes and e[1] in nodes)]
     for e in edges:
-        res.add_edge(e[0], e[1], weight=gr.get_edge_data(e[0], e[1])['weight'])
+        res.add_edge(e[0], e[1], weight=gr.get_edge_data(e[0], e[1])["weight"])
     return res
 
-def mp_eigen_value(matrix: TMPMatrix) -> Union[None,Fraction]:
-    '''Determine the largest eigenvalue of the matrix.'''
+
+def mp_eigen_value(matrix: MPMatrix) -> Fraction | None:
+    """Determine the largest eigenvalue of the matrix."""
 
     # convert to precedence graph
     gr = mp_matrix_to_precedence_graph(matrix)
@@ -173,7 +203,7 @@ def mp_eigen_value(matrix: TMPMatrix) -> Union[None,Fraction]:
     cycle_means: List[Fraction] = []
     subgraphs: List[nx.DiGraph] = []
     mu = Fraction(0.0)
-    for sn in ({frozenset(v) for v in sccs}):
+    for sn in {frozenset(v) for v in sccs}:
         grs = _subgraph(gr, sn)
         if len(grs.edges()) > 0:
             mu: Fraction
@@ -185,8 +215,9 @@ def mp_eigen_value(matrix: TMPMatrix) -> Union[None,Fraction]:
         return None
     return max(cycle_means)
 
-def lambda_to_throughput(lmb: Union[Fraction,None]) -> TThroughputValue:
-    '''Convert lambda to a throughput value.'''
+
+def lambda_to_throughput(lmb: Fraction | None) -> ThroughputValue:
+    """Convert lambda to a throughput value."""
     if lmb is None:
         return "infinite"
     if not lmb > Fraction(0.0):
@@ -194,53 +225,54 @@ def lambda_to_throughput(lmb: Union[Fraction,None]) -> TThroughputValue:
     return Fraction(1.0) / lmb
 
 
-def mp_throughput(matrix: TMPMatrix) -> Union[Fraction,Literal["infinite"]]:
-    '''Return the maximal throughput of a system with state matrix M.'''
+def mp_throughput(matrix: MPMatrix) -> Fraction | Literal["infinite"]:
+    """Return the maximal throughput of a system with state matrix M."""
     v_lambda = mp_eigen_value(matrix)
     return lambda_to_throughput(v_lambda)
 
-def mp_generalized_throughput(matrix: TMPMatrix) -> List[TThroughputValue]:
-    '''Return the maximal throughput of a system with state matrix M for each
-    of the state vector element separately .'''
+
+def mp_generalized_throughput(matrix: MPMatrix) -> List[ThroughputValue]:
+    """Return the maximal throughput of a system with state matrix M for each
+    of the state vector element separately ."""
     size = len(matrix)
     evs, g_evs = mp_eigen_vectors(matrix)
-    v_lambdas: List[TTimeStamp] = [MP_MINUSINFINITY for _ in range(size)]
+    v_lambdas: List[TimeStamp] = [MP_MINUSINFINITY for _ in range(size)]
     for ev in evs:
         lmb = ev[1]
         v = ev[0]
         for k in range(size):
-            if not v[k]==MP_MINUSINFINITY:
+            if not v[k] == MP_MINUSINFINITY:
                 if mp_comp_larger(lmb, v_lambdas[k]):
                     v_lambdas[k] = lmb
     for gev in g_evs:
         lambdas = gev[1]
         v = gev[0]
         for k in range(size):
-            if not v[k]==MP_MINUSINFINITY:
+            if not v[k] == MP_MINUSINFINITY:
                 if mp_comp_larger(lambdas[k], v_lambdas[k]):
                     v_lambdas[k] = lambdas[k]
 
     return [lambda_to_throughput(l) for l in v_lambdas]
 
 
-def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
-                Dict[Any,TTimeStamp]) -> \
-                Tuple[Dict[Any,TTimeStamp],Dict[Any,TTimeStamp]]:
+def _normalized_longest_paths(
+    gr: nx.DiGraph, rootnode: Any, cycle_means_map: Dict[Any, TimeStamp]
+) -> Tuple[Dict[Any, TimeStamp], Dict[Any, TimeStamp]]:
 
-    def _normalize_dict(d: Dict[Any,TTimeStamp]):
-        '''
+    def _normalize_dict(d: Dict[Any, TimeStamp]):
+        """
         Normalize a dictionary with numbers or None as the co-domain, by subtracting
         the largest value from all values, so that the largest value becomes 0
-        '''
+        """
 
         # find the largest value
-        max_val: TTimeStamp = None
+        max_val: TimeStamp = None
         for n in d:
             if d[n] is not None:
                 if max_val is None:
                     max_val = d[n]
                 else:
-                    if d[n] > max_val: # type: ignore we know that d[n] is a Fraction
+                    if d[n] > max_val:  # type: ignore we know that d[n] is a Fraction
                         max_val = d[n]
         # if all values were None, nothing to be done.
         if max_val is None:
@@ -252,7 +284,7 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
             if d[n] is None:
                 res[n] = None
             else:
-                res[n] = d[n] - max_val # type: ignore we know that d[n] is a Fraction
+                res[n] = d[n] - max_val  # type: ignore we know that d[n] is a Fraction
 
         return res
 
@@ -260,7 +292,7 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
     # (not from all original cycle means)
     # for nodes downstream from the root node also take max with their
     # local cycle mean
-    tr_cycle_means_map: Dict[Any,TTimeStamp] = {n: None for n in gr.nodes()}
+    tr_cycle_means_map: Dict[Any, TimeStamp] = {n: None for n in gr.nodes()}
     tr_cycle_means_map[rootnode] = cycle_means_map[rootnode]
 
     # fixed-point computation
@@ -274,8 +306,9 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
                     tr_cycle_means_map[e[1]] = tr_cycle_means_map[e[0]]
                     change = True
                     if cycle_means_map[e[1]] is not None:
-                        if cycle_means_map[e[1]] >\
-                        tr_cycle_means_map[e[1]]: # type: ignore we know that both must be Fractions
+                        if (
+                            cycle_means_map[e[1]] > tr_cycle_means_map[e[1]]
+                        ):  # type: ignore we know that both must be Fractions
                             tr_cycle_means_map[e[1]] = cycle_means_map[e[1]]
                             change = True
                 else:
@@ -283,8 +316,7 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
                         tr_cycle_means_map[e[1]] = tr_cycle_means_map[e[0]]
                         change = True
 
-
-    length: Dict[Any, TTimeStamp] = {}
+    length: Dict[Any, TimeStamp] = {}
     for n in gr.nodes():
         length[n] = None
     length[rootnode] = Fraction(0.0)
@@ -296,7 +328,11 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
         change = False
         for e in gr.edges():
             if length[e[0]] is not None:
-                new_length = length[e[0]] + gr.get_edge_data(e[0], e[1])['weight'] - tr_cycle_means_map[e[0]]
+                new_length = (
+                    length[e[0]]
+                    + gr.get_edge_data(e[0], e[1])["weight"]
+                    - tr_cycle_means_map[e[0]]
+                )
                 if length[e[1]] is None:
                     length[e[1]] = new_length
                     change = True
@@ -309,19 +345,19 @@ def _normalized_longest_paths(gr: nx.DiGraph, rootnode: Any, cycle_means_map: \
     return _normalize_dict(length), tr_cycle_means_map
 
 
-
-def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]], \
-                                                 List[Tuple[TMPVector,TMPVector]]]:
-    '''
+def mp_eigen_vectors(
+    matrix: MPMatrix,
+) -> Tuple[List[Tuple[MPVector, Fraction]], List[Tuple[MPVector, MPVector]]]:
+    """
     Compute the eigenvectors of a square matrix.
     Return a pair of a list of eigenvector and a list of generalized eigenvectors.
-    '''
+    """
     # compute the precedence graphs
     # compute the strongly connected components and their cycle means
     # for each scc, determine a (generalized) eigenvector
 
-    def _is_regular_eigen_value(evv: Dict[Any,TTimeStamp])->bool:
-        '''Check if the set of nodes have at most one eigenvalue'''
+    def _is_regular_eigen_value(evv: Dict[Any, TimeStamp]) -> bool:
+        """Check if the set of nodes have at most one eigenvalue"""
         value = None
         for n in evv:
             if evv[n] is not None:
@@ -329,19 +365,19 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
                 if value is None:
                     value = evv[n]
                 else:
-                    if not value==evv_n:
+                    if not value == evv_n:
                         return False
         return True
 
-    def _as_eigen_value(evv: Dict[Any,TTimeStamp])->Fraction:
+    def _as_eigen_value(evv: Dict[Any, TimeStamp]) -> Fraction:
         for n in evv:
             if evv[n] is not None:
                 evv_n: Fraction = evv[n]  # type: ignore
                 return evv_n
         raise MPException("Eigenvalue cannot be minus infinity.")
 
-    def _as_generalized_eigen_value(evv: Dict[Any,TTimeStamp])->TTimeStampList:
-        evl: TTimeStampList = []
+    def _as_generalized_eigen_value(evv: Dict[Any, TimeStamp]) -> TimeStampList:
+        evl: TimeStampList = []
         for n in gr.nodes():
             evl.append(evv[n])
         return evl
@@ -352,23 +388,23 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
     sccs = list(nx.strongly_connected_components(gr))
 
     # keep lists of cycleMeans and subgraphs of the SCCs
-    cycle_means: List[TTimeStamp] = []
+    cycle_means: List[TimeStamp] = []
     subgraphs: List[nx.DiGraph] = []
 
     # count the SCCs with k
     k: int = 0
 
     # a map from nodes of the precedence graph to their SCC index
-    scc_map: Dict[Any,int] = {}
+    scc_map: Dict[Any, int] = {}
     # map from SCC index to a node of the SCC
-    scc_map_inv: Dict[int,Any] = {}
+    scc_map_inv: Dict[int, Any] = {}
     # a list such that item k is a critical node of SCC k
     critical_nodes: List[Any] = list()
     # a map from nodes to the cycle mean of their SCC
-    cycle_means_map: Dict[Any,TTimeStamp] = {}
+    cycle_means_map: Dict[Any, TimeStamp] = {}
 
     # for each of the sets of nodes of the SCCs
-    for sn in ({frozenset(v) for v in sccs}):
+    for sn in {frozenset(v) for v in sccs}:
         scc_map_inv[k] = next(iter(sn))
 
         # extract subgraph of the SCC
@@ -402,14 +438,15 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
         change = False
         for e in gr.edges():
             # check cycle means or None if scc has no cycle
-            if tr_cycle_means[scc_map[e[1]]] is None or mp_comp_larger(tr_cycle_means[\
-                scc_map[e[0]]], tr_cycle_means[scc_map[e[1]]]):
+            if tr_cycle_means[scc_map[e[1]]] is None or mp_comp_larger(
+                tr_cycle_means[scc_map[e[0]]], tr_cycle_means[scc_map[e[1]]]
+            ):
                 change = True
                 tr_cycle_means[scc_map[e[1]]] = tr_cycle_means[scc_map[e[0]]]
 
     # two lists to keep the results
-    eigen_vectors: List[Tuple[TMPVector,Fraction]] = []
-    gen_eigen_vectors: List[Tuple[TMPVector,TMPVector]] = []
+    eigen_vectors: List[Tuple[MPVector, Fraction]] = []
+    gen_eigen_vectors: List[Tuple[MPVector, MPVector]] = []
 
     # for each of the SCC subgraphs that have a cycle mean that is not -inf
     for k in range(len(subgraphs)):
@@ -418,7 +455,7 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
             # in the normalized graph from the criticalNode of the SCC
             ev, evv = _normalized_longest_paths(gr, critical_nodes[k], cycle_means_map)
             # collect the eigenvector in the list evl
-            evl: TMPVector = []
+            evl: MPVector = []
             # for each of the nodes of the precedence graph
             for n in gr.nodes():
                 # append the path length to node n
@@ -433,58 +470,71 @@ def mp_eigen_vectors(matrix: TMPMatrix) -> Tuple[List[Tuple[TMPVector,Fraction]]
     # return the results
     return (eigen_vectors, gen_eigen_vectors)
 
-def mp_precedence_graph(matrix: TMPMatrix, labels: List[str])->nx.DiGraph:
-    '''Determine the precedence graph of the matrix M using the labels for vertices.'''
+
+def mp_precedence_graph(matrix: MPMatrix, labels: List[str]) -> nx.DiGraph:
+    """Determine the precedence graph of the matrix M using the labels for vertices."""
     return mp_matrix_to_precedence_graph(matrix, labels)
 
-def mp_precedence_graph_graphviz(matrix: TMPMatrix, labels: List[str])->str:
-    '''Determine the precedence graph as a Graphviz string of the matrix M using
-    the labels for vertices.'''
+
+def mp_precedence_graph_graphviz(matrix: MPMatrix, labels: List[str]) -> str:
+    """Determine the precedence graph as a Graphviz string of the matrix M using
+    the labels for vertices."""
     gr = mp_matrix_to_precedence_graph(matrix, labels)
     return weighted_graph_to_graph_viz(gr)
 
-def mp_star_closure(matrix: TMPMatrix) -> TMPMatrix:
-    '''Determine the star close of the matrix M. A PositiveCycleException is raised
-    if the closure does not exist.'''
+
+def mp_star_closure(matrix: MPMatrix) -> MPMatrix:
+    """Determine the star close of the matrix M. A PositiveCycleException is raised
+    if the closure does not exist."""
     return star_closure(matrix)
 
-def mp_convolution(s: TTimeStampList, t: TTimeStampList)->TTimeStampList:
-    '''Compute the convolution of the event sequences s and t'''
-    res: TTimeStampList = []
+
+def mp_convolution(s: TimeStampList, t: TimeStampList) -> TimeStampList:
+    """Compute the convolution of the event sequences s and t"""
+    res: TimeStampList = []
     l: int = min(len(s), len(t))
     for k in range(l):
-        v = reduce(lambda mx, n: mp_op_max(mx, mp_op_plus(s[n], t[k-n])), range(k+1), \
-                   MP_MINUSINFINITY) # pylint: disable=cell-var-from-loop
+        v = reduce(
+            lambda mx, n, k=k: mp_op_max(mx, mp_op_plus(s[n], t[k - n])),
+            range(k + 1),
+            MP_MINUSINFINITY,
+        )
         res.append(v)
     return res
 
-def mp_max_event_sequences(es1: TTimeStampList, es2: TTimeStampList)->TTimeStampList:
-    '''Determine the maximum of two event sequences.'''
+
+def mp_max_event_sequences(es1: TimeStampList, es2: TimeStampList) -> TimeStampList:
+    """Determine the maximum of two event sequences."""
     return mp_max_vectors(es1, es2)
 
 
-def mp_max_vector_sequences(vs1: TMPVectorList, vs2: TMPVectorList) -> TMPVectorList:
-    '''Determine the maximum of two vector sequences.'''
+def mp_max_vector_sequences(vs1: MPVectorList, vs2: MPVectorList) -> MPVectorList:
+    """Determine the maximum of two vector sequences."""
     return [mp_max_vectors(vs1[k], vs2[k]) for k in range(min(len(vs1), len(vs2)))]
 
-def mp_split_sequence(seq: TTimeStampList, n: int)->List[TTimeStampList]:
-    '''Split event sequence seq into n interleaving sub sequences. E.g., with
-    seq=[2, 3, 6, 9, 11, 12] and n=3, the result is [[2,9],[3,11],[6,12]]'''
+
+def mp_split_sequence(seq: TimeStampList, n: int) -> List[TimeStampList]:
+    """Split event sequence seq into n interleaving sub sequences. E.g., with
+    seq=[2, 3, 6, 9, 11, 12] and n=3, the result is [[2,9],[3,11],[6,12]]"""
     return [seq[k::n] for k in range(n)]
 
-def mp_merge_sequences(seqs: List[TTimeStampList])->TTimeStampList:
-    '''Merge sequences.'''
+
+def mp_merge_sequences(seqs: List[TimeStampList]) -> TimeStampList:
+    """Merge sequences."""
     return [item for sublist in zip(*seqs) for item in sublist]
 
-def mp_delay(seq: TTimeStampList, n: int) -> TTimeStampList:
-    '''Delay an event sequence by n samples.'''
+
+def mp_delay(seq: TimeStampList, n: int) -> TimeStampList:
+    """Delay an event sequence by n samples."""
     return ([MP_MINUSINFINITY] * n) + seq
 
-def mp_scale(seq: TTimeStampList, c: TTimeStamp)->TTimeStampList:
-    '''Scale an event sequence by a scalar c'''
+
+def mp_scale(seq: TimeStampList, c: TimeStamp) -> TimeStampList:
+    """Scale an event sequence by a scalar c"""
     return [mp_op_plus(v, c) for v in seq]
 
-def _require_matrix_square(matrix: TMPMatrix):
-    '''Raise an exception of the matrix M is not square.'''
+
+def _require_matrix_square(matrix: MPMatrix):
+    """Raise an exception of the matrix M is not square."""
     if mp_number_of_columns(matrix) != mp_number_of_rows(matrix):
         raise MPException("Matrix should be square.")

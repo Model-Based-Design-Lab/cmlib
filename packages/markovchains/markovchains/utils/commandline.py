@@ -3,12 +3,12 @@
 
 import argparse
 import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plot_svg
-from markovchains.utils.linalgebra import TVector, mat_power
+from markovchains.utils.linalgebra import Vector, mat_power
 from markovchains.utils.operations import (
     OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT,
     OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_ESTIMATION_DISTRIBUTION,
@@ -164,7 +164,7 @@ def set_starting_state_set(args: Any, mc: MarkovChain):
     return state_set
 
 
-def require_markov_chain(mc: Optional[MarkovChain]) -> MarkovChain:
+def require_markov_chain(mc: MarkovChain|None) -> MarkovChain:
     """Ensure a Markov Chain is specified."""
     if mc is None:
         raise MarkovChainException("A Markov Chain is needed.")
@@ -217,7 +217,8 @@ def process(args, dsl):
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
 
-        # sort for deterministic output, first by size of the set, then by the sorted names of the states
+        # sort for deterministic output, first by size of the set,
+        # then by the sorted names of the states
         sorted_sets = sorted(mc.communicating_classes(), key=lambda fs: (len(fs), sorted(fs)))
 
         for s in sorted_sets:
@@ -298,7 +299,7 @@ def process(args, dsl):
         pretty_print_matrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
-        l_dist: TVector = mc.limiting_distribution()
+        l_dist: Vector = mc.limiting_distribution()
 
         print ("State vector:")
         print_list_of_strings(mc.states())
@@ -384,7 +385,7 @@ def process(args, dsl):
                                       'Could not be determined')
             print(f"Cezaro limit distribution: {cld}")
             print(f"Number of cycles: {distribution_statistics.cycle_count()}\n")
-            dist: Optional[List[float]] = distribution_statistics.point_estimates()
+            dist: List[float]|None = distribution_statistics.point_estimates()
             if dist is not None:
                 intervals = distribution_statistics.confidence_intervals()
                 ab_error = distribution_statistics.ab_error()
@@ -445,7 +446,7 @@ def process(args, dsl):
         else:
             d_stop: Dict[str,str] = stop  # type: ignore
             print(f"Estimated hitting probabilities for {s} are:")
-            table_hs: List[Union[str,List[str]]] = []
+            table_hs: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 table_hs.append([
@@ -469,7 +470,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated cumulative reward until hitting {s} are:")
-            table_rs: List[Union[str,List[str]]] = []
+            table_rs: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
@@ -498,7 +499,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated hitting probabilities for {{{', '.join(s)}}} are:")
-            table: List[Union[str,List[str]]] = []
+            table: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
@@ -527,7 +528,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated cumulative reward until hitting {{{', '.join(s)}}} are:")
-            table_r_set: List[Union[str,List[str]]] = []
+            table_r_set: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):

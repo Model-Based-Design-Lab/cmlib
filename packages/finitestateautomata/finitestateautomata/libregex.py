@@ -2,7 +2,7 @@
 from enum import Enum
 import re
 import sys
-from typing import Dict, List, Optional, Tuple,Set
+from typing import Dict, List, Tuple,Set
 
 from finitestateautomata.libfsa import Automaton
 from finitestateautomata.libregexgrammar import parse_reg_ex_dsl
@@ -165,7 +165,7 @@ class RegExTerm:
             # remove the backward link
             vertices_map[v][0].remove(u)
 
-        def _remove_cycle(s)->Optional['RegExTerm']:
+        def _remove_cycle(s)->RegExTerm|None:
             '''If s has a cycle, return a regular expression that represents the
             alternatives of the labels on the cycle. Returns None if there is no cycle on s.'''
             nonlocal vertices_map
@@ -319,9 +319,11 @@ class RegExTermConcatenation(RegExTerm):
         self._expressions = expressions
 
     def sub_expressions(self)->Set[RegExTerm]:
+        """Return the set of subexpressions."""
         return set(self._expressions)
 
     def sub_expression_list(self)->List[RegExTerm]:
+        """Return the list of subexpressions in order."""
         return self._expressions
 
     def is_finite_reg_ex(self)->bool:

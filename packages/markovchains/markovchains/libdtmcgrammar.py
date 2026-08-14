@@ -1,7 +1,7 @@
 '''DSL grammar parsing support for Markov Chains.'''
 import sys
 from fractions import Fraction
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 from textx import TextXSyntaxError, metamodel_from_str
 
@@ -68,10 +68,10 @@ Float: STRICTFLOAT;
 
 MetaModelDTMC = metamodel_from_str(DTMC_GRAMMAR, classes=[])
 
-def parse_dtmc_dsl(content: str, factory: Any)->Tuple[Optional[str],Optional[Any]]:
+def parse_dtmc_dsl(content: str, factory: Any)->Tuple[str|None,Any|None]:
     '''Parse a Markov Chain from DSL string.'''
 
-    def _get_probability_or_reward(p: Any)->Optional[Fraction]:
+    def _get_probability_or_reward(p: Any)->Fraction|None:
         '''Parse probability.'''
         if p.ratio is not None:
             return Fraction(int(p.ratio.numerator), int(p.ratio.denominator))
@@ -79,6 +79,7 @@ def parse_dtmc_dsl(content: str, factory: Any)->Tuple[Optional[str],Optional[Any
             return Fraction(p.float)
         if p.int is not None:
             return Fraction(p.int)
+        return None
 
     def _parse_state(s: Any)->Any:
         '''Parse state with attributes.'''

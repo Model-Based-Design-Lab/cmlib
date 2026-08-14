@@ -1,7 +1,7 @@
 '''max-plus operators and comparisons'''
 
 from fractions import Fraction
-from dataflow.maxplus.types import TTimeStamp
+from dataflow.maxplus.types import TimeStamp
 
 
 NUMERICAL_EPSILON = 1e-8
@@ -24,7 +24,7 @@ class MPAlgebraException(Exception):
 MP_MINUSINFINITY_STR = "-inf"
 MP_MINUSINFINITY = None
 
-def mp_op_max(x: TTimeStamp, y: TTimeStamp) -> TTimeStamp:
+def mp_op_max(x: TimeStamp, y: TimeStamp) -> TimeStamp:
     '''Max operation in max-plus algebra.'''
     if x is None:
         return y
@@ -32,7 +32,7 @@ def mp_op_max(x: TTimeStamp, y: TTimeStamp) -> TTimeStamp:
         return x
     return max(x, y)
 
-def mp_op_plus(x: TTimeStamp, y: TTimeStamp) -> TTimeStamp:
+def mp_op_plus(x: TimeStamp, y: TimeStamp) -> TimeStamp:
     '''Plus operation in max-plus algebra.'''
     if x is None:
         return None
@@ -40,7 +40,7 @@ def mp_op_plus(x: TTimeStamp, y: TTimeStamp) -> TTimeStamp:
         return None
     return Fraction(x+y).limit_denominator()
 
-def mp_op_minus(x: TTimeStamp, y: TTimeStamp)-> TTimeStamp:
+def mp_op_minus(x: TimeStamp, y: TimeStamp)-> TimeStamp:
     '''Minus operation (inverse of plus) in max-plus algebra.'''
     if y is None:
         raise MPAlgebraException('Cannot subtract minus infinity')
@@ -48,7 +48,7 @@ def mp_op_minus(x: TTimeStamp, y: TTimeStamp)-> TTimeStamp:
         return None
     return Fraction(x-y).limit_denominator()
 
-def mp_comp_larger(x: TTimeStamp, y: TTimeStamp)->bool:
+def mp_comp_larger(x: TimeStamp, y: TimeStamp)->bool:
     '''Compare timestamp and check if x is strictly larger than y.'''
     if x is None:
         return False

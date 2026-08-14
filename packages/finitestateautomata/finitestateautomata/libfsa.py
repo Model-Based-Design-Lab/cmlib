@@ -5,7 +5,7 @@ from functools import reduce
 from io import StringIO
 import re
 import sys
-from typing import AbstractSet, Callable, Dict, Iterable, List, Optional,Set, Tuple
+from typing import AbstractSet, Callable, Dict, Iterable, List, Set, Tuple
 from finitestateautomata.libfsagrammar import parse_fsa_dsl
 from finitestateautomata.utils.utils import FiniteStateAutomataException
 
@@ -13,7 +13,7 @@ from finitestateautomata.utils.utils import FiniteStateAutomataException
 class FSAException(FiniteStateAutomataException):
     ''' Exceptions related to FSA '''
 
-class Automaton:
+class Automaton: # pylint: disable=too-many-public-methods
 
     """
     Represents variants of Finite State Automata.
@@ -145,7 +145,7 @@ class Automaton:
         '''Return the (non-modifiable) set of initial states.'''
         return frozenset(self._initial_states)
 
-    def make_final_state(self, s: str, acceptance_sets: Optional[Set[str]] = None):
+    def make_final_state(self, s: str, acceptance_sets: Set[str] | None = None):
         '''
         Make state s a final state. If the optional acceptanceSets is provided,
         s is added to the given acceptance sets. s is assumed to be a state of
@@ -192,7 +192,7 @@ class Automaton:
         if s in self._final_states:
             self._final_states.remove(s)
 
-    def accepts_with_path(self, word: str)->Tuple[bool,Optional[List[str]]]:
+    def accepts_with_path(self, word: str)->Tuple[bool,List[str]|None]:
         """
             Check if the automaton accepts the given word (a single string of
             symbols separated by commas).
@@ -567,7 +567,7 @@ class Automaton:
 
         return result
 
-    def language_empty(self)->Tuple[bool,Optional[List[str]],Optional[List[str]]]:
+    def language_empty(self)->Tuple[bool,List[str]|None,List[str]|None]:
         '''
         Checks if the FSA language is empty. Returns in addition to a Boolean,
         an accepted word and path if the language is not empty.
@@ -611,7 +611,7 @@ class Automaton:
         return (True, None, None)
 
     def language_empty_buchi(self)-> \
-        Tuple[bool,Optional[List[str]],Optional[List[str]],Optional[List[str]],Optional[List[str]]]:
+        Tuple[bool,List[str]|None,List[str]|None,List[str]|None,List[str]|None]:
         '''
         Checks if the Buchi language is empty. Returns an accepted word
         9prefix, repetition) and path (prefix, repetition) if the language is
@@ -662,7 +662,7 @@ class Automaton:
         # No Cycle found
         return (True, None, None, None, None)
 
-    def language_included(self, a: 'Automaton')->Tuple[bool,Optional[List[str]]]:
+    def language_included(self, a: 'Automaton')->Tuple[bool,List[str]|None]:
         '''
         Check if the language of the automaton is included in the language of automaton A.
         If not, a word is returned that is in the language of the automaton,
@@ -1031,8 +1031,8 @@ class Automaton:
         return result
 
     def reachable_states_with_words_and_paths(self, \
-            starting_states:Optional[Iterable[str]]=None, \
-            starting_words:Optional[Dict[str,List[str]]]=None, \
+            starting_states:Iterable[str]|None=None, \
+            starting_words:Dict[str,List[str]]|None=None, \
             starting_paths=None)->Tuple[Set[str],Dict[str,List[str]],Dict[str,List[str]]]:
         '''
         return a set of all states reachable from any state in startingStates
