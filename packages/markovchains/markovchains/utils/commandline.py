@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
 from markovchains.utils.graphs import plot_svg
-from markovchains.utils.linalgebra import TVector, mat_power
+from markovchains.utils.linalgebra import Vector, mat_power
 from markovchains.utils.operations import (
     OP_DTMC_CEZARO_LIMIT_DISTRIBUTION, OP_DTMC_CLASSIFY_TRANSIENT_RECURRENT,
     OP_DTMC_COMMUNICATINGSTATES, OP_DTMC_ESTIMATION_DISTRIBUTION,
@@ -217,7 +217,8 @@ def process(args, dsl):
     if operation == OP_DTMC_COMMUNICATINGSTATES:
         print("Classes of communicating states:")
 
-        # sort for deterministic output, first by size of the set, then by the sorted names of the states
+        # sort for deterministic output, first by size of the set,
+        # then by the sorted names of the states
         sorted_sets = sorted(mc.communicating_classes(), key=lambda fs: (len(fs), sorted(fs)))
 
         for s in sorted_sets:
@@ -298,7 +299,7 @@ def process(args, dsl):
         pretty_print_matrix(mat)
 
     if operation == OP_DTMC_LIMITING_DISTRIBUTION:
-        l_dist: TVector = mc.limiting_distribution()
+        l_dist: Vector = mc.limiting_distribution()
 
         print ("State vector:")
         print_list_of_strings(mc.states())

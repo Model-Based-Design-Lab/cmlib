@@ -1,7 +1,7 @@
 """Testing Markov Chain package"""
 
 import os
-from typing import Dict, Optional, Union
+from typing import Dict
 import pytest
 from modeltest.modeltest import ModelPytest # Import ModelPytest class from modeltest package
 from markovchains.libdtmc import MarkovChain
@@ -52,12 +52,12 @@ class MarkovPytest(ModelPytest):
         # Set recurrent state to be the first in the trace
         self.model.set_recurrent_state(None)
 
-    def statistics_and_stop(self, s: Statistics, stop: Optional[str]):
+    def statistics_and_stop(self, s: Statistics, stop: str|None):
         '''Return statistics and stop.'''
         return s.confidence_interval(), s.ab_error(), s.re_error(), s.mean_estimate(), \
             s.std_dev_estimate(), stop
 
-    def dictionary_statistics_and_stop(self, s: Optional[Dict[str,Statistics]], stop: \
+    def dictionary_statistics_and_stop(self, s: Dict[str,Statistics] | None, stop: \
                                        Union[str,Dict[str,str]]):
         '''Return statistics dictionary and stop.'''
         if s is None:

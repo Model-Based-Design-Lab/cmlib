@@ -4,13 +4,13 @@ from fractions import Fraction
 
 from dataflow.maxplus.algebra import (MP_MINUSINFINITY, mp_comp_larger,
                                       mp_op_max, mp_op_plus)
-from dataflow.maxplus.types import TMPMatrix
+from dataflow.maxplus.types import MPMatrix
 
 
 class PositiveCycleException(Exception):
     '''Exception when the closure does not exist due to a positive cycle,.'''
 
-def star_closure(matrix: TMPMatrix)->TMPMatrix:
+def star_closure(matrix: MPMatrix)->MPMatrix:
     '''Compute the star closure of the matrix.'''
 
     n = len(matrix)

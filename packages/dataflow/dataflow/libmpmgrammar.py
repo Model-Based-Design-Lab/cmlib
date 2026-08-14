@@ -1,8 +1,8 @@
-'''DSL grammar parsing support for max-plus models.'''
+"""DSL grammar parsing support for max-plus models."""
 
 import sys
 from fractions import Fraction
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
 
 from textx import TextXSyntaxError, metamodel_from_str
 
@@ -82,16 +82,24 @@ Comment:
 
 MetaModelMPM = metamodel_from_str(MPM_GRAMMAR, classes=[])
 
-class MPMParsingException(Exception):
-    '''Parsing exception.'''
 
-def parse_mpm_dsl(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None,None,None], \
-                            Tuple[str,Dict[str,Any],Dict[str,Any],Dict[str,Any]]]:
-    '''Parse max-plus model from DSL string.'''
+class MPMParsingException(Exception):
+    """Parsing exception."""
+
+
+def parse_mpm_dsl(
+    content: str, factory: Dict[str, Any]
+) -> (
+    Tuple[None, None, None, None]
+    | Tuple[str, Dict[str, Any], Dict[str, Any], Dict[str, Any]]
+):
+    """Parse max-plus model from DSL string."""
 
     def _get_number(n):
         if n.ratio is not None:
-            return Fraction(f"{n.ratio.numerator}/{n.ratio.denominator}").limit_denominator()
+            return Fraction(
+                f"{n.ratio.numerator}/{n.ratio.denominator}"
+            ).limit_denominator()
         if n.float is not None:
             return Fraction(n.float).limit_denominator()
         if n.int is not None:
@@ -99,7 +107,7 @@ def parse_mpm_dsl(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None
         # we cannot get here
         raise MPMParsingException("Parser error.")
 
-    def _parse_row(r: Any, mpm: Any, factory: Dict[str,Any]):
+    def _parse_row(r: Any, mpm: Any, factory: Dict[str, Any]):
         row = []
         for e in r.elements:
             if e == MIN_INF_GRAMMAR_STRING:
@@ -107,9 +115,9 @@ def parse_mpm_dsl(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None
             else:
                 row.append(_get_number(e))
 
-        factory['AddRow'](mpm, row)
+        factory["AddRow"](mpm, row)
 
-    def _parse_vector(v: Any, mpm: Any, factory: Dict[str,Any]):
+    def _parse_vector(v: Any, mpm: Any, factory: Dict[str, Any]):
         vc = []
         for e in v.elements:
             if e == MIN_INF_GRAMMAR_STRING:
@@ -117,9 +125,9 @@ def parse_mpm_dsl(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None
             else:
                 vc.append(_get_number(e))
 
-        factory['AddVector'](mpm, vc)
+        factory["AddVector"](mpm, vc)
 
-    def _set_event_sequence(es: Any, mpm: Any, factory: Dict[str,Any]):
+    def _set_event_sequence(es: Any, mpm: Any, factory: Dict[str, Any]):
         seq = []
         for e in es.elements:
             if e == MIN_INF_GRAMMAR_STRING:
@@ -127,38 +135,40 @@ def parse_mpm_dsl(content: str, factory: Dict[str,Any]) -> Union[Tuple[None,None
             else:
                 seq.append(_get_number(e))
 
-        factory['SetSequence'](mpm, seq)
+        factory["SetSequence"](mpm, seq)
 
     def _parse_labels(labels):
         return labels.label
 
     try:
-        model =  MetaModelMPM.model_from_str(content)
+        model = MetaModelMPM.model_from_str(content)
     except TextXSyntaxError as err:
-        sys.stderr.write(f"Syntax error in line {err.line} col {err.col}: {err.message}\n")
+        sys.stderr.write(
+            f"Syntax error in line {err.line} col {err.col}: {err.message}\n"
+        )
         return (None, None, None, None)
 
     res_matrices = {}
     for m in model.matrices:
-        mpm = factory['Init']()
+        mpm = factory["Init"]()
         if m.labels:
-            factory['AddLabels'](mpm, _parse_labels(m.labels))
+            factory["AddLabels"](mpm, _parse_labels(m.labels))
         for vc in m.rows:
             _parse_row(vc, mpm, factory)
         res_matrices[m.name] = mpm
 
     res_vector_sequences = {}
     for v in model.vectorsequences:
-        vs = factory['InitVectorSequence']()
+        vs = factory["InitVectorSequence"]()
         if v.labels:
-            factory['AddLabels'](vs, _parse_labels(v.labels))
+            factory["AddLabels"](vs, _parse_labels(v.labels))
         for vc in v.vectors:
             _parse_vector(vc, vs, factory)
         res_vector_sequences[v.name] = vs
 
     res_event_sequences = {}
     for e in model.eventsequences:
-        es = factory['InitEventSequence']()
+        es = factory["InitEventSequence"]()
         _set_event_sequence(e.sequence, es, factory)
         res_event_sequences[e.name] = es
 

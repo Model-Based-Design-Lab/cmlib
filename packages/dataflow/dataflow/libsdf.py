@@ -7,12 +7,12 @@ import sys
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-from typing import Mapping, Tuple, Any, Set, Union, Dict, List, Optional
+from typing import Mapping, Tuple, Any, Set, Dict, List
 from fractions import Fraction
 from dataflow.libsdfgrammar import parse_sdf_dsl
 from dataflow.maxplus.starclosure import PositiveCycleException
 from dataflow.maxplus.maxplus import (
-    TThroughputValue,
+    ThroughputValue,
     mp_throughput,
     mp_generalized_throughput,
     mp_matrix_minus_scalar,
@@ -26,10 +26,10 @@ from dataflow.maxplus.maxplus import (
     mp_max_vectors,
     mp_scale_vector,
     mp_split_sequence,
-    TTimeStamp,
-    TTimeStampList,
-    TMPVector,
-    TMPMatrix,
+    TimeStamp,
+    TimeStampList,
+    MPVector,
+    MPMatrix,
 )
 from dataflow.maxplus.algebra import MP_MINUSINFINITY
 from dataflow.libmpm import MaxPlusMatrixModel
@@ -48,16 +48,16 @@ TChannelSpecs = Dict[str, Any]
 
 
 def _split_matrix(
-    matrix: TMPMatrix, n: int
-) -> Tuple[TMPMatrix, TMPMatrix, TMPMatrix, TMPMatrix]:
+    matrix: MPMatrix, n: int
+) -> Tuple[MPMatrix, MPMatrix, MPMatrix, MPMatrix]:
     """Split matrix into state-space A,B,C,D matrices assuming a state size n."""
-    matrix_a: TMPMatrix = []
-    matrix_b: TMPMatrix = []
+    matrix_a: MPMatrix = []
+    matrix_b: MPMatrix = []
     for k in range(n):
         matrix_a.append(matrix[k][:n])
         matrix_b.append(matrix[k][n:])
-    matrix_c: TMPMatrix = []
-    matrix_d: TMPMatrix = []
+    matrix_c: MPMatrix = []
+    matrix_d: MPMatrix = []
     for k in range(n, len(matrix)):
         matrix_c.append(matrix[k][:n])
         matrix_d.append(matrix[k][n:])
@@ -79,7 +79,7 @@ class SDFInconsistentException(SDFException):
 class DataflowGraph:
     """Representation of dataflow graphs"""
 
-    _repetition_vector: Optional[Dict[str, int]]
+    _repetition_vector: Dict[str, int] | None
     _symbolic_vector: List[str]
     _inputs: List[str]
     _outputs: List[str]
@@ -93,7 +93,7 @@ class DataflowGraph:
     _in_channels: Dict[str, Set[str]]
     _chan_producer: Dict[str, str]
     _chan_consumer: Dict[str, str]
-    _input_signals: Dict[str, TTimeStampList]
+    _input_signals: Dict[str, TimeStampList]
 
     def __init__(self):
         # set of actors, including inputs and outputs!
@@ -154,7 +154,7 @@ class DataflowGraph:
         """Return the outputs of the graph."""
         return self._outputs
 
-    def input_signals(self) -> Dict[str, TTimeStampList]:
+    def input_signals(self) -> Dict[str, TimeStampList]:
         """Returns the inputs signals to the graph."""
         return self._input_signals
 
@@ -292,7 +292,7 @@ class DataflowGraph:
             self._actor_specs[o][EXECUTION_TIME_SPEC_KEY] = Fraction(0.0)
         self._outputs.append(o)
 
-    def add_input_signal(self, n: str, s: TTimeStampList):
+    def add_input_signal(self, n: str, s: TimeStampList):
         """Add input signal with name n and sequences s."""
         self._input_signals[n] = s
 
@@ -453,27 +453,27 @@ class DataflowGraph:
             for n in range(self.repetitions(i)):
                 self._symbolic_vector.append(self._input_token_label(i, n))
 
-    def _symbolic_time_stamp_minus_infinity(self) -> TMPVector:
+    def _symbolic_time_stamp_minus_infinity(self) -> MPVector:
         """Return a symbolic time stamp vector with all -inf elements."""
         return [MP_MINUSINFINITY] * self._symbolic_time_stamp_size
 
-    def symbolic_time_stamp(self, t: str) -> TMPVector:
+    def symbolic_time_stamp(self, t: str) -> MPVector:
         """Get the initial symbolic time stamp for the element labelled t, i.e., a corresponding
         unit vector."""
         res = self._symbolic_time_stamp_minus_infinity()
         res[self._symbolic_vector.index(t)] = Fraction(0)
         return res
 
-    def _symbolic_time_stamp_max(self, ts1: TMPVector, ts2: TMPVector) -> TMPVector:
+    def _symbolic_time_stamp_max(self, ts1: MPVector, ts2: MPVector) -> MPVector:
         """Determine the maximum of two symbolic time stamp vectors."""
         return mp_max_vectors(ts1, ts2)
 
-    def _symbolic_time_stamp_scale(self, c: TTimeStamp, ts: TMPVector) -> TMPVector:
+    def _symbolic_time_stamp_scale(self, c: TimeStamp, ts: MPVector) -> MPVector:
         """Scale the symbolic time stamp vector."""
         return mp_scale_vector(c, ts)
 
     def _symbolic_firing(
-        self, a: str, n: int, timestamps: Dict[str, TMPVector]
+        self, a: str, n: int, timestamps: Dict[str, MPVector]
     ) -> bool:
         """Attempt to fire actor a for the n'th time in the symbolic simulation
         of the graph using the symbolic timestamps recoded in timestamps.
@@ -517,8 +517,8 @@ class DataflowGraph:
         return True
 
     def _symbolic_completion_time(
-        self, timestamps: Dict[str, TMPVector], a: str, n: int
-    ) -> TMPVector:
+        self, timestamps: Dict[str, MPVector], a: str, n: int
+    ) -> MPVector:
         """Determine the symbolic completion time of firing n of actor a."""
         el = self._actor_firing_label(a, n)
         return self._symbolic_time_stamp_scale(
@@ -527,7 +527,7 @@ class DataflowGraph:
 
     def state_space_matrices(
         self,
-    ) -> Tuple[TMPMatrix, Tuple[TMPMatrix, TMPMatrix, TMPMatrix, TMPMatrix]]:
+    ) -> Tuple[MPMatrix, Tuple[MPMatrix, MPMatrix, MPMatrix, MPMatrix]]:
         """
         Compute the trace matrix and the state-space, A, B, C, and D, matrices.
         Returns a pair with
@@ -538,7 +538,7 @@ class DataflowGraph:
         self._initialize_symbolic_time_stamps()
         # keep track of the symbolic timestamp vectors of input tokens, output
         # tokens, initial tokens and actor firings
-        timestamps: Dict[str, TMPVector] = {}
+        timestamps: Dict[str, MPVector] = {}
         # set the symbolic time stamps for all input tokens
         for i in self._inputs:
             for n in range(self.repetitions(i)):
@@ -581,7 +581,7 @@ class DataflowGraph:
             old_len = len(timestamps)
 
         # determine the combined state-space matrix [A B; C D]
-        matrix_a: TMPMatrix = []
+        matrix_a: MPMatrix = []
         # first the rows corresponding to the new initial tokens
         for ch in self._channels:
             n_tokens = self.number_of_initial_tokens_of_channel(ch)
@@ -614,7 +614,7 @@ class DataflowGraph:
 
         return matrix_h, _split_matrix(matrix_a, self.number_of_initial_tokens())
 
-    def repetition_vector(self) -> Union[Dict[str, int], List[str]]:
+    def repetition_vector(self) -> Dict[str, int] | List[str]:
         """Determine the repetition vector of the graph. Returns None if the graph is
         inconsistent."""
 
@@ -738,7 +738,7 @@ class DataflowGraph:
         # convert fractional rates to integer rates
         return _make_integer_rates(rates)
 
-    def throughput(self) -> TThroughputValue:
+    def throughput(self) -> ThroughputValue:
         """
         Compute throughput of the graph
         """
@@ -747,21 +747,21 @@ class DataflowGraph:
         # compute throughput from the state matrix
         return mp_throughput(ssr[0])
 
-    def throughput_output(self, output: str) -> TThroughputValue:
+    def throughput_output(self, output: str) -> ThroughputValue:
         """
         Compute throughput of the graph
         """
         # compute state-space representation
         _, ssr = self.state_space_matrices()
         # compute throughput from the state matrix
-        tp: List[TThroughputValue] = mp_generalized_throughput(ssr[0])
+        tp: List[ThroughputValue] = mp_generalized_throughput(ssr[0])
         i = self.index_of_output(output)
         # find the minimum in tp for all non-minus-infinity elements in row number i of the C matrix
-        min_val: TThroughputValue = "infinite"
+        min_val: ThroughputValue = "infinite"
         c_r = ssr[2][i]
         for k, crv in enumerate(c_r):
             if not crv == MP_MINUSINFINITY:
-                t: TThroughputValue = tp[k]
+                t: ThroughputValue = tp[k]
                 if min_val == "infinite":
                     min_val = t
                 elif not t == "infinite":
@@ -779,7 +779,7 @@ class DataflowGraph:
             return True
         return False
 
-    def latency(self, x0: Optional[TMPVector], mu: Fraction) -> TMPMatrix:
+    def latency(self, x0: MPVector | None, mu: Fraction) -> MPMatrix:
         """Determine the mu-periodic latency of the dataflow graph. If x0 is provided, it is
         considered the initial state of the initial tokens. If it is not provided, a zero vector is
         assumed. The latency matrix is returned. I.e., the matrix: Lambda = (C ( A-mu )^{*} ( x0
@@ -938,10 +938,10 @@ class DataflowGraph:
     def determine_trace(
         self,
         ni: int,
-        x0: Optional[TMPVector] = None,
-        input_override: Optional[Mapping[str, Union[TTimeStampList, str]]] = None,
+        x0: MPVector | None = None,
+        input_override: Mapping[str, TimeStampList | str] | None = None,
     ) -> Tuple[
-        List[TTimeStampList], List[TTimeStampList], List[TTimeStampList], List[Fraction]
+        List[TimeStampList], List[TimeStampList], List[TimeStampList], List[Fraction]
     ]:
         """Determine execution trace for the dataflow graph.
         The trace is ni iterations long.
@@ -976,12 +976,12 @@ class DataflowGraph:
             x0 = mp_zero_vector(matrices["A"].number_of_columns())
 
         inp_sig = self.input_signals()
-        inputs: List[TTimeStampList] = []
+        inputs: List[TimeStampList] = []
         for s in self.inputs():
             if input_override and s in input_override:
                 s: str
                 if isinstance(input_override[s], list):
-                    ios_l: TTimeStampList = input_override[s]  # type: ignore
+                    ios_l: TimeStampList = input_override[s]  # type: ignore
                     # the input is given as an list of time stamps.
                     # split it according to the inputs within one graph iteration
                     inputs.extend(mp_split_sequence(ios_l, self.repetitions(s)))
@@ -1028,14 +1028,14 @@ class DataflowGraph:
         return input_traces, output_traces, firing_starts, firing_durations
 
     def determine_trace_zero_based(
-        self, ni: int, x0: Optional[TMPVector] = None
+        self, ni: int, x0: MPVector | None = None
     ) -> Tuple[
         List[str],
         List[str],
-        List[TTimeStampList],
+        List[TimeStampList],
         List[str],
-        List[TTimeStampList],
-        List[TTimeStampList],
+        List[TimeStampList],
+        List[TimeStampList],
         List[Fraction],
     ]:
         """Determine a trace with ni iterations, assuming that actors cannot fire before time 0.

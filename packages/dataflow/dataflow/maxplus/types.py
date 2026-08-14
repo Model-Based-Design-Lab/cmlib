@@ -1,12 +1,12 @@
 '''Type definitions for max-plus algebra'''
 
 from fractions import Fraction
-from typing import List, Union
+from typing import List
 
-TTimeStamp = Union[Fraction,None]
-TTimeStampList = List[TTimeStamp]
-TTimeStampFloat = Union[float,None]
-TTimeStampFloatList = List[TTimeStampFloat]
-TMPVector = TTimeStampList
-TMPVectorList = List[TMPVector]
-TMPMatrix = TMPVectorList
+TimeStamp = Fraction | None
+TimeStampList = List[TimeStamp]
+TimeStampFloat = float | None
+TimeStampFloatList = List[TimeStampFloat]
+MPVector = TimeStampList
+MPVectorList = List[MPVector]
+MPMatrix = MPVectorList

@@ -1,8 +1,9 @@
-"""Library for Discrete-Time Markov Chain analysis.""" # pylint: disable=too-many-lines
+"""Library for Discrete-Time Markov Chain analysis."""  # pylint: disable=too-many-lines
 
+from __future__ import annotations
 from fractions import Fraction
 from io import StringIO
-from typing import AbstractSet, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import AbstractSet, Callable, Dict, List, Literal, Set, Tuple
 
 import functools
 import math
@@ -11,13 +12,17 @@ import os
 from markovchains.libdtmcgrammar import parse_dtmc_dsl
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.utils import sort_names, TimeoutTimer
-from markovchains.utils.statistics import Statistics, DistributionStatistics, StopConditions
+from markovchains.utils.statistics import (
+    Statistics,
+    DistributionStatistics,
+    StopConditions,
+)
 
 import networkx as nx
 
 # type for generic actions to be executed during a random simulation
-TSimulationAction = Callable[[int,str],bool]
-TSimulationActionAndDescription = Tuple[TSimulationAction,Optional[str]]
+SimulationAction = Callable[[int, str], bool]
+SimulationActionAndDescription = Tuple[SimulationAction, str | None]
 
 STR_TIMEOUT = "Timeout"
 STR_ABS_ERROR = "Absolute Error"
@@ -25,8 +30,10 @@ STR_REL_ERROR = "Relative Error"
 STR_NR_OF_PATHS = "Number of Paths"
 STR_MAX_PATH_LENGTH = "Maximum path length"
 
+
 class DTMCException(Exception):
     """Exception from the DTMC package"""
+
 
 class MarkovChain:
     """Representation of a Discrete-Tie Markov Chain"""
@@ -35,18 +42,17 @@ class MarkovChain:
     _states: List[str]
     # transitions maps states to another dictionary that maps target states
     # to the probability of reaching that target state
-    _transitions: Dict[str, Dict[str,Fraction]]
+    _transitions: Dict[str, Dict[str, Fraction]]
     # initialProbabilities maps states to the probability of starting in a given state
-    _initial_probabilities: Dict[str,Fraction]
+    _initial_probabilities: Dict[str, Fraction]
     # rewards is a dictionary that maps states to their rewards
-    _rewards: Dict[str,Fraction]
+    _rewards: Dict[str, Fraction]
     # transitionMatrix holds the transition matrix of the Markov Chains if it is computed
-    _transition_matrix: Optional[linalg.TMatrix]
+    _transition_matrix: linalg.Matrix | None
     # initialProbabilityVector holds the initial probabilities in the form of a vector
-    _initial_probability_vector: Optional[linalg.TVector]
+    _initial_probability_vector: linalg.Vector | None
     # Recurrent state for simulation run calibration
-    _recurrent_state: Optional[str]
-
+    _recurrent_state: str | None
 
     def __init__(self):
         self._states = []
@@ -61,8 +67,10 @@ class MarkovChain:
         seed = int.from_bytes(random_data, byteorder="big")
         random.seed(seed)
 
-    def as_dsl(self, name: str, state_info:bool = True, reward_info:bool = True)->str:
-        '''Return the model as a string of the domain-specific language.'''
+    def as_dsl(
+        self, name: str, state_info: bool = True, reward_info: bool = True
+    ) -> str:
+        """Return the model as a string of the domain-specific language."""
         # keep track of the states that have been output
         states_output: Set[str] = set()
         # create string writer for the output
@@ -77,11 +85,11 @@ class MarkovChain:
                 states_output.add(tr[0])
                 r = self.get_reward(tr[0])
                 i = self._initial_probabilities[tr[0]]
-                if state_info and reward_info and r!=0:
+                if state_info and reward_info and r != 0:
                     output.write(f"\t{tr[0]} [p: {i}; r: {r}] -- {tr[1]} --> {tr[2]}\n")
-                elif state_info and (not reward_info or r==0):
+                elif state_info and (not reward_info or r == 0):
                     output.write(f"\t{tr[0]} [p: {i}] -- {tr[1]} --> {tr[2]}\n")
-                elif not state_info and (reward_info or r!=0):
+                elif not state_info and (reward_info or r != 0):
                     output.write(f"\t{tr[0]} [r: {r}] -- {tr[1]} --> {tr[2]}\n")
 
         output.write("}\n")
@@ -91,71 +99,71 @@ class MarkovChain:
         return result
 
     def add_state(self, s: str):
-        '''Add a state named s to the MC'''
+        """Add a state named s to the MC"""
         # check if it already exists or not
         if not s in self._states:
             self._states.append(s)
 
-    def number_of_states(self)->int:
-        '''Return the number of states.'''
+    def number_of_states(self) -> int:
+        """Return the number of states."""
         return len(self._states)
 
-    def states(self)->List[str]:
-        '''Return the list of states.'''
+    def states(self) -> List[str]:
+        """Return the list of states."""
         return self._states
 
     def sort_state_names(self):
-        '''Sort the list of states.'''
+        """Sort the list of states."""
         self._states = sort_names(self._states)
         self._initial_probability_vector = None
         self._transition_matrix = None
 
     def set_initial_probability(self, s: str, p: Fraction):
-        '''Set initial probability of state s to p.'''
+        """Set initial probability of state s to p."""
         if not s in self._states:
-            raise DTMCException('Unknown state')
+            raise DTMCException("Unknown state")
         self._initial_probabilities[s] = p
 
     def set_reward(self, s: str, r: Fraction):
-        '''Set reward of state s to r.'''
+        """Set reward of state s to r."""
         if not s in self._states:
-            raise DTMCException('Unknown state')
+            raise DTMCException("Unknown state")
         self._rewards[s] = r
 
-    def get_reward(self, s: str)->Fraction:
-        '''Get reward of state s. Defaults to 0 if undefined.'''
+    def get_reward(self, s: str) -> Fraction:
+        """Get reward of state s. Defaults to 0 if undefined."""
         if not s in self._rewards:
             return Fraction(0)
         return self._rewards[s]
 
     def set_edge_probability(self, s: str, d: str, p: Fraction):
-        '''Set the probability of the transition from s to d to p.'''
+        """Set the probability of the transition from s to d to p."""
         if not s in self._states or not d in self._states:
-            raise DTMCException('Unknown state')
+            raise DTMCException("Unknown state")
         if s not in self._transitions:
             self._transitions[s] = {}
         self._transitions[s][d] = p
 
-    def transitions(self)->Set[Tuple[str,Fraction,str]]:
-        '''Get the transitions of the dtmc as tuples (s, p, d). With source
-        state s, destination state d and probability p.'''
+    def transitions(self) -> Set[Tuple[str, Fraction, str]]:
+        """Get the transitions of the dtmc as tuples (s, p, d). With source
+        state s, destination state d and probability p."""
         result = set()
         for src_state, trans in self._transitions.items():
-            for (dst_state, p) in trans.items():
+            for dst_state, p in trans.items():
                 result.add((src_state, p, dst_state))
         return result
 
     def add_implicit_transitions(self):
-        '''Add the implicit transitions when the outgoing probabilities do not add up to one.'''
+        """Add the implicit transitions when the outgoing probabilities do not add up to one."""
         # compute the transition matrix, which will have the implicit transition probabilities
-        matrix: linalg.TMatrix = self.transition_matrix()
+        matrix: linalg.Matrix = self.transition_matrix()
         # set all transitions according to the non-zero elements in the matrix
         n_states = len(self._states)
         for i in range(n_states):
             si = self._states[i]
             for j in range(n_states):
                 sj = self._states[j]
-                if not matrix[j][i]==Fraction(0):
+                if not matrix[j][i] == Fraction(0):
                     # add the transition if it does not yet exist
                     if not si in self._transitions:
                         self.set_edge_probability(si, sj, matrix[j][i])
@@ -164,7 +172,7 @@ class MarkovChain:
                             self.set_edge_probability(si, sj, matrix[j][i])
 
     def _complete_transition_matrix(self):
-        '''Complete the transition matrix with missing/implicit transitions.'''
+        """Complete the transition matrix with missing/implicit transitions."""
         if self._transition_matrix is None:
             raise DTMCException("Transition matrix is not yet initialized.")
         # ensure that all rows add up to 1.
@@ -202,8 +210,8 @@ class MarkovChain:
                     # it is significantly larger than 1
                     raise DTMCException("probability mass is larger than one")
 
-    def transition_matrix(self)->linalg.TMatrix:
-        '''Computes and returns the transition matrix of the MC.'''
+    def transition_matrix(self) -> linalg.Matrix:
+        """Computes and returns the transition matrix of the MC."""
         n_states = len(self._states)
         self._transition_matrix = linalg.zero_matrix(n_states, n_states)
         row = 0
@@ -218,16 +226,16 @@ class MarkovChain:
         self._complete_transition_matrix()
         return self._transition_matrix
 
-    def initial_probability_specified(self, s: str)->bool:
-        '''Return if state s has a specified initial probability.'''
+    def initial_probability_specified(self, s: str) -> bool:
+        """Return if state s has a specified initial probability."""
         return s in self._initial_probabilities
 
-    def reward_specified(self, s: str)->bool:
-        '''Return if state s has a specified reward.'''
+    def reward_specified(self, s: str) -> bool:
+        """Return if state s has a specified reward."""
         return s in self._rewards
 
     def complete_initial_probability_vector(self):
-        '''Complete the vector of initial probabilities with implicit probabilities.'''
+        """Complete the vector of initial probabilities with implicit probabilities."""
         if self._initial_probability_vector is None:
             raise DTMCException("Initial probability vector is not yet initialized.")
         # ensure that the initial probabilities add up to 1.
@@ -235,7 +243,9 @@ class MarkovChain:
         if v_sum > Fraction(1):
             raise DTMCException("probability is larger than one")
         if v_sum < Fraction(1):
-            k_ns = [self.initial_probability_specified(s) for s in self._states].count(False)
+            k_ns = [self.initial_probability_specified(s) for s in self._states].count(
+                False
+            )
             if k_ns == 0:
                 raise DTMCException("probability mass is smaller than one")
             remainder: Fraction = (Fraction(1) - v_sum) / Fraction(k_ns)
@@ -246,15 +256,18 @@ class MarkovChain:
                 k += 1
 
     def complete_initial_probabilities(self):
-        '''Complete the initial probabilities.'''
+        """Complete the initial probabilities."""
         # ensure that the initial probabilities add up to 1.
-        sum_value = functools.reduce(lambda a,b : a+b, \
-                        self._initial_probabilities.values(), Fraction(0))
-        if sum_value > Fraction(1001,1000):
+        sum_value = functools.reduce(
+            lambda a, b: a + b, self._initial_probabilities.values(), Fraction(0)
+        )
+        if sum_value > Fraction(1001, 1000):
             # probability is significantly larger than 1
             raise DTMCException("initial probability mass is larger than one")
         if sum_value < Fraction(999, 1000):
-            k_ns = [self.initial_probability_specified(s) for s in self._states].count(False)
+            k_ns = [self.initial_probability_specified(s) for s in self._states].count(
+                False
+            )
             if k_ns == 0:
                 raise DTMCException("initial probability mass is smaller than one")
             remainder: Fraction = (Fraction(1) - sum_value) / Fraction(k_ns)
@@ -283,17 +296,15 @@ class MarkovChain:
 
             self.set_initial_probability(s_max, mass)
 
-
-
     def complete_rewards(self):
-        '''Complete the implicit rewards to zero.'''
+        """Complete the implicit rewards to zero."""
         # Initialize reward zero if not defined in dtmc model
         for s in self._states:
             if not self.reward_specified(s):
                 self.set_reward(s, Fraction(0))
 
-    def initial_probability_vector(self)->linalg.TVector:
-        '''Determine and return the initial probability vector.'''
+    def initial_probability_vector(self) -> linalg.Vector:
+        """Determine and return the initial probability vector."""
         n_states = len(self._states)
         self._initial_probability_vector = linalg.zero_vector(n_states)
         k = 0
@@ -304,27 +315,27 @@ class MarkovChain:
         self.complete_initial_probability_vector()
         return self._initial_probability_vector
 
-    def reward_vector(self)->linalg.TVector:
-        '''Return reward vector.'''
+    def reward_vector(self) -> linalg.Vector:
+        """Return reward vector."""
         return [self.get_reward(s) for s in self._states]
 
-    def reward_for_distribution(self, d: linalg.TVector)->Fraction:
-        '''Return expected reward for a given distribution.'''
+    def reward_for_distribution(self, d: linalg.Vector) -> Fraction:
+        """Return expected reward for a given distribution."""
         result = Fraction(0)
         for k in range(self.number_of_states()):
             result += d[k] * self.get_reward(self._states[k])
         return result
 
-    def execute_steps(self, n_steps: int)->List[linalg.TVector]:
-        '''Perform n_steps steps of the chain, return array of N+1
+    def execute_steps(self, n_steps: int) -> List[linalg.Vector]:
+        """Perform n_steps steps of the chain, return array of N+1
         distributions, starting with the initial distribution and
-        distributions after N steps.'''
-        if n_steps<0:
+        distributions after N steps."""
+        if n_steps < 0:
             raise DTMCException("Number of steps must be non-negative.")
         p_matrix = self.transition_matrix()
         pi = self.initial_probability_vector()
         result = []
-        for _ in range(n_steps+1):
+        for _ in range(n_steps + 1):
             result.append(pi)
             pi = linalg.vector_matrix_product(pi, p_matrix)
         return result
@@ -341,28 +352,28 @@ class MarkovChain:
 
         return gr
 
-
-    def _compute_reverse_communication_graph(self)->nx.DiGraph:
-        '''Return the communication graph corresponding to the reversed
-        transitions of the Markov Chain.'''
+    def _compute_reverse_communication_graph(self) -> nx.DiGraph:
+        """Return the communication graph corresponding to the reversed
+        transitions of the Markov Chain."""
         gr = nx.DiGraph()
         gr.add_nodes_from(self._states)
         for s, trans in self._transitions.items():
             for t, p in trans.items():
-                if not p==Fraction(0):
+                if not p == Fraction(0):
                     gr.add_edge(t, s)
         return gr
 
-    def communicating_classes(self)->Set[AbstractSet[str]]:
-        '''Determine the communicating classes of the dtmc. Returns Set of sets
-        of states of the dtmc.'''
+    def communicating_classes(self) -> Set[AbstractSet[str]]:
+        """Determine the communicating classes of the dtmc. Returns Set of sets
+        of states of the dtmc."""
         gr = self._compute_communication_graph()
         return {frozenset(s) for s in nx.strongly_connected_components(gr)}
 
-    def classify_transient_recurrent_classes(self)->\
-        Tuple[Set[AbstractSet[str]],Set[AbstractSet[str]]]:
-        '''Classify the states into transient and recurrent. Return a pair with
-        transient classes and recurrent classes.'''
+    def classify_transient_recurrent_classes(
+        self,
+    ) -> Tuple[Set[AbstractSet[str]], Set[AbstractSet[str]]]:
+        """Classify the states into transient and recurrent. Return a pair with
+        transient classes and recurrent classes."""
         c_classes = self.communicating_classes()
         r_classes = c_classes.copy()
         state_map = {}
@@ -380,8 +391,8 @@ class MarkovChain:
 
         return c_classes, r_classes
 
-    def classify_transient_recurrent(self)->Tuple[Set[str],Set[str]]:
-        '''Classify states into transient and recurrent.'''
+    def classify_transient_recurrent(self) -> Tuple[Set[str], Set[str]]:
+        """Classify states into transient and recurrent."""
         _, r_classes = self.classify_transient_recurrent_classes()
 
         # collect all recurrent states
@@ -394,13 +405,13 @@ class MarkovChain:
 
         return t_states, r_states
 
-    def classify_periodicity(self)->Dict[str,int]:
-        '''Determine periodicity of states. Returns a dictionary mapping state to periodicity.'''
+    def classify_periodicity(self) -> Dict[str, int]:
+        """Determine periodicity of states. Returns a dictionary mapping state to periodicity."""
 
-        def _cycle_found(k:str):
+        def _cycle_found(k: str):
             nonlocal node_stack, cycles_found
             i = node_stack.index(k)
-            cycles_found.add(frozenset(node_stack[i:len(node_stack)]))
+            cycles_found.add(frozenset(node_stack[i : len(node_stack)]))
 
         def _explore_cycles(m: str):
             explored_nodes.add(m)
@@ -410,14 +421,14 @@ class MarkovChain:
                     _cycle_found(k)
                 else:
                     _explore_cycles(k)
-            node_stack.pop(len(node_stack)-1)
+            node_stack.pop(len(node_stack) - 1)
 
         self.add_implicit_transitions()
 
         gr = self._compute_communication_graph()
         # perform exploration for all states
-        cycles_found:Set[AbstractSet[str]] = set()
-        explored_nodes: Set[str] =set()
+        cycles_found: Set[AbstractSet[str]] = set()
+        explored_nodes: Set[str] = set()
         nodes_to_explore: List[str] = list(gr.nodes())
         node_stack: List[str] = []
         while len(nodes_to_explore) > 0:
@@ -429,7 +440,7 @@ class MarkovChain:
         # periodicity is gcd of the length of all cycles reachable from the state
         _, r_states = self.classify_transient_recurrent()
 
-        per: Dict[str,int] = {}
+        per: Dict[str, int] = {}
         for c in cycles_found:
             cl = len(c)
             for s in c:
@@ -451,9 +462,15 @@ class MarkovChain:
 
         return per
 
-    def determine_mc_type(self)->Literal['ergodic unichain', \
-                'non-ergodic unichain','ergodic non-unichain','non-ergodic non-unichain']:
-        '''Return the type of the MC.
+    def determine_mc_type(
+        self,
+    ) -> Literal[
+        "ergodic unichain",
+        "non-ergodic unichain",
+        "ergodic non-unichain",
+        "non-ergodic non-unichain",
+    ]:
+        """Return the type of the MC.
         A class that is both recurrent and aperiodic is called an ergodic class.
         A Markov chain having a single class of communicating states is called
         an irreducible Markov chain. Notice that this class of states is
@@ -465,9 +482,9 @@ class MarkovChain:
         unichain visits its transients states a finite number of times, after
         which the chain enters the unique class of recurrent states in which it
         remains for ever.
-        '''
+        """
 
-        _, r_classes =  self.classify_transient_recurrent_classes()
+        _, r_classes = self.classify_transient_recurrent_classes()
         per = self.classify_periodicity()
 
         is_unichain = len(r_classes) == 1
@@ -475,24 +492,29 @@ class MarkovChain:
 
         if is_unichain:
             if len(e_classes) > 0:
-                return 'ergodic unichain'
-            return 'non-ergodic unichain'
+                return "ergodic unichain"
+            return "non-ergodic unichain"
         if len(r_classes) == len(e_classes):
-            return 'ergodic non-unichain'
+            return "ergodic non-unichain"
 
-        return 'non-ergodic non-unichain'
+        return "non-ergodic non-unichain"
 
-    def _hitting_probabilities(self, target_state: str)->Tuple[List[str], \
-                    Optional[linalg.TMatrix],Dict[str,int],Dict[str,int],Dict[str,Fraction]]:
-        '''Determine the hitting probabilities to hit targetState. Returns a tuple with:
+    def _hitting_probabilities(self, target_state: str) -> Tuple[
+        List[str],
+        linalg.Matrix | None,
+        Dict[str, int],
+        Dict[str, int],
+        Dict[str, Fraction],
+    ]:
+        """Determine the hitting probabilities to hit targetState. Returns a tuple with:
         - rs: the list of states from which the target state is reachable
         - ImEQ: the matrix of the matrix equation
         - rIndex: index numbers of the states from rs in the equation
         - pIndex, index of all states
         - res: the hitting probabilities
-        '''
+        """
 
-        def _states_reachable_from(s: str)->List[str]:
+        def _states_reachable_from(s: str) -> List[str]:
             if not s in gr.nodes():
                 raise DTMCException(f"The node {s} is not in the digraph.")
             pre = list(nx.dfs_preorder_nodes(gr, source=s))
@@ -503,22 +525,22 @@ class MarkovChain:
         rs = _states_reachable_from(target_state)
         rs = list(rs)
         # give each of the states an index in map rIndex
-        r_index:Dict[str,int] = {}
+        r_index: Dict[str, int] = {}
         for k, s in enumerate(rs):
             r_index[s] = k
 
         # determine transition matrix and state indices
         p_matrix = self.transition_matrix()
-        p_index:Dict[str,int] = {}
+        p_index: Dict[str, int] = {}
         for k, s in enumerate(self._states):
             p_index[s] = k
         # jp is index of the target state
         jp = p_index[target_state]
 
         i_minus_eq = None
-        sol_x: Optional[linalg.TVector] = None
+        sol_x: linalg.Vector | None = None
 
-        if  len(rs) > 0:
+        if len(rs) > 0:
 
             # determine the hitting prob equations
             # Let us fix a state j ∈ S and define for each state i in rs a
@@ -548,30 +570,29 @@ class MarkovChain:
             sol_x = linalg.solve(i_minus_eq, pj)
 
         # set all hitting probabilities to zero
-        res: Dict[str,Fraction] = {}
+        res: Dict[str, Fraction] = {}
         for s in self._states:
             res[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
-            sol_xv: linalg.TVector = sol_x  # type: ignore we know sol_x is a vector
+            sol_xv: linalg.Vector = sol_x  # type: ignore we know sol_x is a vector
             res[s] = sol_xv[r_index[s]]
 
         return rs, i_minus_eq, r_index, p_index, res
 
-
-    def hitting_probabilities(self, target_state: str)->Dict[str,Fraction]:
-        '''Determine the hitting probabilities to hit targetState.'''
+    def hitting_probabilities(self, target_state: str) -> Dict[str, Fraction]:
+        """Determine the hitting probabilities to hit targetState."""
 
         _, _, _, _, res = self._hitting_probabilities(target_state)
         return res
 
-    def reward_till_hit(self, target_state: str)->Dict[str,Fraction]:
-        '''Determine the expected reward until hitting targetState'''
+    def reward_till_hit(self, target_state: str) -> Dict[str, Fraction]:
+        """Determine the expected reward until hitting targetState"""
 
         rs, i_minus_eq, r_index, _, f = self._hitting_probabilities(target_state)
         sol_x = None
-        if  len(rs) > 0:
+        if len(rs) > 0:
 
             # x_i = r(i) · fij + Sum k∈S\{j} P_ik x_k
             # solve the equation: x = EQ x + Fj
@@ -584,17 +605,17 @@ class MarkovChain:
                 fj[i] = self.get_reward(si) * f[si]
 
             # solve the equation x = inv(I-EQ)*Fj
-            i_minus_eq_m: linalg.TMatrix = i_minus_eq  # type: ignore we know ImEQ is a matrix
+            i_minus_eq_m: linalg.Matrix = i_minus_eq  # type: ignore we know ImEQ is a matrix
             sol_x = linalg.solve(i_minus_eq_m, fj)
 
         # set fr to zero
-        fr: Dict[str,Fraction] = {}
+        fr: Dict[str, Fraction] = {}
         for s in self._states:
             fr[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
-            sol_xv: linalg.TVector = sol_x  # type: ignore we know solX is a vector
+            sol_xv: linalg.Vector = sol_x  # type: ignore we know solX is a vector
             fr[s] = sol_xv[r_index[s]]
 
         res = {}
@@ -603,11 +624,15 @@ class MarkovChain:
 
         return res
 
-
-    def _hitting_probabilities_set(self, target_states: List[str])-> \
-        Tuple[linalg.TMatrix,List[str],Optional[linalg.TMatrix],Dict[str,int], \
-        Dict[str,int],Dict[str,Fraction]]:
-        '''Determine the hitting probabilities to hit a set targetStates. Returns a tuple with:
+    def _hitting_probabilities_set(self, target_states: List[str]) -> Tuple[
+        linalg.Matrix,
+        List[str],
+        linalg.Matrix | None,
+        Dict[str, int],
+        Dict[str, int],
+        Dict[str, Fraction],
+    ]:
+        """Determine the hitting probabilities to hit a set targetStates. Returns a tuple with:
 
         - P: the transition matrix
         - rs: the list of states from which the target state is reachable
@@ -615,9 +640,9 @@ class MarkovChain:
         - rIndex: index numbers of the states from rs in the equation
         - pIndex, index of all states
         - res: the hitting probabilities
-        '''
+        """
 
-        def _states_reachable_from(s: str)->List[str]:
+        def _states_reachable_from(s: str) -> List[str]:
             pre = list(nx.dfs_preorder_nodes(gr, source=s))
             return pre
 
@@ -675,7 +700,7 @@ class MarkovChain:
         sol_x = linalg.solve(i_minus_eq, sp)
 
         # set all hitting probabilities to zero
-        res: Dict[str,Fraction] = {}
+        res: Dict[str, Fraction] = {}
         for s in self._states:
             res[s] = Fraction(0)
 
@@ -689,19 +714,23 @@ class MarkovChain:
 
         return p_matrix, rs, i_minus_eq, r_index, p_index, res
 
-    def hitting_probabilities_set(self, target_states: List[str])->Dict[str,Fraction]:
-        '''Determine the hitting probabilities to hit a set targetStates.'''
+    def hitting_probabilities_set(
+        self, target_states: List[str]
+    ) -> Dict[str, Fraction]:
+        """Determine the hitting probabilities to hit a set targetStates."""
         _, _, _, _, _, res = self._hitting_probabilities_set(target_states)
         return res
 
     def reward_till_hit_set(self, target_states: List[str]):
-        '''Determine the expected reward until hitting set targetStates.'''
+        """Determine the expected reward until hitting set targetStates."""
 
-        _, rs, i_minus_eq, r_index, _, h = self._hitting_probabilities_set(target_states)
+        _, rs, i_minus_eq, r_index, _, h = self._hitting_probabilities_set(
+            target_states
+        )
 
         sol_x = None
 
-        if  len(rs) > 0:
+        if len(rs) > 0:
 
             # x_i = sum _ k in rs P_ik x_k  +  hh(i) = r(i) · h_i    for all i in rs
 
@@ -716,20 +745,20 @@ class MarkovChain:
                 hh[i] = self.get_reward(si) * h[si]
 
             # solve the equation x = inv(I-EQ)*H
-            i_minus_eq_m: linalg.TMatrix = i_minus_eq  # type: ignore we know that ImEQ is a matrix
+            i_minus_eq_m: linalg.Matrix = i_minus_eq  # type: ignore we know that ImEQ is a matrix
             sol_x = linalg.solve(i_minus_eq_m, hh)
 
         # set hr to zero
-        hr: Dict[str,Fraction] = {}
+        hr: Dict[str, Fraction] = {}
         for s in self._states:
             hr[s] = Fraction(0)
 
         # fill the solutions from the equation
         for s in rs:
-            sol_xv: linalg.TVector = sol_x  # type: ignore we know that solX is a vector
+            sol_xv: linalg.Vector = sol_x  # type: ignore we know that solX is a vector
             hr[s] = sol_xv[r_index[s]]
 
-        res: Dict[str,Fraction] = {}
+        res: Dict[str, Fraction] = {}
         for s in target_states:
             res[s] = Fraction(0)
         for s in rs:
@@ -737,8 +766,8 @@ class MarkovChain:
 
         return res
 
-    def _get_sub_transition_matrix_indices(self, indices: List[int])->linalg.TMatrix:
-        '''Return sub transition matrix consisting of the given list of indices.'''
+    def _get_sub_transition_matrix_indices(self, indices: List[int]) -> linalg.Matrix:
+        """Return sub transition matrix consisting of the given list of indices."""
         if self._transition_matrix is None:
             raise DTMCException("Transition matrix has not been determined.")
         n_indices = len(indices)
@@ -748,16 +777,17 @@ class MarkovChain:
                 res[k][m] = self._transition_matrix[indices[k]][indices[m]]
         return res
 
-    def _get_sub_transition_matrix_class(self, cl: AbstractSet[str])-> \
-        Tuple[Dict[str,int],linalg.TMatrix]:
-        '''Return an index for the states in C and a sub transition matrix for the class C.'''
+    def _get_sub_transition_matrix_class(
+        self, cl: AbstractSet[str]
+    ) -> Tuple[Dict[str, int], linalg.Matrix]:
+        """Return an index for the states in C and a sub transition matrix for the class C."""
         # get sub-matrix for a class C of states
         indices = sorted([self._states.index(s) for s in cl])
-        index = {c:indices.index(self._states.index(c)) for c in cl}
+        index = {c: indices.index(self._states.index(c)) for c in cl}
         return index, self._get_sub_transition_matrix_indices(indices)
 
-    def limiting_matrix(self)->linalg.TMatrix:
-        '''Determine the limiting matrix of the dtmc.'''
+    def limiting_matrix(self) -> linalg.Matrix:
+        """Determine the limiting matrix of the dtmc."""
         # formulate and solve balance equations for each of the  recurrent classes
         # determine the recurrent classes
         self.transition_matrix()
@@ -765,7 +795,7 @@ class MarkovChain:
         n_states = len(self._states)
         res = linalg.zero_matrix(n_states, n_states)
 
-        _, r_classes =  self.classify_transient_recurrent_classes()
+        _, r_classes = self.classify_transient_recurrent_classes()
 
         # for each recurrent class:
         for c in r_classes:
@@ -774,8 +804,10 @@ class MarkovChain:
             #       pi (P-I); 1 = [0 1],
             m = len(c)
             p_minus_i = linalg.subtract_matrix(p_matrix_cl, linalg.identity_matrix(m))
-            q_matrix = linalg.add_matrix(linalg.matrix_matrix_product(p_minus_i, \
-                            linalg.transpose(p_minus_i)), linalg.one_matrix(m,m))
+            q_matrix = linalg.add_matrix(
+                linalg.matrix_matrix_product(p_minus_i, linalg.transpose(p_minus_i)),
+                linalg.one_matrix(m, m),
+            )
 
             q_inverse = linalg.invert_matrix(q_matrix)
             pi = linalg.column_sum(q_inverse)
@@ -790,34 +822,37 @@ class MarkovChain:
                         res[j][i] = h[self._states[i]] * pi[index[sj]]
         return res
 
-    def limiting_distribution(self)->linalg.TVector:
-        '''Determine the limiting distribution.'''
+    def limiting_distribution(self) -> linalg.Vector:
+        """Determine the limiting distribution."""
         p_matrix = self.limiting_matrix()
         pi0 = self.initial_probability_vector()
         return linalg.vector_matrix_product(pi0, p_matrix)
 
-    def long_run_reward(self)-> Fraction:
-        '''Determine the long-run expected reward.'''
+    def long_run_reward(self) -> Fraction:
+        """Determine the long-run expected reward."""
         pi = self.limiting_distribution()
         r = self.reward_vector()
         return linalg.inner_product(pi, r)
 
     @staticmethod
-    def from_dsl(dsl_string: str)->Tuple[Optional[str],Optional['MarkovChain']]:
+    def from_dsl(dsl_string: str) -> Tuple[str | None, MarkovChain | None]:
         """Construct from a DSL specification."""
 
         factory = {}
-        factory['Init'] = MarkovChain
-        factory['AddState'] = lambda dtmc, s: (dtmc.add_state(s), s)[1]
-        factory['SetInitialProbability'] = lambda dtmc, s, p: dtmc.set_initial_probability(s, p)
-        factory['SetReward'] = lambda dtmc, s, r: dtmc.set_reward(s, r)
-        factory['SetEdgeProbability'] = lambda dtmc, s, d, p: dtmc.set_edge_probability(s, d, p)
-        factory['SortNames'] = lambda dtmc: dtmc.sort_state_names()
+        factory["Init"] = MarkovChain
+        factory["AddState"] = lambda dtmc, s: (dtmc.add_state(s), s)[1]
+        factory["SetInitialProbability"] = (
+            lambda dtmc, s, p: dtmc.set_initial_probability(s, p)
+        )
+        factory["SetReward"] = lambda dtmc, s, r: dtmc.set_reward(s, r)
+        factory["SetEdgeProbability"] = lambda dtmc, s, d, p: dtmc.set_edge_probability(
+            s, d, p
+        )
+        factory["SortNames"] = lambda dtmc: dtmc.sort_state_names()
         return parse_dtmc_dsl(dsl_string, factory)
 
-    def __str__(self)->str:
+    def __str__(self) -> str:
         return str(self._states)
-
 
     # ---------------------------------------------------------------------------- #
     # - Markov Chain simulation                                                  - #
@@ -826,11 +861,11 @@ class MarkovChain:
     _stopDescriptions = [STR_ABS_ERROR, STR_REL_ERROR, STR_NR_OF_PATHS, STR_TIMEOUT]
 
     def set_seed(self, seed: int):
-        ''' Set random generator seed'''
+        """Set random generator seed"""
         random.seed(seed)
 
-    def random_initial_state(self)->str:
-        '''Return random initial state according to initial state distribution'''
+    def random_initial_state(self) -> str:
+        """Return random initial state according to initial state distribution"""
         r = random.random()
         p: float = 0.0
 
@@ -841,8 +876,8 @@ class MarkovChain:
         # probability 0 of falling through to this point
         return self._states[0]
 
-    def random_transition(self, s: str)->str:
-        '''Determine random transition from state s.'''
+    def random_transition(self, s: str) -> str:
+        """Determine random transition from state s."""
         # calculate random value for state transition
         r = random.random()
         # set probability count to zero
@@ -855,12 +890,11 @@ class MarkovChain:
         # probability 0 of falling through to this point
         return s
 
-
-    def set_recurrent_state(self, state:Optional[str]):
-        '''
+    def set_recurrent_state(self, state: str | None):
+        """
         Set the recurrent state for simulation. If the given state is not a recurrent state,
         an exception is raised. If state is None, recurrent state is cleared.
-        '''
+        """
         if state is None:
             self._recurrent_state = None
         else:
@@ -869,9 +903,12 @@ class MarkovChain:
             else:
                 raise DTMCException(f"{state} is not a recurrent state.")
 
-    def _markov_simulation(self, actions: List[TSimulationActionAndDescription], \
-                           initial_state: Optional[str] = None)->Tuple[int,Optional[str]]:
-        '''
+    def _markov_simulation(
+        self,
+        actions: List[SimulationActionAndDescription],
+        initial_state: str | None = None,
+    ) -> Tuple[int, str | None]:
+        """
         Simulate Markov Chain.
         actions is a list of pairs consisting of a callable that is called upon every step of the
         simulation and an optional string that describes the reason why the simulation ends.
@@ -882,22 +919,22 @@ class MarkovChain:
         selected randomly according to the initial state distribution.
         Returns a pair n, stop, consisting of the total number of steps simulated and the optional
         string describing the reason for stopping.
-        '''
+        """
         # list for stop condition status
-        stop_conditions:List[bool] = [False] * len(actions)
+        stop_conditions: List[bool] = [False] * len(actions)
 
         # Step counter
         n: int = 0
 
         # Determine current state as random initial state
         if initial_state is None:
-            current_state: Optional[str] = self.random_initial_state()
+            current_state: str | None = self.random_initial_state()
         else:
             current_state = initial_state
 
         while not any(stop_conditions):
             # perform simulation actions
-            for i, (action,_) in enumerate(actions):
+            for i, (action, _) in enumerate(actions):
                 stop_conditions[i] = action(n, current_state)
 
             # next random step in Markov Chain simulation
@@ -905,28 +942,31 @@ class MarkovChain:
             n += 1
 
         # Determine stop condition
-        stop = None
-        for i, (_,st) in enumerate(actions):
+        stop: str | None = None
+        for i, (_, st) in enumerate(actions):
             if stop_conditions[i]:
                 stop = st
 
         return n, stop
 
-
-    def markov_simulation_recurrent_cycles(self, perm_actions: List \
-        [TSimulationActionAndDescription], cycle_actions: List[TSimulationActionAndDescription], \
-        complete_cycle: Callable[[],bool], initial_state: Optional[str] = None):
-        '''
+    def markov_simulation_recurrent_cycles(
+        self,
+        perm_actions: List[SimulationActionAndDescription],
+        cycle_actions: List[SimulationActionAndDescription],
+        complete_cycle: Callable[[], bool],
+        initial_state: str | None = None,
+    ):
+        """
         simulate a uni-chain MC from recurrent, provide callback on every state and on every visit
         of the recurrent state.
         If _recurrentState is defined, it will be use as the recurrent state; otherwise the first
         visited recurrent state is used.
-        '''
+        """
 
         recurrent_state_visits: int = 0
         recurrent_states: Set[str] = (self.classify_transient_recurrent())[1]
 
-        def _action_cycle_update(_:int, state:str)->bool:
+        def _action_cycle_update(_: int, state: str) -> bool:
             nonlocal recurrent_state_visits, recurrent_states
             if self._recurrent_state is None:
                 # we have no designated recurrent state yet
@@ -948,49 +988,55 @@ class MarkovChain:
             recurrent_state_visits = 1
             return False
 
-        def _in_recurrent_cycle_do(a: Callable[[int,str],bool], n, state)->bool:
+        def _in_recurrent_cycle_do(a: Callable[[int, str], bool], n, state) -> bool:
             if recurrent_state_visits > 0:
                 return a(n, state)
             return False
 
         # make a combined list of permanent actions, in-cycle actions and cycle update action
-        _sim_actions: List[TSimulationActionAndDescription] = perm_actions
+        _sim_actions: List[SimulationActionAndDescription] = perm_actions
         # note the python magic 'a=a' in the lambda function to make sure a gets bound to
         # its current value
-        _sim_actions.extend([(lambda n, state, a=a: _in_recurrent_cycle_do(a[0], n, state), \
-                              a[1]) for a in cycle_actions])
+        _sim_actions.extend(
+            [
+                (lambda n, state, a=a: _in_recurrent_cycle_do(a[0], n, state), a[1])
+                for a in cycle_actions
+            ]
+        )
         _sim_actions.append((_action_cycle_update, "Number of cycles"))
 
         return self._markov_simulation(_sim_actions, initial_state)
 
-
-    def _is_recurrent_state(self, state: str)->bool:
-        '''Check if state is a recurrent state. Note that this method may be time consuming as
-        an analysis is performed every time it is called.'''
+    def _is_recurrent_state(self, state: str) -> bool:
+        """Check if state is a recurrent state. Note that this method may be time consuming as
+        an analysis is performed every time it is called."""
         # recurrent state thats encountered in the random state_sequence dictionary
         _, r_classes = self.classify_transient_recurrent()
         return state in r_classes
 
-    def markov_trace(self, rounds: int)->List[str]:
-        '''Simulate Markov Chain for the given number of rounds (steps).
-        Returns a list of length rounds+1 of the states visited in the simulation. '''
+    def markov_trace(self, rounds: int) -> List[str]:
+        """Simulate Markov Chain for the given number of rounds (steps).
+        Returns a list of length rounds+1 of the states visited in the simulation."""
         # Declare empty list for states
         state_list: List[str] = []
 
-        def _collect_list(_: int, state: str)->bool:
+        def _collect_list(_: int, state: str) -> bool:
             state_list.append(state)
             return False
 
-        self._markov_simulation([
-            (lambda n, _: n >= rounds, None), # Exit when n is number of rounds
-            (_collect_list, None) # add state to list
-        ])
+        self._markov_simulation(
+            [
+                (lambda n, _: n >= rounds, None),  # Exit when n is number of rounds
+                (_collect_list, None),  # add state to list
+            ]
+        )
 
         return state_list
 
-    def generic_long_run_sample_estimation_from_recurrent_cycles(self, sc:StopConditions, \
-            action_update: Callable[[Statistics,int,str],bool])->Tuple[Statistics, Optional[str]]:
-        '''generic estimation framework by simulation using the provided stop_conditions.
+    def generic_long_run_sample_estimation_from_recurrent_cycles(
+        self, sc: StopConditions, action_update: Callable[[Statistics, int, str], bool]
+    ) -> Tuple[Statistics, str | None]:
+        """generic estimation framework by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
         - absolute error
@@ -1007,28 +1053,28 @@ class MarkovChain:
             - point estimate of the mean
             - point estimate of the variance
         - the stop criterion applied as a string
-        '''
+        """
         # Global variables used during simulation
         # statistics = Statistics(sc.confidence, sc.minimumNumberOfSamples)
         statistics = Statistics(sc.confidence)
 
-        def _action_abs_err(_n:int, _state:str)->bool:
+        def _action_abs_err(_n: int, _state: str) -> bool:
             c = statistics.ab_error()
             if c is None:
                 return False
             return sc.max_ab_error > 0 and c <= sc.max_ab_error
 
-        def _action_rel_err(_n:int, _state:str)->bool:
+        def _action_rel_err(_n: int, _state: str) -> bool:
             c = statistics.re_error()
             if c is None:
                 return False
             return sc.max_re_error > 0 and c <= sc.max_re_error
 
-        def _cycle_update()->bool:
+        def _cycle_update() -> bool:
             statistics.complete_cycle()
             return 0 <= sc.nr_of_cycles <= statistics.cycle_count()
 
-        def _action_update(n: int, state: str)->bool:
+        def _action_update(n: int, state: str) -> bool:
             return action_update(statistics, n, state)
 
         t = TimeoutTimer(sc.seconds_timeout)
@@ -1036,19 +1082,23 @@ class MarkovChain:
             [
                 # Run until max path length has been reached
                 (lambda n, _: 0 <= sc.max_path_length <= n, STR_MAX_PATH_LENGTH),
-                (t.sim_action(), STR_TIMEOUT), # Exit on time out
-            ], [
-                (_action_update, None),
-                (_action_abs_err, STR_ABS_ERROR), # check absolute error
-                (_action_rel_err, STR_REL_ERROR) # check relative error
+                (t.sim_action(), STR_TIMEOUT),  # Exit on time out
             ],
-            _cycle_update)
+            [
+                (_action_update, None),
+                (_action_abs_err, STR_ABS_ERROR),  # check absolute error
+                (_action_rel_err, STR_REL_ERROR),  # check relative error
+            ],
+            _cycle_update,
+        )
         return statistics, stop
 
-    def generic_long_run_distribution_estimation_from_recurrent_cycles(self, sc:StopConditions, \
-            action_update: Callable[[DistributionStatistics,int,str],bool])-> \
-                Tuple[DistributionStatistics, Optional[str]]:
-        '''generic long-run distribution estimation framework by simulation using the provided
+    def generic_long_run_distribution_estimation_from_recurrent_cycles(
+        self,
+        sc: StopConditions,
+        action_update: Callable[[DistributionStatistics, int, str], bool],
+    ) -> Tuple[DistributionStatistics, str | None]:
+        """generic long-run distribution estimation framework by simulation using the provided
         stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -1066,33 +1116,35 @@ class MarkovChain:
             - point estimate of the mean
             - point estimate of the variance
         - the stop criterion applied as a string
-        '''
+        """
 
-        distribution_statistics = DistributionStatistics(self.number_of_states(), sc.confidence)
+        distribution_statistics = DistributionStatistics(
+            self.number_of_states(), sc.confidence
+        )
 
-        def _complete_cycle()->bool:
+        def _complete_cycle() -> bool:
             distribution_statistics.complete_cycle()
             return 0 <= sc.nr_of_cycles <= distribution_statistics.cycle_count()
 
-        def _action_visit_state(n:int, state:str)->bool:
+        def _action_visit_state(n: int, state: str) -> bool:
             return action_update(distribution_statistics, n, state)
 
-        def _action_ab_error(_n: int, _state:str)->bool:
+        def _action_ab_error(_n: int, _state: str) -> bool:
             c = distribution_statistics.ab_error()
             if c is None:
                 return False
             if any(v is None for v in c):
                 return False
-            vc : List[float] = c  # type: ignore
+            vc: List[float] = c  # type: ignore
             return sc.max_ab_error > 0 and max(vc) <= sc.max_ab_error
 
-        def _action_re_error(_n: int, _state:str)->bool:
+        def _action_re_error(_n: int, _state: str) -> bool:
             c = distribution_statistics.re_error()
             if c is None:
                 return False
             if any(v is None for v in c):
                 return False
-            vc : List[float] = c  # type: ignore
+            vc: List[float] = c  # type: ignore
             return sc.max_re_error > 0 and max(vc) <= sc.max_re_error
 
         t = TimeoutTimer(sc.seconds_timeout)
@@ -1100,18 +1152,22 @@ class MarkovChain:
             [
                 # Run until max path length has been reached
                 (lambda n, state: 0 <= sc.max_path_length <= n, STR_MAX_PATH_LENGTH),
-                (t.sim_action(), STR_TIMEOUT), # Exit on time
-            ], [
-                (_action_visit_state, ""),
-                (_action_ab_error, STR_ABS_ERROR), # Calculate smallest absolute error
-                (_action_re_error, STR_REL_ERROR) # Calculate smallest relative error
+                (t.sim_action(), STR_TIMEOUT),  # Exit on time
             ],
-            _complete_cycle)
+            [
+                (_action_visit_state, ""),
+                (_action_ab_error, STR_ABS_ERROR),  # Calculate smallest absolute error
+                (_action_re_error, STR_REL_ERROR),  # Calculate smallest relative error
+            ],
+            _complete_cycle,
+        )
 
         return distribution_statistics, stop
 
-    def long_run_expected_average_reward(self, sc:StopConditions)->Tuple[Statistics, Optional[str]]:
-        '''Estimate the long run expected average reward by simulation using the provided
+    def long_run_expected_average_reward(
+        self, sc: StopConditions
+    ) -> Tuple[Statistics, str | None]:
+        """Estimate the long run expected average reward by simulation using the provided
         stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -1129,16 +1185,20 @@ class MarkovChain:
             - point estimate of the mean
             - point estimate of the variance
         - the stop criterion applied as a string
-        '''
-        def _action_add_sample(statistics: Statistics, _n:int, state:str)->bool:
+        """
+
+        def _action_add_sample(statistics: Statistics, _n: int, state: str) -> bool:
             statistics.add_sample(float(self._rewards[state]))
             return False
 
-        return self.generic_long_run_sample_estimation_from_recurrent_cycles(sc, _action_add_sample)
+        return self.generic_long_run_sample_estimation_from_recurrent_cycles(
+            sc, _action_add_sample
+        )
 
-    def cezaro_limit_distribution(self, sc:StopConditions)-> Tuple[Optional \
-                    [DistributionStatistics], Optional[str]]:
-        '''
+    def cezaro_limit_distribution(
+        self, sc: StopConditions
+    ) -> Tuple[DistributionStatistics | None, str | None]:
+        """
         Estimate the Cezaro limit distribution by simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
         - confidence level
@@ -1156,19 +1216,20 @@ class MarkovChain:
             - List of estimates of the relative errors
             - number of cycles
         - the stop criterion applied as a string
-        '''
+        """
 
-        def action_visit_state(s: DistributionStatistics, _:int, state:str)->bool:
+        def action_visit_state(s: DistributionStatistics, _: int, state: str) -> bool:
             s.visit_state(self._states.index(state))
             return False
 
-        return self.generic_long_run_distribution_estimation_from_recurrent_cycles(sc, \
-                                                                action_visit_state)
+        return self.generic_long_run_distribution_estimation_from_recurrent_cycles(
+            sc, action_visit_state
+        )
 
-
-    def estimation_generic_transient_sample(self, sc:StopConditions, get_sample: Callable[[str], \
-                    float], nr_of_steps)->Tuple[Statistics, Optional[str]]:
-        '''
+    def estimation_generic_transient_sample(
+        self, sc: StopConditions, get_sample: Callable[[str], float], nr_of_steps
+    ) -> Tuple[Statistics, str | None]:
+        """
         Estimate the transient sample after nr_of_steps by simulation using the provided
         stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1182,11 +1243,11 @@ class MarkovChain:
         Returns a tuple: each of the results can be None if they could not be determined.
         - statistics of the expected reward
         - the stop criterion applied as a string
-        '''
+        """
 
         statistics = Statistics(sc.confidence, sc.minimum_number_of_samples)
 
-        def _action_last_state_reward(n: int, state: str)->bool:
+        def _action_last_state_reward(n: int, state: str) -> bool:
             if n == nr_of_steps:
                 statistics.add_sample(get_sample(state))
                 statistics.complete_cycle()
@@ -1196,11 +1257,16 @@ class MarkovChain:
 
         t = TimeoutTimer(sc.seconds_timeout)
         while not any(sim_stop_conditions):
-            self._markov_simulation([
-                (_action_last_state_reward, None),
-                (lambda n, _: 0 <= nr_of_steps <= n, None), # Exit when n is number of rounds
-                (t.sim_action(), STR_TIMEOUT), # Exit on time
-            ])
+            self._markov_simulation(
+                [
+                    (_action_last_state_reward, None),
+                    (
+                        lambda n, _: 0 <= nr_of_steps <= n,
+                        None,
+                    ),  # Exit when n is number of rounds
+                    (t.sim_action(), STR_TIMEOUT),  # Exit on time
+                ]
+            )
 
             # Check stop conditions
             sim_stop_conditions[0] = statistics.ab_error_reached(sc.max_ab_error)
@@ -1212,10 +1278,10 @@ class MarkovChain:
         stop = self._stopDescriptions[sim_stop_conditions.index(True)]
         return statistics, stop
 
-    def estimation_expected_reward(self, sc:StopConditions, nr_of_steps)->Tuple[
-        Statistics,
-        Optional[str]]:
-        '''
+    def estimation_expected_reward(
+        self, sc: StopConditions, nr_of_steps
+    ) -> Tuple[Statistics, str | None]:
+        """
         Estimate the transient expected reward after nr_of_steps by simulation using the provided
         stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1229,15 +1295,16 @@ class MarkovChain:
         Returns a tuple: each of the results can be None if they could not be determined.
         - statistics of the expected reward
         - the stop criterion applied as a string
-        '''
+        """
 
-        return self.estimation_generic_transient_sample(sc, lambda state: float( \
-            self.get_reward(state)), nr_of_steps)
+        return self.estimation_generic_transient_sample(
+            sc, lambda state: float(self.get_reward(state)), nr_of_steps
+        )
 
-
-    def estimation_transient_distribution(self, sc:StopConditions, nr_of_steps: int)->Tuple[
-        DistributionStatistics, Optional[str]]:
-        '''
+    def estimation_transient_distribution(
+        self, sc: StopConditions, nr_of_steps: int
+    ) -> Tuple[DistributionStatistics, str | None]:
+        """
         Estimate the distribution after nr_of_steps by simulation using the provided
         stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1251,37 +1318,50 @@ class MarkovChain:
         Returns a tuple:
         - Statistics of the estimated distribution
         - the stop criterion applied as a string
-        '''
+        """
 
-        distribution_statistics = DistributionStatistics(len(self._states), sc.confidence)
+        distribution_statistics = DistributionStatistics(
+            len(self._states), sc.confidence
+        )
 
         # There are in total four applicable stop conditions for this function
         sim_stop_conditions: List[bool] = [False] * 4
 
         t = TimeoutTimer(sc.seconds_timeout)
-        current_state: Optional[str] = None
+        current_state: str | None = None
 
-        def _action_track_state(_n: int, state: str)-> bool:
+        def _action_track_state(_n: int, state: str) -> bool:
             nonlocal current_state
             current_state = state
             return False
 
         while not any(sim_stop_conditions):
 
-            self._markov_simulation([
-                (_action_track_state, None),
-                (lambda n, state: 0 <= nr_of_steps <= n, None), # Exit when n is number of steps
-                (t.sim_action(), STR_TIMEOUT), # Exit on time out
-            ])
+            self._markov_simulation(
+                [
+                    (_action_track_state, None),
+                    (
+                        lambda n, state: 0 <= nr_of_steps <= n,
+                        None,
+                    ),  # Exit when n is number of steps
+                    (t.sim_action(), STR_TIMEOUT),  # Exit on time out
+                ]
+            )
 
             v_current_state: str = current_state  # type: ignore
             distribution_statistics.visit_state(self._states.index(v_current_state))
             distribution_statistics.complete_cycle()
 
             # Check stop conditions
-            sim_stop_conditions[0] = distribution_statistics.ab_error_reached(sc.max_ab_error)
-            sim_stop_conditions[1] = distribution_statistics.re_error_reached(sc.max_re_error)
-            sim_stop_conditions[2] = 0 <= sc.nr_of_cycles <= distribution_statistics.cycle_count()
+            sim_stop_conditions[0] = distribution_statistics.ab_error_reached(
+                sc.max_ab_error
+            )
+            sim_stop_conditions[1] = distribution_statistics.re_error_reached(
+                sc.max_re_error
+            )
+            sim_stop_conditions[2] = (
+                0 <= sc.nr_of_cycles <= distribution_statistics.cycle_count()
+            )
             sim_stop_conditions[3] = t.is_expired()
 
         # Determine stop condition
@@ -1289,13 +1369,16 @@ class MarkovChain:
 
         return distribution_statistics, stop
 
-
-    def estimation_hitting_state_generic(self, sc:StopConditions, analysis_states: List[str],\
-            initialization: Callable, action: Callable[[int,str],bool], \
-            on_hit: Callable[[Statistics],None], on_no_hit: Callable[[Statistics],None])-> \
-                Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-
-        '''
+    def estimation_hitting_state_generic(
+        self,
+        sc: StopConditions,
+        analysis_states: List[str],
+        initialization: Callable,
+        action: Callable[[int, str], bool],
+        on_hit: Callable[[Statistics], None],
+        on_no_hit: Callable[[Statistics], None],
+    ) -> Tuple[Dict[str, Statistics] | None, str | Dict[str, str]]:
+        """
         Generic framework for estimating hitting probability, or reward until hit by simulation
         using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1320,15 +1403,15 @@ class MarkovChain:
         Returns a tuple:
         - statistics of the estimated hitting probability
         - the stop criteria applied as strings
-        '''
+        """
 
-        statistics: Dict[str,Statistics] = {}
+        statistics: Dict[str, Statistics] = {}
         for s in analysis_states:
             statistics[s] = Statistics(sc.confidence)
 
         # There are in total four applicable stop conditions for this function
         sim_stop_conditions = [False] * 4
-        stop: Dict[str,str] = {}
+        stop: Dict[str, str] = {}
 
         t = TimeoutTimer(sc.seconds_timeout)
 
@@ -1341,19 +1424,22 @@ class MarkovChain:
 
             while not any(sim_stop_conditions):
 
-                _, sim_result = self._markov_simulation([
-                    # Exit when n is number of steps
-                    (lambda n, _: 0 <= sc.max_path_length <= n, "steps"),
-                    (t.sim_action(), STR_TIMEOUT), # Exit on time
-                    (action, "hit") # stop when hitting state is found
-                ], initial_state)
+                _, sim_result = self._markov_simulation(
+                    [
+                        # Exit when n is number of steps
+                        (lambda n, _: 0 <= sc.max_path_length <= n, "steps"),
+                        (t.sim_action(), STR_TIMEOUT),  # Exit on time
+                        (action, "hit"),  # stop when hitting state is found
+                    ],
+                    initial_state,
+                )
 
                 statistics[initial_state].increment_paths()
 
-                if sim_result==STR_TIMEOUT:
+                if sim_result == STR_TIMEOUT:
                     return None, STR_TIMEOUT
 
-                if sim_result!="steps":
+                if sim_result != "steps":
                     # hitting state was hit
                     on_hit(statistics[initial_state])
                 else:
@@ -1361,23 +1447,28 @@ class MarkovChain:
                     on_no_hit(statistics[initial_state])
 
                 # Check stop conditions
-                sim_stop_conditions[0] = statistics[initial_state].ab_error_reached(sc.max_ab_error)
-                sim_stop_conditions[1] = statistics[initial_state].re_error_reached(sc.max_re_error)
-                sim_stop_conditions[2] = 0 <= sc.nr_of_cycles <= \
-                    statistics[initial_state].nr_paths()
+                sim_stop_conditions[0] = statistics[initial_state].ab_error_reached(
+                    sc.max_ab_error
+                )
+                sim_stop_conditions[1] = statistics[initial_state].re_error_reached(
+                    sc.max_re_error
+                )
+                sim_stop_conditions[2] = (
+                    0 <= sc.nr_of_cycles <= statistics[initial_state].nr_paths()
+                )
                 sim_stop_conditions[3] = t.is_expired()
 
             # Determine stop condition
-            stop[initial_state] = self._stopDescriptions[sim_stop_conditions.index(True)]
+            stop[initial_state] = self._stopDescriptions[
+                sim_stop_conditions.index(True)
+            ]
 
         return statistics, stop
 
-
-
-    def estimation_hitting_probability_state(self, sc:StopConditions, hitting_state: str, \
-        analysis_states: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-
-        '''
+    def estimation_hitting_probability_state(
+        self, sc: StopConditions, hitting_state: str, analysis_states: List[str]
+    ) -> Tuple[Dict[str, Statistics] | None, str | Dict[str, str]]:
+        """
         Estimate the hitting probability until hitting a single state in one or more steps by
         simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1395,12 +1486,12 @@ class MarkovChain:
         Returns a tuple:
         - statistics of the estimated hitting probability
         - the stop criteria applied as strings
-        '''
+        """
 
         def initialization():
             pass
 
-        def action(n: int, state: str)->bool:
+        def action(n: int, state: str) -> bool:
             # define action to be performed during simulation
             # suppress initial state for hitting
             if n == 0:
@@ -1415,13 +1506,14 @@ class MarkovChain:
             s.add_sample(0.0)
             s.complete_cycle()
 
-        return self.estimation_hitting_state_generic(sc, analysis_states, initialization, action, \
-                                                     on_hit, on_no_hit)
+        return self.estimation_hitting_state_generic(
+            sc, analysis_states, initialization, action, on_hit, on_no_hit
+        )
 
-    def estimation_reward_until_hitting_state(self, sc:StopConditions, hitting_state: str, \
-        analysis_states: List[str])->Tuple[Optional[Dict[str,Statistics]],Union[str,Dict[str,str]]]:
-
-        '''
+    def estimation_reward_until_hitting_state(
+        self, sc: StopConditions, hitting_state: str, analysis_states: List[str]
+    ) -> Tuple[Dict[str, Statistics] | None, str | Dict[str, str]]:
+        """
         Estimate the cumulative reward until hitting a single state by simulation using the
         provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1439,7 +1531,7 @@ class MarkovChain:
         Returns a tuple:
         - statistics of the cumulative reward
         - the stop criteria applied as strings
-        '''
+        """
 
         accumulated_reward: float
 
@@ -1447,10 +1539,10 @@ class MarkovChain:
             nonlocal accumulated_reward
             accumulated_reward = 0.0
 
-        def action(n: int, state: str)->bool:
+        def action(n: int, state: str) -> bool:
             # define action to be performed during simulation
             nonlocal accumulated_reward
-            if n==0:
+            if n == 0:
                 accumulated_reward += float(self.get_reward(state))
                 # suppress initial state for hitting
                 return False
@@ -1469,15 +1561,14 @@ class MarkovChain:
         def on_no_hit(_: Statistics):
             pass
 
-        return self.estimation_hitting_state_generic(sc, analysis_states, initialization, action, \
-                                                     on_hit, on_no_hit)
+        return self.estimation_hitting_state_generic(
+            sc, analysis_states, initialization, action, on_hit, on_no_hit
+        )
 
-
-    def estimation_hitting_probability_state_set(self, sc:StopConditions, hitting_states: List \
-        [str], analysis_states: List[str])->Tuple[Optional[Dict[str,Statistics]], \
-        Union[str,Dict[str,str]]]:
-
-        '''
+    def estimation_hitting_probability_state_set(
+        self, sc: StopConditions, hitting_states: List[str], analysis_states: List[str]
+    ) -> Tuple[Dict[str, Statistics] | None, str | Dict[str, str]]:
+        """
         Estimate the hitting probability until hitting a set of states in zero or more steps by
         simulation using the provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1495,13 +1586,13 @@ class MarkovChain:
         Returns a tuple:
         - statistics of the estimated hitting probability
         - the stop criteria applied as strings
-        '''
+        """
 
         def initialization():
             pass
 
         # define action to be performed during simulation
-        def action(_: int, state: str)->bool:
+        def action(_: int, state: str) -> bool:
             # note that for set of states, the initial states is not suppressed like in single
             # state hitting probability
             return state in hitting_states
@@ -1514,14 +1605,14 @@ class MarkovChain:
             s.add_sample(0.0)
             s.complete_cycle()
 
-        return self.estimation_hitting_state_generic(sc, analysis_states, initialization, action, \
-                                                     on_hit, on_no_hit)
+        return self.estimation_hitting_state_generic(
+            sc, analysis_states, initialization, action, on_hit, on_no_hit
+        )
 
-    def estimation_reward_until_hitting_state_set(self, sc:StopConditions, hitting_states: List \
-            [str], analysis_states: List[str])->Tuple[Optional[Dict[str,Statistics]], \
-            Union[str,Dict[str,str]]]:
-
-        '''
+    def estimation_reward_until_hitting_state_set(
+        self, sc: StopConditions, hitting_states: List[str], analysis_states: List[str]
+    ) -> Tuple[Dict[str, Statistics] | None, str | Dict[str, str]]:
+        """
         Estimate the cumulative reward until hitting a single state by simulation using the
         provided stop_conditions.
         stop_conditions is a five-tuple with:
@@ -1539,7 +1630,7 @@ class MarkovChain:
         Returns a tuple:
         - statistics of the cumulative reward
         - the stop criteria applied as strings
-        '''
+        """
 
         accumulated_reward: float
 
@@ -1548,7 +1639,7 @@ class MarkovChain:
             accumulated_reward = 0.0
 
         # define action to be performed during simulation
-        def action(_: int, state: str)->bool:
+        def action(_: int, state: str) -> bool:
             nonlocal accumulated_reward
             if state in hitting_states:
                 return True
@@ -1565,5 +1656,6 @@ class MarkovChain:
         def on_no_hit(_: Statistics):
             pass
 
-        return self.estimation_hitting_state_generic(sc, analysis_states, initialization, action, \
-                                                     on_hit, on_no_hit)
+        return self.estimation_hitting_state_generic(
+            sc, analysis_states, initialization, action, on_hit, on_no_hit
+        )

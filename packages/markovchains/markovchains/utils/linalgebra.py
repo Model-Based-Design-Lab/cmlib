@@ -9,109 +9,109 @@ from typing import Callable, Dict, List
 
 from markovchains.utils.utils import MarkovChainException
 
-TVector = List[Fraction]
-TMatrix = List[TVector] # a list of column(!)-vectors
+Vector = List[Fraction]
+Matrix = List[Vector] # a list of column(!)-vectors
 
-TFloatVector = List[float]
-TFloatMatrix = List[TFloatVector] # a list of column(!)-vectors
+FloatVector = List[float]
+FloatMatrix = List[FloatVector] # a list of column(!)-vectors
 
-def zero_vector(n: int)->TVector:
+def zero_vector(n: int)->Vector:
     '''Generate a zero-vector'''
     return [Fraction(0) for _ in range(n)]
 
-def one_vector(n: int)->TVector:
+def one_vector(n: int)->Vector:
     '''Generate a one-vector'''
     return [Fraction(1) for _ in range(n)]
 
-def zero_matrix(nr: int, nc: int)->TMatrix:
+def zero_matrix(nr: int, nc: int)->Matrix:
     '''Generate a zero-matrix'''
     return [zero_vector(nr) for _ in range(nc)]
 
-def one_matrix(nr: int, nc: int)->TMatrix:
+def one_matrix(nr: int, nc: int)->Matrix:
     '''Generate a one-matrix'''
     return [one_vector(nr) for _ in range(nc)]
 
-def copy_vector(v: TVector)->TVector:
+def copy_vector(v: Vector)->Vector:
     """Create a copy of a vector."""
     return list(v)
 
-def copy_matrix(a: TMatrix)->TMatrix:
+def copy_matrix(a: Matrix)->Matrix:
     """Create a copy of a vector."""
     return [copy_vector(v) for v in a]
 
-def inner_product(va: TVector, vb: TVector)->Fraction:
+def inner_product(va: Vector, vb: Vector)->Fraction:
     '''compute inner product of vectors.'''
     return reduce(lambda sum,i: sum + va[i]*vb[i], range(len(va)), Fraction(0))
 
-def matrix_vector_product(a: TMatrix, v: TVector)-> TVector:
+def matrix_vector_product(a: Matrix, v: Vector)-> Vector:
     """Compute matrix-vector product."""
     n = len(v)
     return [
         reduce(lambda sum, c: sum+a[c][r]*v[c], range(n), Fraction(0)) for r in range(n) # ... it seems fine to me... pylint: disable=cell-var-from-loop
         ]
 
-def vector_matrix_product(v: TVector, a: TMatrix)-> TVector:
+def vector_matrix_product(v: Vector, a: Matrix)-> Vector:
     '''Compute the product between vector and matrix'''
     return [inner_product(v, vc) for vc in a]
 
-def matrix_matrix_product(ma: TMatrix, mb: TMatrix)-> TMatrix:
+def matrix_matrix_product(ma: Matrix, mb: Matrix)-> Matrix:
     '''Compute the product of two matrices'''
     return [matrix_vector_product(ma, v) for v in mb]
 
-def vector_sum(v: TVector)-> Fraction:
+def vector_sum(v: Vector)-> Fraction:
     '''Compute the sum of the vector of fractions.'''
     return reduce(lambda sum, x: sum+x, v, Fraction(0))
 
-def fl_vector_sum(v: TFloatVector)-> float:
+def fl_vector_sum(v: FloatVector)-> float:
     '''Compute the sum of a vector of floats.'''
     return reduce(lambda sum, x: sum+x, v, 0.0)
 
-def row_sum(ma: TMatrix)-> TVector:
+def row_sum(ma: Matrix)-> Vector:
     '''Sum matrix A along its rows'''
     if len(ma)==0:
         return []
     return [reduce(lambda sum, c: sum+ma[c][r], range(len(ma)) , Fraction(0)) for r in \
             range(len(ma[0]))] # ... it seems fine to me... pylint: disable=cell-var-from-loop
 
-def column_sum(ma: TMatrix)-> TVector:
+def column_sum(ma: Matrix)-> Vector:
     '''Sum matrix A along its columns'''
     return [vector_sum(v) for v in ma]
 
-def unit_vector(n: int, k: int)->TVector:
+def unit_vector(n: int, k: int)->Vector:
     '''Return unit vector k of length n.'''
     res = zero_vector(n)
     res[k] = Fraction(1)
     return res
 
-def identity_matrix(n: int)->TMatrix:
+def identity_matrix(n: int)->Matrix:
     '''Return a n-by-n identity matrix.'''
     return [unit_vector(n, k) for k in range(n)]
 
-def subtract_vector(va: TVector, vb: TVector)->TVector:
+def subtract_vector(va: Vector, vb: Vector)->Vector:
     '''Subtract vectors.'''
     return [va[k]-vb[k] for k in range(len(va))]
 
-def fl_subtract_vector(va: TFloatVector, vb: TFloatVector)->TFloatVector:
+def fl_subtract_vector(va: FloatVector, vb: FloatVector)->FloatVector:
     '''Subtract vectors of floats.'''
     return [va[k]-vb[k] for k in range(len(va))]
 
-def add_vector(va: TVector, vb: TVector)->TVector:
+def add_vector(va: Vector, vb: Vector)->Vector:
     '''Add vectors.'''
     return [va[k]+vb[k] for k in range(len(va))]
 
-def fl_add_vector(va: TFloatVector, vb: TFloatVector)->TFloatVector:
+def fl_add_vector(va: FloatVector, vb: FloatVector)->FloatVector:
     '''Add vectors of floats.'''
     return [va[k]+vb[k] for k in range(len(va))]
 
-def subtract_matrix(ma: TMatrix, mb: TMatrix)->TMatrix:
+def subtract_matrix(ma: Matrix, mb: Matrix)->Matrix:
     '''Subtract two matrices.'''
     return [subtract_vector(ma[k], mb[k]) for k in range(len(ma))]
 
-def add_matrix(ma: TMatrix, mb: TMatrix)->TMatrix:
+def add_matrix(ma: Matrix, mb: Matrix)->Matrix:
     '''Add two matrices.'''
     return [add_vector(ma[k], mb[k]) for k in range(len(ma))]
 
-def transpose(ma: TMatrix) -> TMatrix:
+def transpose(ma: Matrix) -> Matrix:
     '''Transpose matrix.'''
     if len(ma)==0:
         return [[]]
@@ -119,15 +119,15 @@ def transpose(ma: TMatrix) -> TMatrix:
     n_cols_ma = len(ma)
     return [[ma[c][r] for c in range(n_cols_ma)] for r in range(n_rows_ma)]
 
-def fl_vector_element_wise(v: TFloatVector, f: Callable[[float],float ])->TFloatVector:
+def fl_vector_element_wise(v: FloatVector, f: Callable[[float],float ])->FloatVector:
     '''Apply the given function to the elements of a vector to compute a new vector.'''
     return [f(x) for x in v]
 
-def fl_matrix_element_wise(ma: TFloatMatrix, f: Callable[[float],float ])->TFloatMatrix:
+def fl_matrix_element_wise(ma: FloatMatrix, f: Callable[[float],float ])->FloatMatrix:
     '''Apply the given function to the elements of a matrix to compute a new matrix.'''
     return [fl_vector_element_wise(v, f) for v in ma]
 
-def mat_power(ma: TMatrix, n: int)->TMatrix:
+def mat_power(ma: Matrix, n: int)->Matrix:
     '''Raise matrix ma to the power n'''
     # if n is 0, or 1
     if n==0:
@@ -140,7 +140,7 @@ def mat_power(ma: TMatrix, n: int)->TMatrix:
     # if n=2m+1, A^n = (A^2)^m A
     return matrix_matrix_product(mat_power(matrix_matrix_product(ma, ma), n//2), ma)
 
-def solve(ma: TMatrix, b: TVector)->TVector:
+def solve(ma: Matrix, b: Vector)->Vector:
     '''Solve the linear equation Ax=b for a square and full rank matrix A'''
     # copy matrix and vector as we are going to change them
     ma = copy_matrix(ma)
@@ -180,7 +180,7 @@ def solve(ma: TMatrix, b: TVector)->TVector:
     # Equation is reduced to Ix=b'
     return [b[row_index[r]] for r in range(a_size)]
 
-def invert_matrix(ma: TMatrix)->TMatrix:
+def invert_matrix(ma: Matrix)->Matrix:
     '''Return the inverse of the square and full rank matrix A'''
     # copy matrix and vector as we are going to change them
     ma = copy_matrix(ma)
