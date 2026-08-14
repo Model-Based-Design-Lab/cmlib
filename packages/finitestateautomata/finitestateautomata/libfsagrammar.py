@@ -1,7 +1,7 @@
 '''DSL grammar parsing support for finite state automata.'''
 
 import sys
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 from textx import TextXSyntaxError, metamodel_from_str
 
 # This is TextX version of the XText grammar in the clang repository
@@ -90,7 +90,7 @@ Comment:
 
 MetaModelFSA = metamodel_from_str(FSA_GRAMMAR, classes=[])
 
-def parse_fsa_dsl(content: str, factory: Any)->Tuple[Optional[str], Optional[Any]]:
+def parse_fsa_dsl(content: str, factory: Any)->Tuple[str|None, Any|None]:
     '''Parse Finite State Automaton from DSL string.'''
     try:
         model =  MetaModelFSA.model_from_str(content)

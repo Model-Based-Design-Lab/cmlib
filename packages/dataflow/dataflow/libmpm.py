@@ -3,7 +3,7 @@ from __future__ import annotations
 from fractions import Fraction
 from functools import reduce
 from io import StringIO
-from typing import List, Literal, Mapping, Optional, Tuple
+from typing import List, Literal, Mapping, Tuple
 import dataflow.maxplus.maxplus as mp
 from dataflow.maxplus.utils.printing import (
     mp_pretty_vector_to_string,
@@ -102,7 +102,7 @@ class VectorSequenceModel:
     _vectors: mp.MPVectorList
     _labels: List[str]
 
-    def __init__(self, vectors: Optional[mp.MPVectorList] = None):
+    def __init__(self, vectors: mp.MPVectorList | None = None):
         if vectors is None:
             self._vectors: mp.MPVectorList = []
         else:
@@ -189,7 +189,7 @@ class MaxPlusMatrixModel:
     _labels: List[str]
     _rows: List[mp.MPVector]
 
-    def __init__(self, rows: Optional[List[mp.MPVector]] = None):
+    def __init__(self, rows: List[mp.MPVector] | None = None):
         self._labels = []
         if rows is None:
             self._rows = []
@@ -469,8 +469,8 @@ class MaxPlusMatrixModel:
 
     @staticmethod
     def extract_sequences(
-        n_seq: Optional[Mapping[str, mp.TimeStampList]],
-        u_seq: Optional[List[mp.TimeStampList]],
+        n_seq: Mapping[str, mp.TimeStampList] | None,
+        u_seq: List[mp.TimeStampList] | None,
         event_sequences: Mapping[str, EventSequenceModel],
         vector_sequences: Mapping[str, VectorSequenceModel],
         input_labels: List[str],

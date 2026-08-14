@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from typing import Optional, Tuple
+from typing import Tuple
 from finitestateautomata.libfsa import Automaton, FSAException
 from finitestateautomata.libregex import RegEx
 from finitestateautomata.libltl import LTLFormula
@@ -111,26 +111,26 @@ def require_secondary_automaton(args)->Tuple[str,Automaton]:
         raise FSAException(f"Failed to read file: {args.secondaryAutomaton}.\n") # pylint: disable=raise-missing-from
 
 
-def require_automaton(a:Optional[Automaton])->Automaton:
+def require_automaton(a:Automaton|None)->Automaton:
     ''' ensure an automaton was specified on the command line and return it '''
     if a is None:
         raise FSAException("Automaton is not defined")
     return a
 
-def require_word(w:Optional[str])->str:
+def require_word(w:str|None)->str:
     ''' ensure a word was specified on the command line and return it '''
     if w is None:
         raise FSAException("Input word should be specified.")
     return w
 
 
-def require_reg_ex(r: Optional[RegEx])->RegEx:
+def require_reg_ex(r: RegEx|None)->RegEx:
     ''' ensure a regular expression was specified on the command line and return it '''
     if r is None:
         raise FSAException("Regular expression is not defined")
     return r
 
-def require_ltl_formula(f:Optional[LTLFormula])->LTLFormula:
+def require_ltl_formula(f: LTLFormula|None)->LTLFormula:
     ''' ensure an LTL formula was specified on the command line and return it '''
     if f is None:
         raise FSAException("LTL Formula is not defined")
@@ -181,8 +181,8 @@ def process(args, dsl):
 
     # alphabet
     if args.operation == OP_FSA_ALPHABET:
-        quotedSymbols = [f"'{s}'" for s in sorted(require_automaton(a).alphabet())]
-        print(f"{{{', '.join(quotedSymbols)}}}")
+        quoted_symbols = [f"'{s}'" for s in sorted(require_automaton(a).alphabet())]
+        print(f"{{{', '.join(quoted_symbols)}}}")
 
     # complete
     if args.operation == OP_FSA_COMPLETE:

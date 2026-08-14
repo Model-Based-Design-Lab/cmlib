@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 import markovchains.utils.linalgebra as linalg
 from markovchains.libdtmc import MarkovChain
@@ -164,7 +164,7 @@ def set_starting_state_set(args: Any, mc: MarkovChain):
     return state_set
 
 
-def require_markov_chain(mc: Optional[MarkovChain]) -> MarkovChain:
+def require_markov_chain(mc: MarkovChain|None) -> MarkovChain:
     """Ensure a Markov Chain is specified."""
     if mc is None:
         raise MarkovChainException("A Markov Chain is needed.")
@@ -385,7 +385,7 @@ def process(args, dsl):
                                       'Could not be determined')
             print(f"Cezaro limit distribution: {cld}")
             print(f"Number of cycles: {distribution_statistics.cycle_count()}\n")
-            dist: Optional[List[float]] = distribution_statistics.point_estimates()
+            dist: List[float]|None = distribution_statistics.point_estimates()
             if dist is not None:
                 intervals = distribution_statistics.confidence_intervals()
                 ab_error = distribution_statistics.ab_error()
@@ -446,7 +446,7 @@ def process(args, dsl):
         else:
             d_stop: Dict[str,str] = stop  # type: ignore
             print(f"Estimated hitting probabilities for {s} are:")
-            table_hs: List[Union[str,List[str]]] = []
+            table_hs: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 table_hs.append([
@@ -470,7 +470,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated cumulative reward until hitting {s} are:")
-            table_rs: List[Union[str,List[str]]] = []
+            table_rs: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
@@ -499,7 +499,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated hitting probabilities for {{{', '.join(s)}}} are:")
-            table: List[Union[str,List[str]]] = []
+            table: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):
@@ -528,7 +528,7 @@ def process(args, dsl):
             print("A timeout has occurred during the analysis.")
         else:
             print(f"Estimated cumulative reward until hitting {{{', '.join(s)}}} are:")
-            table_r_set: List[Union[str,List[str]]] = []
+            table_r_set: List[str | List[str]] = []
             for i, t in enumerate(state_set):
                 statistics = statistics_dict[t]
                 if not isinstance(statistics.mean_estimate_result(), float):

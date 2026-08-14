@@ -3,7 +3,7 @@
 from functools import reduce
 import re
 import sys
-from typing import AbstractSet, Callable, Dict, Optional, Set, Tuple
+from typing import AbstractSet, Callable, Dict, Set, Tuple
 
 from sortedcontainers import SortedDict, SortedSet
 
@@ -892,14 +892,14 @@ class LTLFormula:
     """LTL formula model."""
 
     _expression: LTLSubFormula
-    _alphabet: Optional[SortedSet]
+    _alphabet: SortedSet|None
     _prop_definitions: Dict[str, Set[str]]
 
     def __init__(
         self,
         expression: LTLSubFormula,
-        alphabet: Optional[SortedSet],
-        definitions: Optional[Dict[str, Set[str]]],
+        alphabet: SortedSet | None,
+        definitions: Dict[str, Set[str]] | None,
     ):
         self._expression = expression
         self._alphabet = alphabet
@@ -1216,8 +1216,8 @@ class LTLFormula:
         if form is None or name is None:
             sys.exit(1)
         phi: LTLSubFormula
-        alphabet: Optional[SortedSet]
-        definitions: Optional[Dict[str, Set[str]]]
+        alphabet: SortedSet | None
+        definitions: Dict[str, Set[str]] | None
         phi, alphabet, definitions = (form[0], SortedSet(form[1]), form[2])
         return name, LTLFormula(phi, alphabet, definitions)
 

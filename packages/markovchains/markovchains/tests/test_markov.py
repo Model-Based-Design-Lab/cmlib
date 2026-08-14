@@ -15,6 +15,7 @@ OUTPUT_FOLDER = os.path.join(TEST_FILE_FOLDER, "output")
 MODEL_FILES = [f for f in os.listdir(MODEL_FOLDER) if f.endswith(".dtmc")]
 
 class MarkovPytest(ModelPytest):
+    """ Tests for markovchain package """
 
     model: MarkovChain
     state: str
@@ -58,7 +59,7 @@ class MarkovPytest(ModelPytest):
             s.std_dev_estimate(), stop
 
     def dictionary_statistics_and_stop(self, s: Dict[str,Statistics] | None, stop: \
-                                       Union[str,Dict[str,str]]):
+                                       str | Dict[str,str]):
         '''Return statistics dictionary and stop.'''
         if s is None:
             return None
@@ -68,8 +69,8 @@ class MarkovPytest(ModelPytest):
                       s[t].mean_estimate(), s[t].std_dev_estimate()]
         return res, stop
 
-    def distribution_statistics_and_stop(self, s: Optional[DistributionStatistics], \
-                                         stop: Optional[str]):
+    def distribution_statistics_and_stop(self, s: DistributionStatistics|None, \
+                                         stop: str|None):
         '''Return distribution statistics dictionary and stop.'''
         if s is None:
             return "None"

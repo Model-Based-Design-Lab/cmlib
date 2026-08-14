@@ -6,7 +6,7 @@ from string import digits
 import sys
 import time
 from fractions import Fraction
-from typing import Callable, Iterable, List, Optional, Tuple, Union
+from typing import Callable, Iterable, List, Tuple
 import markovchains.utils.linalgebra as linalg
 from markovchains.utils.statistics import StopConditions
 
@@ -77,7 +77,7 @@ def print_list(l: List[float])->str:
     except ValueError:
         return str(l)
 
-def print_optional_list(l: Optional[List[float]], none_text: str = "--")->str:
+def print_optional_list(l: List[float]|None, none_text: str = "--")->str:
     """Print list of optional floats to string."""
     if l is None:
         return none_text
@@ -99,19 +99,19 @@ def print_list_of_intervals(l: List[Tuple[float,float]])->str:
     except ValueError:
         return str(l)
 
-def print_optional_interval(i: Optional[Tuple[float,float]])->str:
+def print_optional_interval(i: Tuple[float,float]|None)->str:
     """Print optional interval to string."""
     if i is None:
         return "--"
     return print_list([i[0],i[1]])
 
-def print_optional_list_of_intervals(l: Optional[List[Tuple[float,float]]])->str:
+def print_optional_list_of_intervals(l: List[Tuple[float,float]]|None)->str:
     """Print optional list of intervals to string."""
     if l is None:
         return "--"
     return print_list_of_intervals(l)
 
-def optional_float_or_string_to_string(nr: Optional[Union[str,float]]):
+def optional_float_or_string_to_string(nr: str|float|None):
     """Print an optional float or string to a string"""
     if nr is None:
         return "--"
@@ -135,7 +135,7 @@ def print_list_of_strings(s: List[str]):
     """Print list of strings comma separated."""
     print (f"[{', '.join(s)}]\n")
 
-def print_table(table: List[Union[str,List[str]]], margin: int = 1):
+def print_table(table: List[str | List[str]], margin: int = 1):
     """Print a table of strings to screen."""
 
     # determine nr of columns of table
@@ -309,15 +309,15 @@ def pretty_print_value(x: Fraction, end=None):
     else:
         print(x, end=end)
 
-def max_opt(l: List[Optional[int]])-> Optional[int]:
+def max_opt(l: List[int|None])-> int|None:
     """Determine the maximum of a list of optional integers."""
     return reduce(lambda m, v: v if m is None else (m if v is None else max(v,m)), l, None)
 
-def min_opt(l: List[Optional[int]])-> Optional[int]:
+def min_opt(l: List[int|None])-> int|None:
     """Determine the minimum of a list of optional integers."""
     return reduce(lambda m, v: v if m is None else (m if v is None else min(v,m)), l, None)
 
-def exponent(e: Optional[float])->Optional[int]:
+def exponent(e: float|None)->int|None:
     """Determine the order of magnitude of an optional float."""
     if e is None:
         return None
@@ -357,7 +357,7 @@ def exp_vector(v: List[float], ex: int) -> List[float]:
     f = pow(10,ex)
     return [e * f for e in v]
 
-def element_to_string(x: float, w: Optional[int]=None)->str:
+def element_to_string(x: float, w: int|None=None)->str:
     """Convert float to a string of width w choosing optimal scientific or normal representation."""
     ex = 0 if x==0.0 else log(abs(x),10)
     fmt = NUM_FORMAT if -3 <= ex <= 5 else NUM_SCIENTIFIC
@@ -371,11 +371,11 @@ def determine_fraction_width(e: Fraction)->int:
     """Determine the string width of the given fraction."""
     return len(f'{e}')
 
-def determine_max_fraction_width(matrix: List[List[Fraction]])->Optional[int]:
+def determine_max_fraction_width(matrix: List[List[Fraction]])->int|None:
     """Determine the maximum width of the fractions in the matrix."""
     return max_opt([determine_max_faction_width_vector(r) for r in matrix])
 
-def determine_max_faction_width_vector(v: List[Fraction])->Optional[int]:
+def determine_max_faction_width_vector(v: List[Fraction])->int|None:
     """Determine the maximum width of the fractions in the vector."""
     return max_opt([determine_fraction_width(e) for e in v])
 
@@ -383,15 +383,15 @@ def determine_width(e: float)->int:
     """Determine the width of the float represented as a string."""
     return len(element_to_string(e))
 
-def determine_max_width(matrix: List[List[float]])->Optional[int]:
+def determine_max_width(matrix: List[List[float]])->int|None:
     """Determine the maximum width of the floats in the matrix represented as strings."""
     return max_opt([determine_max_width_vector(r) for r in matrix])
 
-def determine_max_width_vector(v: List[float])->Optional[int]:
+def determine_max_width_vector(v: List[float])->int|None:
     """Determine the maximum width of the floats in the vector represented as strings."""
     return max_opt([determine_width(e) for e in v])
 
-def vector_to_string(v: List[float], w: Optional[int]=None)->str:
+def vector_to_string(v: List[float], w: int|None=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
         w = determine_max_width_vector(v)
@@ -405,7 +405,7 @@ def print_matrix_with_exponent(matrix: List[List[float]], ex: int):
     exp_prefix = f'10^{ex} x '
     spc_prefix = ' ' * (len(exp_prefix)+1)
 
-    w: Optional[int] = determine_max_width(matrix)
+    w: int|None = determine_max_width(matrix)
     for i, v in enumerate(matrix):
         if i == 0:
             print(exp_prefix+'[', end="")
@@ -424,7 +424,7 @@ def print_vector_with_exponent(v: List[float], ex: int):
 
     exp_prefix = '10^{ex} x '
 
-    w: Optional[int] = determine_max_width_vector(v)
+    w: int|None = determine_max_width_vector(v)
     print(exp_prefix, end="")
     print(vector_to_string(v, w), end='')
 
@@ -438,7 +438,7 @@ def print_vector(v: List[float]):
         print_vector_with_exponent(v, max_e)
         return
 
-    w: Optional[int] = determine_max_width_vector(v)
+    w: int|None = determine_max_width_vector(v)
     print(vector_to_string(v, w))
 
 def print_matrix(matrix: List[List[float]]):
@@ -451,7 +451,7 @@ def print_matrix(matrix: List[List[float]]):
         print_matrix_with_exponent(matrix, max_e)
         return
 
-    w: Optional[int] = determine_max_width(matrix)
+    w: int|None = determine_max_width(matrix)
     for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
@@ -463,11 +463,11 @@ def print_matrix(matrix: List[List[float]]):
         else:
             print(']')
 
-def element_to_fraction_string(x: Fraction, w: Optional[int]=None)->str:
+def element_to_fraction_string(x: Fraction, w: int|None=None)->str:
     """Convert fraction to string at optional width."""
     return right_align(f'{x}', w) if w else f'{x}'
 
-def vector_to_fraction_string(v: List[Fraction], w: Optional[int]=None)->str:
+def vector_to_fraction_string(v: List[Fraction], w: int|None=None)->str:
     '''Return string representation of the vector v.'''
     if w is None:
         w = determine_max_faction_width_vector(v)
@@ -478,7 +478,7 @@ def print_fraction_matrix(matrix: List[List[Fraction]]):
     if len(matrix) == 0:
         print('[[]]')
         return
-    w: Optional[int] = determine_max_fraction_width(matrix)
+    w: int|None = determine_max_fraction_width(matrix)
     for i, v in enumerate(matrix):
         if i == 0:
             print('[', end="")
@@ -495,7 +495,7 @@ def print_fraction_vector(v: List[Fraction]):
     if len(v) == 0:
         print('[]')
         return
-    w: Optional[int] = determine_max_faction_width_vector(v)
+    w: int|None = determine_max_faction_width_vector(v)
     print(vector_to_fraction_string(v, w))
 
 class TimeoutTimer:
